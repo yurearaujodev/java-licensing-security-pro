@@ -85,7 +85,7 @@ public final class TableFactory {
 	 * @param table instância de {@link JTable} a ser encapsulada
 	 * @return uma instância de {@link JScrollPane} contendo a tabela
 	 */
-	public static JScrollPane criarRolagemTabela(JTable table) {
+	public static JScrollPane createTableScrolling(JTable table) {
 		return new JScrollPane(table);
 	}
 

@@ -16,23 +16,23 @@ public final class LicencaMenuBuilder {
 	public static JMenu builder() {
 		JMenu menuLicenca = MenuFactory.createMenu("LICENÇAS", null);
 
-		JMenuItem itemGerLic = MenuFactory.createMenuItem("GERAR LICENÇA", null, null, null);
+		JMenuItem itemGerLic = MenuFactory.createMenuItem("GERAR LICENÇA", null, null);
 		MenuRegistry.register(MenuChave.LICENCAS_GERAR_LICENCA, itemGerLic);
 		menuLicenca.add(itemGerLic);
 
-		JMenuItem itemRenLic = MenuFactory.createMenuItem("RENOVAR LICENÇA", null, null, null);
+		JMenuItem itemRenLic = MenuFactory.createMenuItem("RENOVAR LICENÇA", null, null);
 		MenuRegistry.register(MenuChave.LICENCAS_RENOVAR_LICENCA, itemRenLic);
 		menuLicenca.add(itemRenLic);
 
-		JMenuItem itemAtiBlo = MenuFactory.createMenuItem("ATIVAR / BLOQUEAR LICENÇA", null, null, null);
+		JMenuItem itemAtiBlo = MenuFactory.createMenuItem("ATIVAR / BLOQUEAR LICENÇA", null, null);
 		MenuRegistry.register(MenuChave.LICENCAS_ATIVAR_BLOQUEAR_LICENCA, itemAtiBlo);
 		menuLicenca.add(itemAtiBlo);
 
-		JMenuItem itemDisVin = MenuFactory.createMenuItem("DISPOSITIVOS VINCULADOS", null, null, null);
+		JMenuItem itemDisVin = MenuFactory.createMenuItem("DISPOSITIVOS VINCULADOS", null, null);
 		MenuRegistry.register(MenuChave.LICENCAS_DISPOSITIVOS_VINCULADOS, itemDisVin);
 		menuLicenca.add(itemDisVin);
 
-		JMenuItem itemHisLic = MenuFactory.createMenuItem("HISTÓRICO DA LICENÇA", null, null, null);
+		JMenuItem itemHisLic = MenuFactory.createMenuItem("HISTÓRICO DA LICENÇA", null, null);
 		MenuRegistry.register(MenuChave.LICENCAS_HISTORICO_DA_LICENCA, itemHisLic);
 		menuLicenca.add(itemHisLic);
 

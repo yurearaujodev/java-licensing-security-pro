@@ -51,7 +51,7 @@ public final class PanelFactory {
 	 * 
 	 * @return uma instância de {@link JPanel} configurada como card
 	 */
-	public static JPanel criarPainelCard() {
+	public static JPanel createCardPanel() {
 		JPanel painel = new JPanel(new MigLayout("fill,insets 15", "[grow]", "[]10[]"));
 		painel.setBackground(UITheme.CARD_BG);
 		painel.setBorder(UITheme.BORDER_CARD);

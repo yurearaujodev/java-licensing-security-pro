@@ -1,8 +1,5 @@
 package com.br.yat.gerenciador.util.ui;
 
-import java.awt.Menu;
-import java.awt.event.ActionListener;
-
 import javax.swing.Icon;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -48,7 +45,7 @@ public final class MenuFactory {
 	}
 
 	/**
-	 * Cria um {@link Menu} configurado com texto e ícone opcionais.
+	 * Cria um {@link JMenu} configurado com texto e ícone opcionais.
 	 * 
 	 * @param text texto exibido no menu
 	 * @param icon ícone exibido no menu (pode ser {@code null})
@@ -65,15 +62,14 @@ public final class MenuFactory {
 	}
 
 	/**
-	 * Cria um {@link JMenuItem} configurada com texto, ícone, atalho e ação opcionais.
+	 * Cria um {@link JMenuItem} configurada com texto, ícone, atalho.
 	 * 
 	 * @param text texto exibido no item de menu
 	 * @param icon ícone exibido no item de menu (pode ser {@code null})
 	 * @param key atalho a ser executada ao clicar no item (pode ser {@code null})
-	 * @param action ação a ser executada ao clicar no item (pode ser {@code null})
 	 * @return uma instância de {@link JMenuItem} configurada
 	 */
-	public static JMenuItem createMenuItem(String text, Icon icon, KeyStroke key, ActionListener action) {
+	public static JMenuItem createMenuItem(String text, Icon icon, KeyStroke key) {
 		JMenuItem item = new JMenuItem(text);
 		item.setFont(UITheme.FONT_MENU_ITEM);
 		if (icon != null) {
@@ -81,9 +77,6 @@ public final class MenuFactory {
 		}
 		if (key != null) {
 			item.setAccelerator(key);
-		}
-		if (action != null) {
-			item.addActionListener(action);
 		}
 		return item;
 	}
@@ -94,7 +87,7 @@ public final class MenuFactory {
 	 * @param menuBar instância de {@link JMenuBar} a ser adicionada ao painel
 	 * @return uma instância de {@link JPanel} contendo a barra de menus
 	 */
-	public static JPanel criarPainelBarraMenu(JMenuBar menuBar) {
+	public static JPanel createMenuPanel(JMenuBar menuBar) {
 		JPanel painel = new JPanel(new MigLayout("fill,insets 0", "[grow]", "[]"));
 		painel.add(menuBar, "growx");
 		return painel;

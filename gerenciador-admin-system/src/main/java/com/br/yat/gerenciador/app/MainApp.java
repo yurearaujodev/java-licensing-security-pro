@@ -10,14 +10,13 @@ import com.br.yat.gerenciador.view.MenuPrincipal;
 import com.formdev.flatlaf.FlatIntelliJLaf;
 
 public class MainApp {
-	
 
 	public static void main(String[] args) {
 		// FlatLightLaf.setup();
 		// FlatDarkLaf.setup();
 		// FlatIntelliJLaf.setup();
 		// FlatDarculaLaf.setup();
-		
+
 		FlatIntelliJLaf.setup();
 		UIManager.put("TitlePane.menuBarEmbedded", false);
 		JFrame.setDefaultLookAndFeelDecorated(true);
@@ -34,8 +33,8 @@ public class MainApp {
 				menu.setLocationRelativeTo(null);
 				menu.setVisible(true);
 			} catch (Exception e) {
-				DialogFactory.erro(null,"ERRO AO ABRIR O MENU: "+ e.getMessage());
-				
+				DialogFactory.erro(null, "ERRO AO ABRIR O MENU: " + e.getMessage());
+
 			}
 		});
 

@@ -4,6 +4,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JRootPane;
 
+import com.br.yat.gerenciador.controller.MenuPrincipalController;
 import com.br.yat.gerenciador.util.IconFactory;
 import com.br.yat.gerenciador.util.ui.DesktopFactory;
 import com.br.yat.gerenciador.util.ui.LabelFactory;
@@ -38,6 +39,8 @@ public class MenuPrincipal extends JFrame {
 		configurarFrame();
 		montarTela();
 		iniciarRelogio();
+		
+		new MenuPrincipalController(this);
 	}
 
 	private void montarTela() {
@@ -62,7 +65,7 @@ public class MenuPrincipal extends JFrame {
 		JMenuBar menuBar = MenuFactory.createMenuBar();
 
 		menuBar.add(DashboardMenuBuilder.builder());
-		menuBar.add(CadastroMenuBuilder.builder(e -> cadastroEmpresa()));
+		menuBar.add(CadastroMenuBuilder.builder());
 		menuBar.add(ConsultaMenuBuilder.builder());
 		menuBar.add(LicencaMenuBuilder.builder());
 		menuBar.add(FinanceiroMenuBuilder.builder());
@@ -71,16 +74,12 @@ public class MenuPrincipal extends JFrame {
 		menuBar.add(ConfiguracaoMenuBuilder.builder());
 		menuBar.add(AjudaMenuBuilder.builder());
 
-		return MenuFactory.criarPainelBarraMenu(menuBar);
-	}
-
-	private void cadastroEmpresa() {
-
+		return MenuFactory.createMenuPanel(menuBar);
 	}
 
 	private JPanel criarPainelCentro() {
 		JPanel painel = PanelFactory.createPanel("fill, insets 0, gap 0", "[grow]", "[grow]");
-		desktopPane = DesktopFactory.criarDesktopPane();
+		desktopPane = DesktopFactory.createDesktopPane();
 		painel.add(desktopPane, "grow");
 		return painel;
 	}
@@ -109,5 +108,9 @@ public class MenuPrincipal extends JFrame {
 			lblHora.setText(agora.format(formatador));
 		});
 		timer.start();
+	}
+	
+	public JDesktopPane getDesktopPane() {
+		return desktopPane;
 	}
 }

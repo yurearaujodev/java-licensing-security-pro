@@ -29,6 +29,7 @@ import com.br.yat.gerenciador.util.ui.DesktopFactory;
 import com.br.yat.gerenciador.util.ui.FormatterUtils;
 import com.br.yat.gerenciador.util.validation.DocumentValidator;
 import com.br.yat.gerenciador.util.validation.FormatValidator;
+import com.br.yat.gerenciador.view.empresa.DadoEmpresaPanel;
 
 import javax.swing.JComboBox;
 import javax.swing.BorderFactory;
@@ -39,10 +40,10 @@ import javax.swing.JButton;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.JFormattedTextField;
-
+import javax.swing.JInternalFrame;
 import javax.swing.JTabbedPane;
 
-public class EmpresaView extends JPanel {
+public class EmpresaView extends JInternalFrame {
 
 	private static final long serialVersionUID = 1L;
 	private static final Border BORDA_PADRAO = UIManager.getBorder("TextField.border");
@@ -81,12 +82,13 @@ public class EmpresaView extends JPanel {
 	private final Map<String, String> mascaras;
 
 	public EmpresaView() {
+		super("Cadastro de Empresa Fornecedor/Cliente",true,true,true,true);
 		this.mascaras = criarMascaras();
 		setLayout(new MigLayout("gapx 15, gapy 15", "[right][grow,fill][right][grow,fill]", "10[25]10[25]"));
 
 		JTabbedPane tabbedPane = DesktopFactory.createTabbedPane();
 
-		JPanel painelEmpresa = criarPainelEmpresa();
+		JPanel painelEmpresa = new DadoEmpresaPanel();
 		tabbedPane.addTab("DADOS PRINCIPAIS", null, painelEmpresa, null);
 
 		JPanel painelEndereco = criarAbaEndereco();
@@ -98,7 +100,8 @@ public class EmpresaView extends JPanel {
 		add(tabbedPane, "cell 0 0 4 1,grow");
 		JPanel criarBotoes = criarBotoes();
 		add(criarBotoes, "cell 3 1 4 1, growx");
-		configurarEventos();
+	//	configurarEventos();
+		setSize(690,480);
 	}
 
 	private Map<String, String> criarMascaras() {
@@ -474,15 +477,6 @@ public class EmpresaView extends JPanel {
 
 	}
 
-	private void exibirErro(JTextComponent campo, String mensagem) {
-		campo.setBorder(BORDA_ERRO);
-		JOptionPane.showMessageDialog(this, mensagem, "CAMPO INVÁlido", JOptionPane.WARNING_MESSAGE);
-		campo.requestFocusInWindow();
-	}
-
-	private void removerDestaque(JTextComponent campo) {
-		campo.setBorder(BORDA_PADRAO);
-	}
 
 	private void aoClicarSalvar(ActionEvent e) {
 		String tipo = String.valueOf(cbTipoDoc.getSelectedItem());
@@ -515,6 +509,15 @@ public class EmpresaView extends JPanel {
 				JOptionPane.INFORMATION_MESSAGE);
 	}
 
+	private void exibirErro(JTextComponent campo, String mensagem) {
+		campo.setBorder(BORDA_ERRO);
+		JOptionPane.showMessageDialog(this, mensagem, "CAMPO INVÁlido", JOptionPane.WARNING_MESSAGE);
+		campo.requestFocusInWindow();
+	}
+	
+	private void removerDestaque(JTextComponent campo) {
+		campo.setBorder(BORDA_PADRAO);
+	}
 	private boolean hasErroVisual() {
 		return (ftxtDocumento.getBorder() == BORDA_ERRO) || (txtInscEst.getBorder() == BORDA_ERRO)
 				|| (txtInscMun.getBorder() == BORDA_ERRO) || (ftxtFundacao.getBorder() == BORDA_ERRO)

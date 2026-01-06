@@ -16,11 +16,11 @@ public final class AuditoriaMenuBuilder {
 	public static JMenu builder() {
 		JMenu menuAuditoria = MenuFactory.createMenu("AUDITORIA", null);
 
-		JMenuItem itemLogSis = MenuFactory.createMenuItem("LOG DO SISTEMA", null, null, null);
+		JMenuItem itemLogSis = MenuFactory.createMenuItem("LOG DO SISTEMA", null, null);
 		MenuRegistry.register(MenuChave.AUDITORIA_LOG_DO_SISTEMA, itemLogSis);
 		menuAuditoria.add(itemLogSis);
 
-		JMenuItem itemHisLic = MenuFactory.createMenuItem("HISTÓRICO DE LICENÇAS", null, null, null);
+		JMenuItem itemHisLic = MenuFactory.createMenuItem("HISTÓRICO DE LICENÇAS", null, null);
 		MenuRegistry.register(MenuChave.AUDITORIA_HISTORICO_DE_LICENCAS, itemHisLic);
 		menuAuditoria.add(itemHisLic);
 

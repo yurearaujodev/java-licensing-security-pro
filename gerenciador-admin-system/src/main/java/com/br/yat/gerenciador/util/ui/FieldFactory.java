@@ -63,7 +63,7 @@ public final class FieldFactory {
 	 * @param columns número de colunas do campo de senha
 	 * @return uma instância de {@link JPasswordField} configurada
 	 */
-	public static JPasswordField creadtePasswordField(int columns) {
+	public static JPasswordField createPasswordField(int columns) {
 		JPasswordField field = new JPasswordField(columns);
 		field.setFont(UITheme.FONT_FIELD);
 		return field;

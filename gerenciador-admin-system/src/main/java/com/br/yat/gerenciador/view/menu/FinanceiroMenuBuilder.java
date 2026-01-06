@@ -16,19 +16,19 @@ public final class FinanceiroMenuBuilder {
 	public static JMenu builder() {
 		JMenu menuFinanceiro = MenuFactory.createMenu("FINANCEIRO", null);
 
-		JMenuItem itemRegPag = MenuFactory.createMenuItem("REGISTRAR PAGAMENTO", null, null, null);
+		JMenuItem itemRegPag = MenuFactory.createMenuItem("REGISTRAR PAGAMENTO", null, null);
 		MenuRegistry.register(MenuChave.FINANCEIRO_REGISTRAR_PAGAMENTO, itemRegPag);
 		menuFinanceiro.add(itemRegPag);
 
-		JMenuItem itemConPg = MenuFactory.createMenuItem("CONSULTAR PAGAMENTOS", null, null, null);
+		JMenuItem itemConPg = MenuFactory.createMenuItem("CONSULTAR PAGAMENTOS", null, null);
 		MenuRegistry.register(MenuChave.FINANCEIRO_CONSULTAR_PAGAMENTOS, itemConPg);
 		menuFinanceiro.add(itemConPg);
 
-		JMenuItem itemFatRec = MenuFactory.createMenuItem("FATURAMENTO / RECEITA", null, null, null);
+		JMenuItem itemFatRec = MenuFactory.createMenuItem("FATURAMENTO / RECEITA", null, null);
 		MenuRegistry.register(MenuChave.FINANCEIRO_FATURAMENTO_RECEITA, itemFatRec);
 		menuFinanceiro.add(itemFatRec);
 
-		JMenuItem itemRel = MenuFactory.createMenuItem("RELATÓRIOS", null, null, null);
+		JMenuItem itemRel = MenuFactory.createMenuItem("RELATÓRIOS", null, null);
 		MenuRegistry.register(MenuChave.FINANCEIRO_RELATORIOS, itemRel);
 		menuFinanceiro.add(itemRel);
 

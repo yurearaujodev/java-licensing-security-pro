@@ -14,6 +14,7 @@ import com.br.yat.gerenciador.model.enums.MenuChave;
  * <li>Registrar itens de menu associados a chaves enumeradas ({@link MenuChave}).</li>
  * <li>Controlar habilitação e desabilitação de itens.</li>
  * <li>Desabilitar todos os itens registrados de forma centralizada.</li>
+ * <li>Recuperar itens de menu a partir de sua chave </li>
  * </ul>
  * </p>
  * 
@@ -31,7 +32,7 @@ public final class MenuRegistry {
 	}
 
 	/**
-	 * Registra um item de meu associado a uma chave.
+	 * Registra um item de menu associado a uma chave.
 	 * <p>
 	 * O item é desabilitado por padrão ao ser registrado.
 	 * </p>
@@ -40,7 +41,7 @@ public final class MenuRegistry {
 	 * @param item item de menu a ser registrado
 	 */
 	public static void register(MenuChave key, JMenuItem item) {
-		item.setEnabled(false);
+		item.setEnabled(true);
 		REGISTRY.put(key, item);
 	}
 
@@ -61,6 +62,16 @@ public final class MenuRegistry {
 	 */
 	public static void disableAll() {
 		REGISTRY.values().forEach(i -> i.setEnabled(false));
+	}
+	
+	/**
+	 * Retorna o item de menu associado a uma chave.
+	 * 
+	 * @param key chave do menu
+	 * @return item de menu registrado ou {@code null} se não existir
+	 */
+	public static JMenuItem getItem(MenuChave key) {
+		return REGISTRY.get(key);
 	}
 
 }

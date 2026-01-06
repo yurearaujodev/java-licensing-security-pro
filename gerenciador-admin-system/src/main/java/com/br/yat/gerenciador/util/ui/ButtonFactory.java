@@ -97,7 +97,7 @@ public final class ButtonFactory {
 	 * @param radios radio buttons a serem agrupados
 	 * @return uma instância de {{@link ButtonGroup} configurada
 	 */
-	public static ButtonGroup criarGrupoRadio(JRadioButton... radios) {
+	public static ButtonGroup createRadioGrup(JRadioButton... radios) {
 		ButtonGroup group = new ButtonGroup();
 		for (JRadioButton rb : radios) {
 			group.add(rb);
