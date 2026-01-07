@@ -2,6 +2,8 @@ package com.br.yat.gerenciador.util;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 
 import javax.swing.BorderFactory;
 import javax.swing.UIManager;
@@ -34,5 +36,23 @@ public final class ValidationUtils {
 			}
 		}
 		return false;
+	}
+	
+	public static FocusAdapter createValidationListener(JTextComponent campo, Runnable validator) {
+		if (campo == null||validator==null) {
+			throw new IllegalArgumentException("CAMPO E VALIDATOR NÂO PODE SER NULL");
+		}
+		
+		return new FocusAdapter() {
+			@Override
+			public void focusGained(FocusEvent e) {
+				removerDestaque(campo);
+			}
+
+			@Override
+			public void focusLost(FocusEvent e) {
+				validator.run();
+			}
+		};
 	}
 }

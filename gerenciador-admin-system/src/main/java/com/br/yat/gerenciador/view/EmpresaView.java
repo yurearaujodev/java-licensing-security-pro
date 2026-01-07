@@ -29,7 +29,9 @@ import com.br.yat.gerenciador.util.ui.DesktopFactory;
 import com.br.yat.gerenciador.util.ui.FormatterUtils;
 import com.br.yat.gerenciador.util.validation.DocumentValidator;
 import com.br.yat.gerenciador.util.validation.FormatValidator;
+import com.br.yat.gerenciador.view.empresa.DadoContatoPanel;
 import com.br.yat.gerenciador.view.empresa.DadoEmpresaPanel;
+import com.br.yat.gerenciador.view.empresa.DadoEnderecoPanel;
 
 import javax.swing.JComboBox;
 import javax.swing.BorderFactory;
@@ -91,10 +93,10 @@ public class EmpresaView extends JInternalFrame {
 		JPanel painelEmpresa = new DadoEmpresaPanel();
 		tabbedPane.addTab("DADOS PRINCIPAIS", null, painelEmpresa, null);
 
-		JPanel painelEndereco = criarAbaEndereco();
+		JPanel painelEndereco = new DadoEnderecoPanel();
 		tabbedPane.addTab("ENDEREÇO", null, painelEndereco, null);
 
-		JPanel painelContato = criarAbaContato();
+		JPanel painelContato = new DadoContatoPanel();
 		tabbedPane.addTab("CONTATOS", null, painelContato, null);
 
 		add(tabbedPane, "cell 0 0 4 1,grow");

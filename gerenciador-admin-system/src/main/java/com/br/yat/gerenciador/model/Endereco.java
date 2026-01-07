@@ -7,7 +7,7 @@ public class Endereco {
 	private int idEndereco;
 	private String cepEndereco;
 	private String logradouroEndereco;
-	private String complementoLogradouro;
+	private String complementoEndereco;
 	private String bairroEndereco;
 	private String numeroEndereco;
 	private String cidadeEndereco;
@@ -20,7 +20,7 @@ public class Endereco {
 		this.paisEndereco = "BRASIL";
 	}
 
-	public Endereco(String cepEndereco, String logradouroEndereco, String bairroEndereco, String cidadeEndereco,
+	public Endereco(String cepEndereco, String logradouroEndereco,String complementoEndereco, String bairroEndereco, String cidadeEndereco,
 			String estadoEndereco) {
 		this();
 		this.cepEndereco = cepEndereco != null ? cepEndereco.replaceAll("\\D", "") : "";
@@ -28,7 +28,7 @@ public class Endereco {
 		this.bairroEndereco = bairroEndereco != null ? bairroEndereco.trim() : "";
 		this.cidadeEndereco = cidadeEndereco != null ? cidadeEndereco.trim() : "";
 		this.estadoEndereco = estadoEndereco != null ? estadoEndereco.trim() : "";
-		
+		this.complementoEndereco = complementoEndereco != null ? complementoEndereco.trim() : "";
 	}
 
 	public int getIdEndereco() {
@@ -55,12 +55,12 @@ public class Endereco {
 		this.logradouroEndereco = logradouroEndereco;
 	}
 
-	public String getComplementoLogradouro() {
-		return complementoLogradouro;
+	public String getComplementoEndereco() {
+		return complementoEndereco;
 	}
 
-	public void setComplementoLogradouro(String complementoLogradouro) {
-		this.complementoLogradouro = complementoLogradouro;
+	public void setComplementoEndereco(String complementoEndereco) {
+		this.complementoEndereco = complementoEndereco;
 	}
 
 	public String getBairroEndereco() {

@@ -100,7 +100,7 @@ public final class FormatterUtils {
 	}
 
 	/**
-	 * Aplica formata~]ao numérica para valores monetários ou capital
+	 * Aplica formatação numérica para valores monetários ou capital
 	 * <p>
 	 * Utiliza {@link DecimalFormat} em locale {@code pt-BR}.
 	 * </p>
@@ -117,13 +117,13 @@ public final class FormatterUtils {
 		formato.applyPattern(pattern);
 
 		NumberFormatter nf = new NumberFormatter(formato);
-		nf.setAllowsInvalid(false);
-		nf.setOverwriteMode(true);
+		nf.setAllowsInvalid(true);
+		nf.setOverwriteMode(false);
 		nf.setMinimum(0.00);
 		nf.setMaximum(Double.MAX_VALUE);
 
 		field.setFormatterFactory(new DefaultFormatterFactory(nf));
-		field.setFocusLostBehavior(JFormattedTextField.COMMIT);
+		field.setFocusLostBehavior(JFormattedTextField.COMMIT_OR_REVERT);
 	}
 
 }

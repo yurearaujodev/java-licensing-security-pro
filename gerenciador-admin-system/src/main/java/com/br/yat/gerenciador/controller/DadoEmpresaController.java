@@ -1,15 +1,12 @@
 package com.br.yat.gerenciador.controller;
 
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
-
 import javax.swing.JFormattedTextField;
-import javax.swing.text.JTextComponent;
 
 import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.util.ui.FormatterUtils;
 import com.br.yat.gerenciador.util.ui.MaskFactory;
 import com.br.yat.gerenciador.util.validation.DocumentValidator;
+import com.br.yat.gerenciador.util.validation.FormatValidator;
 import com.br.yat.gerenciador.view.empresa.DadoEmpresaPanel;
 
 public class DadoEmpresaController {
@@ -24,23 +21,11 @@ public class DadoEmpresaController {
 
 	private void registrarAcoes() {
 		view.getCbTipoDoc().addActionListener(e -> aplicarMascaraDocumento());
-		view.getFtxDocumento().addFocusListener(createValidationListener(view.getFtxDocumento(), this::validarDocumento));
-		view.getTxtInscEst().addFocusListener(createValidationListener(view.getTxtInscEst(), this::validarInscricaoEstadual));
-		view.getTxtInscMun().addFocusListener(createValidationListener(view.getTxtInscMun(), this::validarInscricaoMunicipal));
-	}
-
-	private FocusAdapter createValidationListener(JTextComponent campo, Runnable validator) {
-		return new FocusAdapter() {
-			@Override
-			public void focusGained(FocusEvent e) {
-				ValidationUtils.removerDestaque(campo);
-			}
-
-			@Override
-			public void focusLost(FocusEvent e) {
-				validator.run();
-			}
-		};
+		view.getFtxDocumento().addFocusListener(ValidationUtils.createValidationListener(view.getFtxDocumento(), this::validarDocumento));
+		view.getTxtInscEst().addFocusListener(ValidationUtils.createValidationListener(view.getTxtInscEst(), this::validarInscricaoEstadual));
+		view.getTxtInscMun().addFocusListener(ValidationUtils.createValidationListener(view.getTxtInscMun(), this::validarInscricaoMunicipal));
+		view.getFtxCapitalSocial().addFocusListener(ValidationUtils.createValidationListener(view.getFtxCapitalSocial(), this::validarCapitalSocial));
+		view.getFtxFundacao().addFocusListener(ValidationUtils.createValidationListener(view.getFtxFundacao(), this::validarFundacao));
 	}
 
 	private void aplicarMascaraDocumento() {
@@ -89,10 +74,11 @@ public class DadoEmpresaController {
 		}
 		ValidationUtils.removerDestaque(view.getFtxDocumento());
 	}
-	
+
 	private void validarInscricaoMunicipal() {
 		if (!DocumentValidator.isValidInscricaoMunicipal(view.getTxtInscMun().getText())) {
-			ValidationUtils.exibirErro(view.getTxtInscMun(),view, "INSCRIÇÃO MUNICIPAL INVÁLIDA. USE 7 A 15 DÍGITOS OU ISENTO.");
+			ValidationUtils.exibirErro(view.getTxtInscMun(), view,
+					"INSCRIÇÃO MUNICIPAL INVÁLIDA. USE 7 A 15 DÍGITOS OU ISENTO.");
 			return;
 		}
 		ValidationUtils.removerDestaque(view.getTxtInscMun());
@@ -100,10 +86,55 @@ public class DadoEmpresaController {
 
 	private void validarInscricaoEstadual() {
 		if (!DocumentValidator.isValidInscricaoEstadual(view.getTxtInscEst().getText())) {
-			ValidationUtils.exibirErro(view.getTxtInscEst(),view, "INSCRIÇÃO ESTADUAL INVÁLIDA. USE 9 A 14 DÍGITOS OU ISENTO.");
+			ValidationUtils.exibirErro(view.getTxtInscEst(), view,
+					"INSCRIÇÃO ESTADUAL INVÁLIDA. USE 9 A 14 DÍGITOS OU ISENTO.");
 			return;
 		}
 		ValidationUtils.removerDestaque(view.getTxtInscEst());
+	}
+
+	private void validarCapitalSocial() {
+		Object valor = view.getFtxCapitalSocial().getValue();
+		if (valor == null) {
+			ValidationUtils.removerDestaque(view.getFtxCapitalSocial());
+			return;
+		}
+		try {
+			double capital = ((Number) valor).doubleValue();
+
+			if (capital <= 0) {
+				ValidationUtils.exibirErro(view.getFtxCapitalSocial(), view, "CAPITAL SOCIAL DEVE SER MAIOR QUE ZERO.");
+				return;
+			}
+		} catch (NumberFormatException e) {
+			ValidationUtils.exibirErro(view.getFtxCapitalSocial(), view, "FORMATO DE CAPITAL SOCIAL INVÁLIDO.");
+			return;
+		}
+		ValidationUtils.removerDestaque(view.getFtxCapitalSocial());
+	}
+
+	private void validarFundacao() {
+		String data = view.getFtxFundacao().getText().trim();
+
+		if (data == null || data.isBlank()) {
+			ValidationUtils.exibirErro(view.getFtxFundacao(), view, "DATA DE FUNDAÇÂO É OBRIGATÓRIA.");
+			return;
+		}
+
+		String soDigitos = data.replaceAll("\\D", "");
+		if (soDigitos.length() != 8) {
+			ValidationUtils.exibirErro(view.getFtxFundacao(), view, "DATA INCOMPLETA. USE O FORMATO dd/mm/aaaa.");
+			return;
+		}
+
+		String formatada = soDigitos.substring(0, 2) + "/" + soDigitos.substring(2, 4) + "/"
+				+ soDigitos.substring(4, 8);
+
+		if (!FormatValidator.isValidFoundationDate(formatada)) {
+			ValidationUtils.exibirErro(view.getFtxFundacao(), view, "DATA DE FUNDAÇÂO INVÁLIDA OU FUTURA.");
+			return;
+		}
+		ValidationUtils.removerDestaque(view.getFtxFundacao());
 	}
 
 }

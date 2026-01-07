@@ -29,6 +29,7 @@ public final class MaskFactory {
 		map.put("CNPJ", "##.###.###/####-##");
 		map.put("FIXO", "(##) ####-####");
 		map.put("CELULAR", "(##) #####-####");
+		map.put("WHATSAPP", "(##) #####-####");
 		map.put("FUNDACAO", "##/##/####");
 		map.put("CAPITAL", "#,##0.00");
 		map.put("CEP", "#####-###");

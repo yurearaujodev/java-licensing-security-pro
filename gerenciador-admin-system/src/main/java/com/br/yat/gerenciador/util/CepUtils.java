@@ -89,6 +89,7 @@ public final class CepUtils {
 			Endereco endereco = new Endereco(
 					json.getString("cep").replaceAll("\\D", ""), 
 					json.optString("logradouro", ""),
+					json.optString("complemento", ""),
 					json.optString("bairro", ""), 
 					json.optString("localidade", ""), 
 					json.optString("estado", "")
