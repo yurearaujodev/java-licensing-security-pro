@@ -92,6 +92,16 @@ public final class UITheme {
 	 * Cor para mensagens informativas.
 	 */
 	public static Color COLOR_INFO = new Color(60, 120, 180);
+	
+	public static Color COLOR_TABLE_HEADER_BG = new Color(240,240,240);
+	
+	public static Color COLOR_TABLE_HEADER_FG = new Color(50,50,50);
+
+	public static Color COLOR_SELECTION_BG = new Color(184,207,229);
+
+	public static Color COLOR_SELECTION_FG = Color.BLACK;
+
+	public static Color COLOR_GRID = new Color(230,230,230);
 
 	/**
 	 * Borda padrão para cartões, com linha externa e espaçamento interno.

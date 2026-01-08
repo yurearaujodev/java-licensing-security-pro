@@ -70,7 +70,7 @@ public final class IconFactory {
 	 * @return ícone de usuário
 	 */
 	public static Icon usuario() {
-		return icon("/com/br/yat/gerenciador/image/user.png", 60, 60);
+		return icon("/image/user.png", 60, 60);
 	}
 
 	/**
@@ -79,7 +79,7 @@ public final class IconFactory {
 	 * @return ícone de dados
 	 */
 	public static Icon data() {
-		return icon("/com/br/yat/gerenciador/image/data.png", 60, 60);
+		return icon("/image/data.png", 60, 60);
 	}
 
 	/**
@@ -88,7 +88,7 @@ public final class IconFactory {
 	 * @return ícone de logotipo
 	 */
 	public static Icon logo() {
-		return icon("/com/br/yat/gerenciador/image/logotipo.png", 150, 150);
+		return icon("/image/logotipo.png", 150, 150);
 	}
 
 }

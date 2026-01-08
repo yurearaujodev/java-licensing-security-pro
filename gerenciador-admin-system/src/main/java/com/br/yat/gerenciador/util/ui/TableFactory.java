@@ -1,18 +1,25 @@
 package com.br.yat.gerenciador.util.ui;
 
+import java.awt.Color;
+import java.awt.Component;
+
+import javax.swing.BorderFactory;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
 import com.br.yat.gerenciador.util.UITheme;
+
 /**
  * Classe utilitária para criação e configuração de tabelas swing.
  * <p>
- * Esta classe utiliza a biblioteca <b>Swing</b> ({@code javax.swing}) para criar
- * {@link JTable}, {@link JScrollPane} e modelos de tabela ({@link DefaultTableModel}, {@link AbstractTableModel}),
- * aplicando estilos definidos em {@link UITheme}.
+ * Esta classe utiliza a biblioteca <b>Swing</b> ({@code javax.swing}) para
+ * criar {@link JTable}, {@link JScrollPane} e modelos de tabela
+ * ({@link DefaultTableModel}, {@link AbstractTableModel}), aplicando estilos
+ * definidos em {@link UITheme}.
  * </p>
  * 
  * <p>
@@ -29,11 +36,13 @@ public final class TableFactory {
 	}
 
 	/**
-	 * Cria uma {@link JTable} com colunas definidas e modelo {@link DefaultTableModel}.
+	 * Cria uma {@link JTable} com colunas definidas e modelo
+	 * {@link DefaultTableModel}.
 	 * <p>
-	 * As células não são editáveis e a tabela recebe configuração padrão via {@link UIThme}.
+	 * As células não são editáveis e a tabela recebe configuração padrão via
+	 * {@link UITheme}.
 	 * </p>
-	 *  
+	 * 
 	 * @param columns nomes das colunas da tabela
 	 * @return uma instância de {@link JTable} configurada
 	 */
@@ -47,13 +56,13 @@ public final class TableFactory {
 
 		return configureTable(new JTable(model));
 	}
-	
+
 	/**
 	 * Cria uma {@link JTable} com modelo abstrato definido pelo usuário.
 	 * <p>
 	 * A tabela recebe configuração padrão via {@link UITheme}.
 	 * </p>
-	 *  
+	 * 
 	 * @param model instância de {@link AbstractTableModel} fornecida pelo usuário
 	 * @return uma instância de {@link JTable} configurada
 	 */
@@ -64,18 +73,30 @@ public final class TableFactory {
 	/**
 	 * Configura uma {@link JTable} com estilo padrão.
 	 * <p>
-	 * Define fonte, altura das linhas, fonte do cabeçalho, modo de seleção e ordenação automática.
-	 * </p> 
+	 * Define fonte, altura das linhas, fonte do cabeçalho, modo de seleção e
+	 * ordenação automática.
+	 * </p>
 	 * 
 	 * @param table instância de {@link JTable} a ser configurada
 	 * @return a tabela configurada
 	 */
 	private static JTable configureTable(JTable table) {
 		table.setFont(UITheme.FONT_DEFAULT);
-		table.setRowHeight(24);
+		table.setRowHeight(26);
 		table.getTableHeader().setFont(UITheme.FONT_BOLD);
+		table.getTableHeader().setReorderingAllowed(false);
+		table.getTableHeader().setBackground(UITheme.COLOR_TABLE_HEADER_BG);
+		table.getTableHeader().setForeground(UITheme.COLOR_TABLE_HEADER_FG);
+		table.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.GRAY));
 		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		table.setAutoCreateRowSorter(true);
+		table.setSelectionBackground(UITheme.COLOR_SELECTION_BG);
+		table.setSelectionForeground(UITheme.COLOR_SELECTION_FG);
+		table.setAutoCreateRowSorter(false);
+		table.setShowHorizontalLines(true);
+		table.setShowVerticalLines(false);
+		table.setGridColor(UITheme.COLOR_GRID);
+		table.setFillsViewportHeight(true);
+		aplicarEfeitoZebra(table);
 		return table;
 	}
 
@@ -87,6 +108,23 @@ public final class TableFactory {
 	 */
 	public static JScrollPane createTableScrolling(JTable table) {
 		return new JScrollPane(table);
+	}
+
+	private static void aplicarEfeitoZebra(JTable table) {
+		table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+			@Override
+			public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+					boolean hasFocus, int row, int column) {
+				super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+				setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
+
+				if (!isSelected) {
+					setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 248, 248));
+				}
+				return this;
+			}
+		});
 	}
 
 }

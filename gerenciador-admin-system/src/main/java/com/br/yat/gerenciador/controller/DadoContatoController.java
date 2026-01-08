@@ -84,29 +84,31 @@ public class DadoContatoController {
 		estrategiasValidacao.put("FIXO", this::validarTelefone);
 		estrategiasValidacao.put("CELULAR", this::validarTelefone);
 		estrategiasValidacao.put("WHATSAPP", this::validarTelefone);	
-		estrategiasValidacao.put("EMAIL", this::validarEmail);	
+		estrategiasValidacao.put("E-MAIL", this::validarEmail);	
 		estrategiasValidacao.put("SITE", this::validarGenerico);	
 		estrategiasValidacao.put("REDE SOCIAL", this::validarGenerico);	
 	}
 	
 	private void validarEmail() {
+		String tipo = (String) view.getCbTipo().getSelectedItem();
 		String email = view.getTxtGenerico().getText();
 		if (email==null||email.isBlank()) {
 			ValidationUtils.exibirErro(view.getTxtGenerico(), view, "Email invalido");
 			return;
 		}
 		ValidationUtils.removerDestaque(view.getTxtGenerico());
-		adicionarNaTabela("EMAIL", email);
+		adicionarNaTabela(tipo, email);
 	}
 	
 	private void validarGenerico() {
+		String tipo = (String) view.getCbTipo().getSelectedItem();
 		String valor = view.getTxtGenerico().getText();
 		if (valor==null||valor.isBlank()) {
 			ValidationUtils.exibirErro(view.getTxtGenerico(), view, "campo obrigatorio");
 			return;
 		}
 		ValidationUtils.removerDestaque(view.getTxtGenerico());
-		adicionarNaTabela("Outro", valor);
+		adicionarNaTabela(tipo, valor);
 	}
 
 	private void usarTelefone(String tipo) {

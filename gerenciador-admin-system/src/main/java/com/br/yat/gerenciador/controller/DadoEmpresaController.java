@@ -1,5 +1,7 @@
 package com.br.yat.gerenciador.controller;
 
+import java.util.Map;
+
 import javax.swing.JFormattedTextField;
 
 import com.br.yat.gerenciador.util.ValidationUtils;
@@ -12,41 +14,43 @@ import com.br.yat.gerenciador.view.empresa.DadoEmpresaPanel;
 public class DadoEmpresaController {
 
 	private final DadoEmpresaPanel view;
+	Map<String, String> mascaras = MaskFactory.createMask();
 
 	public DadoEmpresaController(DadoEmpresaPanel view) {
 		this.view = view;
 
 		registrarAcoes();
+		aplicarMascaraDocumento();
 	}
 
 	private void registrarAcoes() {
 		view.getCbTipoDoc().addActionListener(e -> aplicarMascaraDocumento());
-		view.getFtxDocumento().addFocusListener(ValidationUtils.createValidationListener(view.getFtxDocumento(), this::validarDocumento));
-		view.getTxtInscEst().addFocusListener(ValidationUtils.createValidationListener(view.getTxtInscEst(), this::validarInscricaoEstadual));
-		view.getTxtInscMun().addFocusListener(ValidationUtils.createValidationListener(view.getTxtInscMun(), this::validarInscricaoMunicipal));
-		view.getFtxCapitalSocial().addFocusListener(ValidationUtils.createValidationListener(view.getFtxCapitalSocial(), this::validarCapitalSocial));
-		view.getFtxFundacao().addFocusListener(ValidationUtils.createValidationListener(view.getFtxFundacao(), this::validarFundacao));
+		view.getFtxDocumento().addFocusListener(
+				ValidationUtils.createValidationListener(view.getFtxDocumento(), this::validarDocumento));
+		view.getTxtInscEst().addFocusListener(
+				ValidationUtils.createValidationListener(view.getTxtInscEst(), this::validarInscricaoEstadual));
+		view.getTxtInscMun().addFocusListener(
+				ValidationUtils.createValidationListener(view.getTxtInscMun(), this::validarInscricaoMunicipal));
+		view.getFtxCapitalSocial().addFocusListener(
+				ValidationUtils.createValidationListener(view.getFtxCapitalSocial(), this::validarCapitalSocial));
+		view.getFtxFundacao().addFocusListener(
+				ValidationUtils.createValidationListener(view.getFtxFundacao(), this::validarFundacao));
 	}
 
 	private void aplicarMascaraDocumento() {
 		String selecionado = (String) view.getCbTipoDoc().getSelectedItem();
 		JFormattedTextField ftxtDocumento = view.getFtxDocumento();
 
-		if ("SELECIONE".equals(selecionado)) {
-			ftxtDocumento.setFormatterFactory(null);
+		boolean isSelecionado = selecionado != null && !"SELECIONE".equals(selecionado);
+		ftxtDocumento.setEnabled(isSelecionado);
+		if (!isSelecionado) {
 			ftxtDocumento.setValue(null);
 			ftxtDocumento.setText("");
-			ftxtDocumento.setEnabled(false);
 			view.getCbTipoDoc().requestFocusInWindow();
 			return;
 		}
 
-		ftxtDocumento.setValue(null);
-		ftxtDocumento.setText("");
-		ftxtDocumento.setEnabled(true);
-
-		String mascara = MaskFactory.createMask().get(selecionado);
-		// System.out.println("sel: "+selecionado+"|mask: "+mascara);
+		String mascara = mascaras.get(selecionado);
 		if (mascara != null) {
 			FormatterUtils.applyDocumentMask(ftxtDocumento, mascara);
 		}
