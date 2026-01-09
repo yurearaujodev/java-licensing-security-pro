@@ -96,6 +96,7 @@ public final class TableFactory {
 		table.setShowVerticalLines(false);
 		table.setGridColor(UITheme.COLOR_GRID);
 		table.setFillsViewportHeight(true);
+		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		aplicarEfeitoZebra(table);
 		return table;
 	}

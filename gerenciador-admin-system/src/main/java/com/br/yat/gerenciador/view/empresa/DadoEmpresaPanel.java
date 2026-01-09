@@ -53,7 +53,6 @@ public class DadoEmpresaPanel extends JPanel {
 
 	private void montarCampos(JPanel panel) {
 		panel.add(LabelFactory.createLabel("CÓDIGO:"), "cell 0 0 , alignx trailing");
-
 		txtCodigo = FieldFactory.createTextField(20);
 		txtCodigo.setEnabled(false);
 		panel.add(txtCodigo, "cell 1 0,growx, h 25!,wmax 120");

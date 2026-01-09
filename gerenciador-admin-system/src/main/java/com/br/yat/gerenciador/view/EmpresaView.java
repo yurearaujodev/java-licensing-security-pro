@@ -13,6 +13,7 @@ import com.br.yat.gerenciador.view.empresa.DadoContatoPanel;
 import com.br.yat.gerenciador.view.empresa.DadoEmpresaPanel;
 import com.br.yat.gerenciador.view.empresa.DadoEnderecoPanel;
 import com.br.yat.gerenciador.view.empresa.DadoFiscalPanel;
+import com.br.yat.gerenciador.view.empresa.DadoRepresentantePanel;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -43,6 +44,9 @@ public class EmpresaView extends JInternalFrame {
 
 		JPanel painelFiscal = new DadoFiscalPanel();
 		tabbedPane.addTab("DADOS FISCAIS", null, painelFiscal, null);
+		
+		JPanel painelRepresentante = new DadoRepresentantePanel();
+		tabbedPane.addTab("REPRESENTANTE LEGAL", null, painelRepresentante, null);
 
 		add(tabbedPane, "cell 0 0 4 1,grow");
 		JPanel criarBotoes = criarBotoes();
@@ -54,7 +58,7 @@ public class EmpresaView extends JInternalFrame {
 		JPanel panel = new JPanel();
 		panel.setLayout(new MigLayout("insets 5, align right", "[][]", "[]"));
 
-		btnSalvar = criarBotao("Salvar", "/com/br/yat/gerenciador/image/salvar_24.png");
+		btnSalvar = criarBotao("Salvar", "/image/salvar_24.png");
 		// btnSalvar = criarBotao("Salvar", "/image/salvar_24.png");
 		panel.add(btnSalvar, "h 35!, w 120!");
 

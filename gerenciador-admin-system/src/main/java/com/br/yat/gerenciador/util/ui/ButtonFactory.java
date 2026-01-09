@@ -1,7 +1,6 @@
 package com.br.yat.gerenciador.util.ui;
 
 import java.awt.Cursor;
-import java.awt.event.ActionListener;
 
 import javax.swing.ButtonGroup;
 import javax.swing.Icon;
@@ -36,11 +35,10 @@ public final class ButtonFactory {
 	 * Cria um botão primário com texto e ação.
 	 * 
 	 * @param text  texto exibido no botão
-	 * @param acton ação associada ao botão (pode ser {@code null})
 	 * @return uma instância de {@link JButton} configurada
 	 */
-	public static JButton createPrimaryButton(String text, ActionListener acton) {
-		return createPrimaryButton(text, null, acton);
+	public static JButton createPrimaryButton(String text) {
+		return createPrimaryButton(text, null);
 	}
 
 	/**
@@ -48,19 +46,15 @@ public final class ButtonFactory {
 	 * 
 	 * @param text  texto exibido no botão
 	 * @param icon  ícone exibido no botão (pode ser {@code null})
-	 * @param acton ação associada ao botão (pode ser {@code null})
 	 * @return uma instância de {@link JButton} configurada
 	 */
-	public static JButton createPrimaryButton(String text, Icon icon, ActionListener action) {
+	public static JButton createPrimaryButton(String text, Icon icon) {
 		JButton button = new JButton(text);
 		button.setFont(UITheme.FONT_BUTTON);
 		button.setFocusPainted(false);
 		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		if (icon != null) {
 			button.setIcon(icon);
-		}
-		if (action != null) {
-			button.addActionListener(action);
 		}
 		return button;
 	}
