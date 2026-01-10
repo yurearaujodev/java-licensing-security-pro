@@ -87,6 +87,12 @@ public class DadoContatoPanel extends JPanel {
 		ftxtTelefone = FieldFactory.createFormattedField();
 		
 		tabela = TableFactory.createDefaultTable(new String[] { "TIPO", "VALOR" });
+		for (int i = 0; i < tabela.getColumnCount(); i++) {
+			if (tabela.getColumnModel().getColumn(i).getPreferredWidth() == 75) {
+				tabela.getColumnModel().getColumn(i).setPreferredWidth(320);
+			}
+
+		}
 		panel.add(TableFactory.createTableScrolling(tabela), "grow,hmin 150,pushy,wrap");
 		// panel.add(txtGenerico, "cell 1 1 3 1,growx, h 25!,wmin 250, wmax 850");
 

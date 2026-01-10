@@ -9,6 +9,8 @@ import java.net.URL;
 import javax.swing.SwingConstants;
 
 import com.br.yat.gerenciador.util.ui.DesktopFactory;
+import com.br.yat.gerenciador.view.empresa.DadoBancarioPanel;
+import com.br.yat.gerenciador.view.empresa.DadoComplementarPanel;
 import com.br.yat.gerenciador.view.empresa.DadoContatoPanel;
 import com.br.yat.gerenciador.view.empresa.DadoEmpresaPanel;
 import com.br.yat.gerenciador.view.empresa.DadoEnderecoPanel;
@@ -47,11 +49,17 @@ public class EmpresaView extends JInternalFrame {
 		
 		JPanel painelRepresentante = new DadoRepresentantePanel();
 		tabbedPane.addTab("REPRESENTANTE LEGAL", null, painelRepresentante, null);
+		
+		JPanel painelBancario = new DadoBancarioPanel();
+		tabbedPane.addTab("DADOS BANCÁRIOS", null, painelBancario, null);
+		
+		JPanel painelComplementar = new DadoComplementarPanel();
+		tabbedPane.addTab("INFORMAÇÕES COMPLEMENTARES", null, painelComplementar, null);
 
 		add(tabbedPane, "cell 0 0 4 1,grow");
 		JPanel criarBotoes = criarBotoes();
 		add(criarBotoes, "cell 3 1 4 1, growx");
-		setSize(690, 480);
+		setSize(690, 530);
 	}
 
 	private JPanel criarBotoes() {

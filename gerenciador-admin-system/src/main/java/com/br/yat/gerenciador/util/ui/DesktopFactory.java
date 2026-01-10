@@ -77,7 +77,9 @@ public final class DesktopFactory {
 	 * @return uma instância de {@link JTabbedPane} configurada
 	 */
 	public static JTabbedPane createTabbedPane() {
-		JTabbedPane tabs = new JTabbedPane();
+		JTabbedPane tabs = new JTabbedPane(JTabbedPane.TOP);
+//		tabs.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
+		tabs.setTabLayoutPolicy(JTabbedPane.WRAP_TAB_LAYOUT);
 		tabs.setFont(UITheme.FONT_FIELD);
 		return tabs;
 	}

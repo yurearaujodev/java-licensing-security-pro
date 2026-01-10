@@ -33,6 +33,7 @@ public final class MaskFactory {
 		map.put("FUNDACAO", "##/##/####");
 		map.put("CAPITAL", "#,##0.00");
 		map.put("CEP", "#####-###");
+		map.put("BANCO", "###");
 		return map;
 	}
 	/**

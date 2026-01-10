@@ -56,7 +56,7 @@ public class MenuPrincipal extends JFrame {
 	private void configurarFrame() {
 		setTitle("SISTEMA DE GERENCIAMENTO DE LICENÇA - MENU PRINCIPAL");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize(950, 600);
+		setSize(1000, 650);
 		setUndecorated(true);
 		getRootPane().setWindowDecorationStyle(JRootPane.FRAME);
 	}

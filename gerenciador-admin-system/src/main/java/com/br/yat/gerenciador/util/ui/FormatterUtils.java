@@ -98,6 +98,10 @@ public final class FormatterUtils {
 	public static void applyPostalCodeMask(JFormattedTextField field, String mask) {
 		applyMask(field, mask, true);
 	}
+	
+	public static void applyBank(JFormattedTextField field, String mask) {
+		applyMask(field, mask, true);
+	}
 
 	/**
 	 * Aplica formatação numérica para valores monetários ou capital
