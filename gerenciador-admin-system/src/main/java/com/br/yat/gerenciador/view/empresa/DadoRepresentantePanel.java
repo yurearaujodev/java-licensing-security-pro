@@ -9,7 +9,6 @@ import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 
-import com.br.yat.gerenciador.controller.DadoRepresentanteController;
 import com.br.yat.gerenciador.util.ui.ButtonFactory;
 import com.br.yat.gerenciador.util.ui.ComboBoxFactory;
 import com.br.yat.gerenciador.util.ui.FieldFactory;
@@ -28,12 +27,13 @@ public class DadoRepresentantePanel extends JPanel {
 	private JTextField txtRg;
 	private JTextField txtCargo;
 	private JTextField txtEmail;
-	private JComboBox<String> cbNac;
-	private JComboBox<String> cbEst;
+
+	private JComboBox<String> cbNacionalidade;
+	private JComboBox<String> cbEstadoCivil;
 	Map<String, String> mascaras = MaskFactory.createMask();
 
-	private JFormattedTextField txtCpf;
-	private JFormattedTextField txtTel;
+	private JFormattedTextField ftxtCpf;
+	private JFormattedTextField ftxtTelefone;
 
 	private JButton btnAdicionar;
 	private JButton btnRemover;
@@ -42,7 +42,6 @@ public class DadoRepresentantePanel extends JPanel {
 	public DadoRepresentantePanel() {
 		setLayout(new MigLayout("fill", "[grow]", "[grow]"));
 		montarTela();
-		new DadoRepresentanteController(this);
 	}
 
 	private void montarTela() {
@@ -58,12 +57,12 @@ public class DadoRepresentantePanel extends JPanel {
 		panel.add(txtNome, "cell 1 0 3 1, growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("CPF:"), "cell 0 1,alignx trailing");
-		txtCpf = FieldFactory.createFormattedField();
-		panel.add(txtCpf, "cell 1 1,growx, h 25!");
+		ftxtCpf = FieldFactory.createFormattedField();
+		panel.add(ftxtCpf, "cell 1 1,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("CARGO:"), "cell 2 1,alignx trailing");
 		txtCargo = FieldFactory.createTextField(20);
-		FormatterUtils.applyDocumentMask(txtCpf, mascaras.get("CPF"));
+		FormatterUtils.applyDocumentMask(ftxtCpf, mascaras.get("CPF"));
 		panel.add(txtCargo, "cell 3 1,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("RG:"), "cell 0 2,alignx trailing");
@@ -71,17 +70,18 @@ public class DadoRepresentantePanel extends JPanel {
 		panel.add(txtRg, "cell 1 2,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("NACIONALIDADE:"), "cell 2 2,alignx trailing");
-		cbNac = ComboBoxFactory.createComboBox("SELECIONE", "BRASILEIRA", "ESTRANGEIRA");
-		panel.add(cbNac, "cell 3 2,growx, h 25!");
+		cbNacionalidade = ComboBoxFactory.createComboBox("SELECIONE", "BRASILEIRA", "ESTRANGEIRA");
+		panel.add(cbNacionalidade, "cell 3 2,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("ESTADO CIVIL:"), "cell 0 3,alignx trailing");
-		cbEst = ComboBoxFactory.createComboBox("SELECIONE", "SOLTEIRO(A)", "CASADO(A)", "DIVORCIADO(A)", "VIÚVO(A)");
-		panel.add(cbEst, "cell 1 3,growx, h 25!");
+		cbEstadoCivil = ComboBoxFactory.createComboBox("SELECIONE", "SOLTEIRO(A)", "CASADO(A)", "DIVORCIADO(A)",
+				"VIÚVO(A)");
+		panel.add(cbEstadoCivil, "cell 1 3,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("TELEFONE:"), "cell 2 3,alignx trailing");
-		txtTel = FieldFactory.createFormattedField();
-		FormatterUtils.applyPhoneMask(txtTel, mascaras.get("CELULAR"));
-		panel.add(txtTel, "cell 3 3,growx, h 25!");
+		ftxtTelefone = FieldFactory.createFormattedField();
+		FormatterUtils.applyPhoneMask(ftxtTelefone, mascaras.get("CELULAR"));
+		panel.add(ftxtTelefone, "cell 3 3,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("E-MAIL:"), "cell 0 4, alignx trailing");
 		txtEmail = FieldFactory.createTextField(20);
@@ -103,28 +103,84 @@ public class DadoRepresentantePanel extends JPanel {
 		panel.add(TableFactory.createTableScrolling(tabela), "cell 0 6 4 1,growx,hmin 100,pushy");
 	}
 
-	public JComboBox<String> getCbEstado() {
-		return cbEst;
+	public String getNome() {
+		return txtNome.getText();
 	}
 
-	public JComboBox<String> getCbNacionalidade() {
-		return cbNac;
+	public String getCpf() {
+		return ftxtCpf.getText();
 	}
 
-	public JFormattedTextField getFtxtCpf() {
-		return txtCpf;
+	public String getRg() {
+		return txtRg.getText();
+	}
+
+	public String getCargo() {
+		return txtCargo.getText();
+	}
+
+	public String getNacionalidade() {
+		return String.valueOf(cbNacionalidade.getSelectedItem());
+	}
+
+	public String getEstadoCivil() {
+		return String.valueOf(cbEstadoCivil.getSelectedItem());
+	}
+
+	public String getTelefone() {
+		return ftxtTelefone.getText();
+	}
+
+	public String getEmail() {
+		return txtEmail.getText();
+	}
+
+	public void setNome(String nome) {
+		txtNome.setText(nome);
 	}
 
 	public void setCpf(String cpf) {
-		txtCpf.setValue((cpf == null || cpf.isBlank()) ? null : cpf);
+		ftxtCpf.setText(cpf);
+	}
+
+	public void setRg(String rg) {
+		txtRg.setText(rg);
+	}
+
+	public void setCargo(String cargo) {
+		txtCargo.setText(cargo);
+	}
+
+	public void setNacionalidade(String nacionalidade) {
+		cbNacionalidade.setSelectedItem(nacionalidade);
+	}
+
+	public void setEstadoCivil(String estado) {
+		cbEstadoCivil.setSelectedItem(estado);
 	}
 
 	public void setTelefone(String telefone) {
-		txtTel.setValue((telefone == null || telefone.isBlank()) ? null : telefone);
+		ftxtTelefone.setText(telefone);
+	}
+
+	public void setEmail(String email) {
+		txtEmail.setText(email);
+	}
+
+	public JComboBox<String> getCbEstado() {
+		return cbEstadoCivil;
+	}
+
+	public JComboBox<String> getCbNacionalidade() {
+		return cbNacionalidade;
+	}
+
+	public JFormattedTextField getFtxtCpf() {
+		return ftxtCpf;
 	}
 
 	public JFormattedTextField getFtxtTelefone() {
-		return txtTel;
+		return ftxtTelefone;
 	}
 
 	public JTextField getTxtNome() {

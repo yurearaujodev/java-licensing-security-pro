@@ -4,7 +4,6 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JRootPane;
 
-import com.br.yat.gerenciador.controller.MenuPrincipalController;
 import com.br.yat.gerenciador.util.IconFactory;
 import com.br.yat.gerenciador.util.ui.DesktopFactory;
 import com.br.yat.gerenciador.util.ui.LabelFactory;
@@ -24,10 +23,6 @@ import javax.swing.JDesktopPane;
 import javax.swing.JMenuBar;
 import javax.swing.JLabel;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import javax.swing.Timer;
-
 public class MenuPrincipal extends JFrame {
 
 	private static final long serialVersionUID = 1L;
@@ -38,9 +33,6 @@ public class MenuPrincipal extends JFrame {
 	public MenuPrincipal() {
 		configurarFrame();
 		montarTela();
-		iniciarRelogio();
-		
-		new MenuPrincipalController(this);
 	}
 
 	private void montarTela() {
@@ -56,9 +48,12 @@ public class MenuPrincipal extends JFrame {
 	private void configurarFrame() {
 		setTitle("SISTEMA DE GERENCIAMENTO DE LICENÇA - MENU PRINCIPAL");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize(1000, 650);
-		setUndecorated(true);
+		setSize(1300, 800);
+		setLocationRelativeTo(null);
+		//setExtendedState(JFrame.MAXIMIZED_BOTH);
 		getRootPane().setWindowDecorationStyle(JRootPane.FRAME);
+		setVisible(true);
+		
 	}
 
 	private JPanel criarPainelMenu() {
@@ -101,15 +96,10 @@ public class MenuPrincipal extends JFrame {
 		return painel;
 	}
 
-	private void iniciarRelogio() {
-		Timer timer = new Timer(1000, e -> {
-			LocalDateTime agora = LocalDateTime.now();
-			DateTimeFormatter formatador = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-			lblHora.setText(agora.format(formatador));
-		});
-		timer.start();
+	public JLabel getHora() {
+		return lblHora;
 	}
-	
+
 	public JDesktopPane getDesktopPane() {
 		return desktopPane;
 	}

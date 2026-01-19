@@ -1,15 +1,12 @@
 package com.br.yat.gerenciador.view.empresa;
 
-import java.awt.FlowLayout;
-
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFormattedTextField;
 import javax.swing.JPanel;
 import javax.swing.JTable;
-import javax.swing.JTextField;
 
-import com.br.yat.gerenciador.controller.DadoContatoController;
+import com.br.yat.gerenciador.util.ui.ButtonFactory;
 import com.br.yat.gerenciador.util.ui.ComboBoxFactory;
 import com.br.yat.gerenciador.util.ui.FieldFactory;
 import com.br.yat.gerenciador.util.ui.LabelFactory;
@@ -21,42 +18,75 @@ import net.miginfocom.swing.MigLayout;
 public class DadoContatoPanel extends JPanel {
 
 	private static final long serialVersionUID = 1L;
-	private JTextField txtGenerico;
-	private JFormattedTextField ftxtTelefone;
-	private JComboBox<String> cbTipoCont;
-	private JPanel painelCampo;
+	private JFormattedTextField ftxtContato;
+	private JComboBox<String> cbTipoContato;
 	private JTable tabela;
 	private JButton adicionar;
 	private JButton remover;
 
 	public DadoContatoPanel() {
-		setLayout(new MigLayout("fillx, insets 10", "[grow]", "[]10[]10[grow]10[]"));
-
+		setLayout(new MigLayout("fill", "[grow]", "[grow]"));
 		montarTela();
-		JPanel painelBotoes = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-		adicionar = new JButton("Adicionar");
-		remover = new JButton("Remover");
-		painelBotoes.add(adicionar);
-		painelBotoes.add(remover);
-		add(painelBotoes, "growx,wrap");
 
-		new DadoContatoController(this);
 	}
 
-	public JComboBox<String> getCbTipo() {
-		return cbTipoCont;
+	private void montarTela() {
+		JPanel panel = PanelFactory.createPanel("gapx 10, gapy 10", "[right][grow,fill]", "[][][][grow]");
+		montarCampos(panel);
+		add(panel, "grow");
 	}
 
-	public JPanel getPainelCampo() {
-		return painelCampo;
+	private void montarCampos(JPanel panel) {
+		panel.add(LabelFactory.createLabel("TIPO CONTATO: "), "cell 0 0, alignx trailing");
+		cbTipoContato = ComboBoxFactory.createComboBox("SELECIONE", "FIXO", "CELULAR", "WHATSAPP", "E-MAIL", "REDE SOCIAL","SITE");
+		panel.add(cbTipoContato, "cell 1 0 2 1,growx,h 25!");
+
+		ftxtContato = FieldFactory.createFormattedField();
+		ftxtContato.setEnabled(false);
+		panel.add(ftxtContato,"cell 0 1 2 1,growx, h 25!");
+
+		adicionar = ButtonFactory.createPrimaryButton("Adicionar", null);
+		panel.add(adicionar, "cell 0 2 2 1,split 2,alignx right,w 120!, h 25!");
+		remover = ButtonFactory.createPrimaryButton("Remover", null);
+		panel.add(remover, "w 120!, h 25!");
+
+		tabela = TableFactory.createDefaultTable(new String[] { "TIPO", "VALOR" });
+		configurarColunas(tabela);
+		panel.add(TableFactory.createTableScrolling(tabela), "cell 0 3 2 1,growx,hmin 150,pushy");
 	}
 
-	public JTextField getTxtGenerico() {
-		return txtGenerico;
+	private void configurarColunas(JTable tabela) {
+		tabela.getColumnModel().getColumn(0).setPreferredWidth(180);
+		tabela.getColumnModel().getColumn(0).setMinWidth(180);
+		tabela.getColumnModel().getColumn(0).setMaxWidth(180);
+
+		tabela.getColumnModel().getColumn(1).setPreferredWidth(462);
+		tabela.getColumnModel().getColumn(1).setMinWidth(462);
+		tabela.getColumnModel().getColumn(1).setMaxWidth(462);
+	}
+	
+	public String getTipoContato() {
+		return String.valueOf(cbTipoContato.getSelectedItem());
+	}
+	
+	public void setTipoContato(String tipo) {
+		cbTipoContato.setSelectedItem(tipo);
+	}
+	
+	public String getContato() {
+		return ftxtContato.getText();
+	}
+	
+	public void setContato(String contato) {
+		ftxtContato.setText(contato);
+	}	
+
+	public JComboBox<String> getCbTipoContato() {
+		return cbTipoContato;
 	}
 
-	public JFormattedTextField getftxtTelefone() {
-		return ftxtTelefone;
+	public JFormattedTextField getFtxtContato() {
+		return ftxtContato;
 	}
 
 	public JTable getTabela() {
@@ -67,36 +97,7 @@ public class DadoContatoPanel extends JPanel {
 		return adicionar;
 	}
 
-	public JButton getRemoverr() {
+	public JButton getRemover() {
 		return remover;
-	}
-
-	private void montarTela() {
-		montarCampos(this);
-	}
-	
-	private void montarCampos(JPanel panel) {
-		panel.add(LabelFactory.createLabel("TIPO CONTATO: "), "split 2,span, gapbottom 5");
-		cbTipoCont = ComboBoxFactory.createComboBox("SELECIONE", "FIXO", "CELULAR", "WHATSAPP", "E-MAIL", "REDE SOCIAL", "SITE");
-		panel.add(cbTipoCont, "growx,wrap");
-
-		painelCampo = PanelFactory.createPanel("fill", "[grow]", "[]");
-		panel.add(painelCampo, "growx,wrap,gapbottom 10");
-		
-		txtGenerico = FieldFactory.createTextField(20);
-		ftxtTelefone = FieldFactory.createFormattedField();
-		
-		tabela = TableFactory.createDefaultTable(new String[] { "TIPO", "VALOR" });
-		for (int i = 0; i < tabela.getColumnCount(); i++) {
-			if (tabela.getColumnModel().getColumn(i).getPreferredWidth() == 75) {
-				tabela.getColumnModel().getColumn(i).setPreferredWidth(320);
-			}
-
-		}
-		panel.add(TableFactory.createTableScrolling(tabela), "grow,hmin 150,pushy,wrap");
-		// panel.add(txtGenerico, "cell 1 1 3 1,growx, h 25!,wmin 250, wmax 850");
-
-		// panel.add(ftxtTelefone, "cell 1 2,h 25!,wmin 120,wmax 500");
-
 	}
 }

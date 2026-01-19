@@ -7,6 +7,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
@@ -123,6 +124,15 @@ public final class TableFactory {
 				if (!isSelected) {
 					setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 248, 248));
 				}
+				
+//				if (column==1) {
+//					setHorizontalAlignment(SwingConstants.CENTER);
+//				}else {
+//					setHorizontalAlignment(SwingConstants.LEFT);
+//				}
+//				
+				setHorizontalAlignment(SwingConstants.CENTER);
+				
 				return this;
 			}
 		});

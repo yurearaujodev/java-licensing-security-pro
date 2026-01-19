@@ -90,5 +90,17 @@ public final class IconFactory {
 	public static Icon logo() {
 		return icon("/image/logotipo.png", 150, 150);
 	}
+	
+	public static Icon salvar() {
+		return icon("/image/salvar_24.png", 25, 25);
+	}
+	
+	public static Icon cancelar() {
+		return icon("/image/cancelar_24.png", 25, 25);
+	}
+	
+	public static Icon novo() {
+		return icon("/image/novo_24.png", 25, 25);
+	}
 
 }

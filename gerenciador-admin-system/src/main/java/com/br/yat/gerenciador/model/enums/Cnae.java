@@ -8,6 +8,7 @@ package com.br.yat.gerenciador.model.enums;
  * </p>
  */
 public enum Cnae {
+	SELECIONE("SELECIONE UMA OPÇÃO"),
 	CNAE_6201("6201-5/01 - Desenvolvimento de software sob encomenda"),
 	CNAE_6202("6202-3/00 - Desenvolvimento e licenciamento de programas customizáveis"),
 	CNAE_6203("6203-1/00 - Desenvolvimento e licenciamento de programas não-customizáveis"),

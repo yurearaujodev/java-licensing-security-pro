@@ -1,0 +1,221 @@
+package com.br.yat.gerenciador.controller;
+
+import java.awt.BorderLayout;
+import java.awt.Dialog;
+import java.awt.Frame;
+import java.awt.Window;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import javax.swing.BorderFactory;
+import javax.swing.JDialog;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
+import com.br.yat.gerenciador.model.Banco;
+import com.br.yat.gerenciador.model.Complementar;
+import com.br.yat.gerenciador.model.Contato;
+import com.br.yat.gerenciador.model.Documento;
+import com.br.yat.gerenciador.model.Empresa;
+import com.br.yat.gerenciador.model.Endereco;
+import com.br.yat.gerenciador.model.Representante;
+import com.br.yat.gerenciador.service.EmpresaService;
+import com.br.yat.gerenciador.util.DialogFactory;
+import com.br.yat.gerenciador.util.ui.DesktopFactory;
+import com.br.yat.gerenciador.util.ui.LabelFactory;
+import com.br.yat.gerenciador.view.EmpresaView;
+
+public class EmpresaController {
+	private final EmpresaView view;
+	private final EmpresaService service;
+	private final DadoPrincipalController ePrincipal;
+	private final DadoEnderecoController eEndereco;
+	private final DadoContatoController eContato;
+	private final DadoFiscalController eFiscal;
+	private final DadoRepresentanteController eRepresentante;
+	private final DadoBancarioController eBancario;
+	private final DadoComplementarController eComplementar;
+	private JDialog dialogLoading;
+
+	private final String tipoCadastro;
+
+	private static final Map<String, List<String>> abasPorTipo = Map.of("CLIENTE",
+			List.of("DADOS PRINCIPAIS", "ENDEREÇO", "CONTATOS"), "FORNECEDORA",
+			List.of("DADOS PRINCIPAIS", "ENDEREÇO", "CONTATOS", "DADOS FISCAIS", "REPRESENTANTE LEGAL",
+					"DADOS BANCÁRIOS", "INFORMAÇÕES COMPLEMENTARES"));
+	private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+
+	public EmpresaController(EmpresaView view, EmpresaService service, DadoPrincipalController ePrincipal,
+			DadoEnderecoController eEndereco, DadoContatoController eContato, DadoFiscalController eFiscal,
+			DadoRepresentanteController eRepresentante, DadoBancarioController eBancario,
+			DadoComplementarController eComplementar, String tipoCadastro) {
+		this.view = view;
+		this.service = service;
+		this.ePrincipal = ePrincipal;
+		this.eEndereco = eEndereco;
+		this.eContato = eContato;
+		this.eFiscal = eFiscal;
+		this.eRepresentante = eRepresentante;
+		this.eBancario = eBancario;
+		this.eComplementar = eComplementar;
+
+		this.tipoCadastro = tipoCadastro;
+
+		configuracaoInicial();
+		registrarAcoes();
+		atualizarAbas(tipoCadastro);
+	}
+
+	private void configuracaoInicial() {
+		view.getDadoPrincipal().setTipoCadastro(tipoCadastro);
+		view.getDadoPrincipal().getCbTipoCadatro().setEnabled(false);
+	}
+
+	private void registrarAcoes() {
+		view.getBtnSalvar().addActionListener(e -> aoClicarSalvar());
+	}
+
+	private void atualizarAbas(String tipo) {
+		view.getTabbedPane().removeAll();
+		List<String> abas = abasPorTipo.getOrDefault(tipo, List.of());
+		for (String aba : abas) {
+			JPanel panel = view.getPanelByName(aba);
+			if (panel != null) {
+				view.getTabbedPane().addTab(aba, panel);
+			}
+		}
+	}
+
+	private void aoClicarSalvar() {
+		if (!validarFormulario())
+			return;
+
+		final Endereco endereco = eEndereco.getDados();
+		final Empresa empresa = ePrincipal.getDados();
+		final List<Contato> contatos = eContato.getDados();
+
+		final List<Representante> representantes;
+		final List<Banco> bancos;
+		final Complementar complementar;
+		final List<Documento> documentos;
+
+		if ("FORNECEDORA".equals(tipoCadastro)) {
+			eFiscal.getDadosComplementar(empresa);
+
+			representantes = eRepresentante.getDados();
+			bancos = eBancario.getDados();
+			complementar = eComplementar.getComplementar();
+			documentos = eComplementar.getDocumentos();
+		} else {
+			representantes = null;
+			bancos = null;
+			complementar = null;
+			documentos = null;
+		}
+		setLoading(true);
+		executor.submit(() -> {
+			try {
+
+				service.salvarEmpresaCompleta(endereco, empresa, contatos, representantes, bancos, complementar,
+						documentos);
+				SwingUtilities.invokeLater(() -> {
+					setLoading(false);
+					DialogFactory.informacao(view, "SALVO COM SUCESSO.");
+				});
+			} catch (Exception e) {
+				SwingUtilities.invokeLater(() -> {
+					setLoading(false);
+				DialogFactory.erro(view, e.getMessage());
+				});
+			}
+		});
+	}
+
+	private void focarAba(String nomeAba) {
+		var panel = view.getPanelByName(nomeAba);
+		if (panel != null) {
+			view.getTabbedPane().setSelectedComponent(panel);
+		}
+	}
+
+	private boolean validarFormulario() {
+		if (!ePrincipal.isValido()) {
+			focarAba("DADOS PRINCIPAIS");
+			return false;
+		}
+		if (!eEndereco.isValido()) {
+			focarAba("ENDEREÇO");
+			return false;
+		}
+		if (!eContato.isValido()) {
+			focarAba("CONTATOS");
+			return false;
+		}
+		if ("FORNECEDORA".equals(tipoCadastro)) {
+			if (!eFiscal.isValido()) {
+				focarAba("DADOS FISCAIS");
+				return false;
+			}
+			if (!eRepresentante.isValido()) {
+				focarAba("REPRESENTANTE LEGAL");
+				return false;
+			}
+			if (!eBancario.isValido()) {
+				focarAba("DADOS BANCÁRIOS");
+				return false;
+			}
+			if (!eComplementar.isValido()) {
+				focarAba("INFORMAÇÕES COMPLEMENTARES");
+				return false;
+			}
+
+		}
+		return true;
+	}
+	
+	private void setLoading(boolean carregando) {
+		SwingUtilities.invokeLater(()->{
+			view.getBtnSalvar().setEnabled(!carregando);
+			
+			var progressBar = DesktopFactory.createProgressBar();
+			progressBar.setIndeterminate(carregando);
+			progressBar.setVisible(carregando);
+			if (carregando) {
+				if (dialogLoading==null) criarDialogLoading();
+				view.getBtnSalvar().setText("A GUARDAR...");
+				
+				Thread.ofVirtual().start(()->{if(dialogLoading!=null)dialogLoading.setVisible(true); });
+			}else {
+				if (dialogLoading!=null) {
+					dialogLoading.setVisible(false);
+					view.getBtnSalvar().setText("SALVAR");
+				}
+			}
+			
+			
+		});
+	}
+	
+	
+	private void criarDialogLoading() {
+		Window parentWindow = SwingUtilities.getWindowAncestor(view);
+		
+		dialogLoading = new JDialog((Frame) parentWindow,"PROCESSANDO",Dialog.ModalityType.APPLICATION_MODAL);
+		var panel = new JPanel(new BorderLayout(10,10));
+		panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+		
+		var label = LabelFactory.createLabel("AGUARDE, PROCESSANDO INFORMAÇÕES...");
+		var progressBar = DesktopFactory.createProgressBar();
+		progressBar.setIndeterminate(true);
+		
+		panel.add(label, BorderLayout.NORTH);
+		panel.add(progressBar,BorderLayout.CENTER);
+		
+		dialogLoading.add(panel);
+		dialogLoading.pack();
+		dialogLoading.setLocationRelativeTo(view);
+		dialogLoading.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+	}
+}

@@ -7,6 +7,7 @@ package com.br.yat.gerenciador.model.enums;
  * </p>
  */
 public enum PorteEmpresa {
+	SELECIONE("SELECIONE UMA OPÇÃO"),
 	MEI("MEI - Microempreendedor Individual"), 
 	ME("ME - Microempresa"), 
 	EPP("EPP - Empresa de Pequeno Porte"),

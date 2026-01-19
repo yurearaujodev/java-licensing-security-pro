@@ -25,7 +25,7 @@ import com.zaxxer.hikari.HikariDataSource;
  * 
  * <p>Não deve ser instanciada.</p>
  */
-public final class ConnectionPoolManager {
+final class ConnectionPoolManager {
 
 	private static final Logger logger = LoggerFactory.getLogger(ConnectionPoolManager.class);
 
@@ -137,7 +137,7 @@ public final class ConnectionPoolManager {
 	 * @return instância de {@link Connection}
 	 * @throws SQLException se o pool não estiver inicializado ou estiver fechado
 	 */
-	public static Connection getConnection() throws SQLException {
+	static Connection getConnection() throws SQLException {
 		HikariDataSource ds = dataSource;
 		if (ds == null || ds.isClosed()) {
 			throw new SQLException("Pool de conexões não inicializado ou fechado. Verifique a configuração e logs.");
@@ -150,7 +150,7 @@ public final class ConnectionPoolManager {
 	 * 
 	 * @return instância de {@link DatabaseStatus} indicando disponibilidade e mensagem
 	 */
-	public static DatabaseStatus checkStatus() {
+	static DatabaseStatus checkStatus() {
 		try (Connection conn = getConnection()) {
 			return conn.isValid(2) ? DatabaseStatus.ok() : DatabaseStatus.error("Conexão inválida.");
 		} catch (SQLException e) {
@@ -170,7 +170,7 @@ public final class ConnectionPoolManager {
 	 * @param conn conexão ativa
 	 * @throws SQLException se ocorrer erro ao configurar a transação
 	 */
-	public static void beginTransaction(Connection conn) throws SQLException {
+	static void beginTransaction(Connection conn) throws SQLException {
 		Objects.requireNonNull(conn, "Conexão nula!");
 		conn.setAutoCommit(false);
 	}
@@ -181,7 +181,7 @@ public final class ConnectionPoolManager {
 	 * @param conn conexão ativa
 	 * @throws SQLException se ocorrer erro ao realizar commit
 	 */
-	public static void commitTransaction(Connection conn) throws SQLException {
+	static void commitTransaction(Connection conn) throws SQLException {
 		Objects.requireNonNull(conn, "Conexão nula!");
 		try {
 			if (!conn.isClosed() && !conn.getAutoCommit()) {
@@ -200,7 +200,7 @@ public final class ConnectionPoolManager {
 	 * @param conn conexão ativa (pode ser nula)
 	 * @throws SQLException se ocorrer erro ao realizar rollback
 	 */
-	public static void rollbackTransaction(Connection conn) throws SQLException {
+	static void rollbackTransaction(Connection conn) throws SQLException {
 		if (conn == null) {
 			logger.warn("Rollback ignorado: conexão nula");
 			return;
@@ -219,7 +219,7 @@ public final class ConnectionPoolManager {
 	/**
 	 * Fecha o pool de conexões de forma graceful.
 	 */
-	public static void shutdown() {
+	static void shutdown() {
 		synchronized (RELOAD_LOCK) {
 			if (dataSource != null && !dataSource.isClosed()) {
 				logger.info("Iniciando shutdown graceful do pool de conexões...");
@@ -235,7 +235,7 @@ public final class ConnectionPoolManager {
 	 * Caso ocorra falha, mantém o pool anterior ativo
 	 * </p>
 	 */
-	public static void reloadDataSource() {
+	private static void reloadDataSource() {
 		synchronized (RELOAD_LOCK) {
 			HikariDataSource newDs = null;
 			try {

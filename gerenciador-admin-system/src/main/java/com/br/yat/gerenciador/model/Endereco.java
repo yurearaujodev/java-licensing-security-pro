@@ -17,7 +17,7 @@ public class Endereco {
 	private LocalDateTime atualizadoEmEndereco;
 
 	public Endereco() {
-		this.paisEndereco = "BRASIL";
+		
 	}
 
 	public Endereco(String cepEndereco, String logradouroEndereco,String complementoEndereco, String bairroEndereco, String cidadeEndereco,
@@ -29,6 +29,7 @@ public class Endereco {
 		this.cidadeEndereco = cidadeEndereco != null ? cidadeEndereco.trim() : "";
 		this.estadoEndereco = estadoEndereco != null ? estadoEndereco.trim() : "";
 		this.complementoEndereco = complementoEndereco != null ? complementoEndereco.trim() : "";
+		this.paisEndereco = "BRASIL";
 	}
 
 	public int getIdEndereco() {

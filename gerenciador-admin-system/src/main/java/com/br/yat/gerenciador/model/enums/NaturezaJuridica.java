@@ -7,6 +7,7 @@ package com.br.yat.gerenciador.model.enums;
  * </p>
  */
 public enum NaturezaJuridica {
+	SELECIONE("SELECIONE UMA OPÇÃO"),
 	MEI("MEI - Microempreendedor Individual"), 
 	EI("EI - Empresário Individual"), 
 	LTDA("LTDA - Sociedade Limitada"),

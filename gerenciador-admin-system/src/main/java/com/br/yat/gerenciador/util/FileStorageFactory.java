@@ -1,5 +1,6 @@
 package com.br.yat.gerenciador.util;
 
+import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -50,6 +51,24 @@ public final class FileStorageFactory {
 
 		Files.copy(arquivoOriginal.toPath(), destino, StandardCopyOption.REPLACE_EXISTING);
 		return destino.toString();
+	}
+	
+	public static void abrirArquivo(String caminho)throws IOException{
+		if (caminho==null||caminho.isBlank()) {
+			throw new IOException("O CAMINHO DO ARQUIVO ESTÁ VAZIO OU INVÁLIDO.");
+		}
+		File arquivo = new File(caminho);
+		
+		if (!arquivo.exists()) {
+			throw new IOException("O ARQUIVO NÃO FOI ENCONTRADO NO CAMINHO: "+caminho);
+		}
+		
+		if (Desktop.isDesktopSupported()) {
+			Desktop desktop = Desktop.getDesktop();
+			desktop.open(arquivo);
+		}else {
+			throw new IOException("A ABERTURA DE ARQUIVOS NÃO É SUPORTADA NESTE SISTEMA.");
+		}
 	}
 
 	private static String getExtensao(String nome) {

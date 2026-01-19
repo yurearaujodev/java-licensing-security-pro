@@ -7,7 +7,6 @@ import javax.swing.JFormattedTextField;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
-import com.br.yat.gerenciador.controller.DadoEmpresaController;
 import com.br.yat.gerenciador.util.ui.ComboBoxFactory;
 import com.br.yat.gerenciador.util.ui.FieldFactory;
 import com.br.yat.gerenciador.util.ui.FormatterUtils;
@@ -17,31 +16,30 @@ import com.br.yat.gerenciador.util.ui.PanelFactory;
 
 import net.miginfocom.swing.MigLayout;
 
-public class DadoEmpresaPanel extends JPanel {
+public class DadoPrincipalPanel extends JPanel {
 
 	private static final long serialVersionUID = 1L;
 
 	private JTextField txtFantasia;
 	private JTextField txtRazao;
 	private JTextField txtCodigo;
-	private JTextField txtInscEst;
-	private JTextField txtInscMun;
+	private JTextField txtInscricaoEstadual;
+	private JTextField txtInscricaoMunicipal;
 
 	private JFormattedTextField ftxtFundacao;
 	private JFormattedTextField ftxtDocumento;
 	private JFormattedTextField ftxtCapital;
 
-	private JComboBox<String> cbTipoDoc;
+	private JComboBox<String> cbTipoDocumento;
 	private JComboBox<String> cbSituacao;
 	private JComboBox<String> cbCadastro;
 
 	Map<String, String> mascaras = MaskFactory.createMask();
 
-	public DadoEmpresaPanel() {
+	public DadoPrincipalPanel() {
 		setLayout(new MigLayout("fill", "[grow]", "[grow]"));
 
 		montarTela();
-		new DadoEmpresaController(this);
 	}
 
 	private void montarTela() {
@@ -58,8 +56,8 @@ public class DadoEmpresaPanel extends JPanel {
 		panel.add(txtCodigo, "cell 1 0,growx, h 25!,wmax 120");
 
 		panel.add(LabelFactory.createLabel("TIPO DOC.:"), "cell 0 1,alignx trailing");
-		cbTipoDoc = ComboBoxFactory.createComboBox("SELECIONE", "CNPJ", "CPF");
-		panel.add(cbTipoDoc, "cell 1 1,growx, h 25!");
+		cbTipoDocumento = ComboBoxFactory.createComboBox("SELECIONE", "CNPJ", "CPF");
+		panel.add(cbTipoDocumento, "cell 1 1,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("TP. CADASTRO:"), "cell 2 1, alignx trailing");
 		cbCadastro = ComboBoxFactory.createComboBox("SELECIONE", "CLIENTE", "FORNECEDORA");
@@ -83,12 +81,12 @@ public class DadoEmpresaPanel extends JPanel {
 		panel.add(txtFantasia, "cell 1 4 3 1,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("INSC. ESTADUAL:"), "cell 0 5,alignx trailing");
-		txtInscEst = FieldFactory.createTextField(20);
-		panel.add(txtInscEst, "cell 1 5,growx, h 25!");
+		txtInscricaoEstadual = FieldFactory.createTextField(20);
+		panel.add(txtInscricaoEstadual, "cell 1 5,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("INSC. MUNICIPAL:"), "cell 2 5,alignx trailing");
-		txtInscMun = FieldFactory.createTextField(20);
-		panel.add(txtInscMun, "cell 3 5,growx, h 25!");
+		txtInscricaoMunicipal = FieldFactory.createTextField(20);
+		panel.add(txtInscricaoMunicipal, "cell 3 5,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("SITUAÇÂO GERAL:"), "cell 0 6,alignx trailing");
 		cbSituacao = ComboBoxFactory.createComboBox("SELECIONE", "ATIVA", "INAPTA", "SUSPENSA", "BAIXADA", "NULA");
@@ -101,27 +99,126 @@ public class DadoEmpresaPanel extends JPanel {
 
 	}
 
-	public JComboBox<String> getCbTipoDoc() {
-		return cbTipoDoc;
+	public String getCodigo() {
+		return txtCodigo.getText();
 	}
 
-	public JFormattedTextField getFtxDocumento() {
+	public String getRazaoSocial() {
+		return txtRazao.getText();
+	}
+
+	public String getNomeFantasia() {
+		return txtFantasia.getText();
+	}
+
+	public String getDocumento() {
+		return ftxtDocumento.getText();
+	}
+
+	public String getTipoDocumento() {
+		return String.valueOf(cbTipoDocumento.getSelectedItem());
+	}
+
+	public String getDataFundacao() {
+		return ftxtFundacao.getText();
+	}
+
+	public String getInscricaoEstadual() {
+		return txtInscricaoEstadual.getText();
+	}
+
+	public String getInscricaoMunicipal() {
+		return txtInscricaoMunicipal.getText();
+	}
+
+	public String getSituacao() {
+		return String.valueOf(cbSituacao.getSelectedItem());
+	}
+
+	public String getCapitalSocial() {
+		return ftxtCapital.getText();
+	}
+
+	public String getTipoCadastro() {
+		return String.valueOf(cbCadastro.getSelectedItem());
+	}
+
+	public void setCodigo(String codigo) {
+		txtCodigo.setText(codigo);
+	}
+
+	public void setRazaoSocial(String razao) {
+		txtRazao.setText(razao);
+	}
+
+	public void setNomeFantasia(String fantasia) {
+		txtFantasia.setText(fantasia);
+	}
+
+	public void setDocumento(String documento) {
+		ftxtDocumento.setText(documento);
+	}
+
+	public void setTipoDocumento(String tipo) {
+		cbTipoDocumento.setSelectedItem(tipo);
+	}
+
+	public void setDataFundacao(String data) {
+		ftxtFundacao.setText(data);
+	}
+
+	public void setInscricaoEstadual(String estadual) {
+		txtInscricaoEstadual.setText(estadual);
+	}
+
+	public void setInscricaoMunicipal(String municipal) {
+		txtInscricaoMunicipal.setText(municipal);
+	}
+
+	public void setSituacao(String situacao) {
+		cbSituacao.setSelectedItem(situacao);
+	}
+
+	public void setCapitalSocial(String capital) {
+		ftxtCapital.setText(capital);
+	}
+
+	public void setTipoCadastro(String tipoCadastro) {
+		cbCadastro.setSelectedItem(tipoCadastro);
+	}
+
+	public JComboBox<String> getCbTipoDocumento() {
+		return cbTipoDocumento;
+	}
+	
+	public JComboBox<String> getCbTipoCadatro() {
+		return cbCadastro;
+	}
+
+	public JFormattedTextField getFtxtDocumento() {
 		return ftxtDocumento;
 	}
 
-	public JTextField getTxtInscEst() {
-		return txtInscEst;
+	public JTextField getTxtInscricaoEstadual() {
+		return txtInscricaoEstadual;
 	}
 
-	public JTextField getTxtInscMun() {
-		return txtInscMun;
+	public JTextField getTxtInscricaoMunicipal() {
+		return txtInscricaoMunicipal;
 	}
 
-	public JFormattedTextField getFtxCapitalSocial() {
+	public JFormattedTextField getFtxtCapital() {
 		return ftxtCapital;
 	}
 
-	public JFormattedTextField getFtxFundacao() {
+	public JFormattedTextField getFtxtFundacao() {
 		return ftxtFundacao;
+	}
+	
+	public JTextField getTxtRazaoSocial() {
+		return txtRazao;
+	}
+	public JTextField getTxtFantasia() {
+		return txtFantasia;
 	}
 }

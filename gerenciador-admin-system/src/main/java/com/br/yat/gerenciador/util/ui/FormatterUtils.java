@@ -9,12 +9,14 @@ import javax.swing.JFormattedTextField;
 import javax.swing.text.DefaultFormatterFactory;
 import javax.swing.text.MaskFormatter;
 import javax.swing.text.NumberFormatter;
+
 /**
  * Classe utilitária para aplicação de máscaras em campos formatados Swing.
  * <p>
- * Esta classe utiliza a biblioteca <b>Swing</b> ({@code javax.swing}) para manipulação de
- * {@link JFormattedTextField}, juntamente com classes de formatação de {@code java.text}
- * como {@link MaskFormatter}, {@link NumberFormatter} e {@link DecimalFormat}.
+ * Esta classe utiliza a biblioteca <b>Swing</b> ({@code javax.swing}) para
+ * manipulação de {@link JFormattedTextField}, juntamente com classes de
+ * formatação de {@code java.text} como {@link MaskFormatter},
+ * {@link NumberFormatter} e {@link DecimalFormat}.
  * </p>
  * 
  * <p>
@@ -33,13 +35,14 @@ public final class FormatterUtils {
 	/**
 	 * Aplica uma máscara genérica a um {@link JFormattedTextField}.
 	 * 
-	 * @param field campo formatado a ser configurado
-	 * @param mask padrão da máscara (ex.: "###.###.###-##")
-	 * @param literalCharacters define se os caracteres literais devem ser considerados no valor
+	 * @param field             campo formatado a ser configurado
+	 * @param mask              padrão da máscara (ex.: "###.###.###-##")
+	 * @param literalCharacters define se os caracteres literais devem ser
+	 *                          considerados no valor
 	 */
 	private static void applyMask(JFormattedTextField field, String mask, boolean literalCharacters) {
-		if (mask == null || mask.isBlank() || "SELECIONE".equalsIgnoreCase(mask)) {
-			field.setFormatterFactory(null);
+		if (mask == null || mask.isBlank()) {
+			field.setValue(null);
 			field.setText("");
 			return;
 		}
@@ -59,11 +62,19 @@ public final class FormatterUtils {
 
 	}
 
+	public static void clearMask(JFormattedTextField field) {
+		if (field == null)
+			return;
+		field.setValue(null);
+		field.setFormatterFactory(null);
+		field.setText("");
+	}
+
 	/**
 	 * Aplica máscara para documentos (ex.CPF, CNPJ).
 	 * 
 	 * @param field campo formatado
-	 * @param mask padrão da máscara
+	 * @param mask  padrão da máscara
 	 */
 	public static void applyDocumentMask(JFormattedTextField field, String mask) {
 		applyMask(field, mask, false);
@@ -73,7 +84,7 @@ public final class FormatterUtils {
 	 * Aplica máscara para números de telefone.
 	 * 
 	 * @param field campo formatado
-	 * @param mask padrão da máscara
+	 * @param mask  padrão da máscara
 	 */
 	public static void applyPhoneMask(JFormattedTextField field, String mask) {
 		applyMask(field, mask, true);
@@ -83,7 +94,7 @@ public final class FormatterUtils {
 	 * Aplica máscara para datas.
 	 * 
 	 * @param field campo formatado
-	 * @param mask padrão da máscara
+	 * @param mask  padrão da máscara
 	 */
 	public static void applyDateMask(JFormattedTextField field, String mask) {
 		applyMask(field, mask, true);
@@ -93,12 +104,12 @@ public final class FormatterUtils {
 	 * Aplica máscara para CEP (código postal)
 	 * 
 	 * @param field campo formatado
-	 * @param mask padrão da máscara
+	 * @param mask  padrão da máscara
 	 */
 	public static void applyPostalCodeMask(JFormattedTextField field, String mask) {
 		applyMask(field, mask, true);
 	}
-	
+
 	public static void applyBank(JFormattedTextField field, String mask) {
 		applyMask(field, mask, true);
 	}
@@ -109,7 +120,7 @@ public final class FormatterUtils {
 	 * Utiliza {@link DecimalFormat} em locale {@code pt-BR}.
 	 * </p>
 	 * 
-	 * @param field campo formatado
+	 * @param field   campo formatado
 	 * @param pattern padrão de formatação (ex.: "#,##0.00)
 	 */
 	public static void applyCapitalMask(JFormattedTextField field, String pattern) {

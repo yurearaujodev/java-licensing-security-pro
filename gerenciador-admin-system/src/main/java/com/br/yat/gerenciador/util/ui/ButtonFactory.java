@@ -7,6 +7,7 @@ import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JRadioButton;
+import javax.swing.SwingConstants;
 
 import com.br.yat.gerenciador.util.UITheme;
 
@@ -52,6 +53,9 @@ public final class ButtonFactory {
 		JButton button = new JButton(text);
 		button.setFont(UITheme.FONT_BUTTON);
 		button.setFocusPainted(false);
+		button.setHorizontalTextPosition(SwingConstants.RIGHT);
+		button.setVerticalTextPosition(SwingConstants.CENTER);
+		button.setIconTextGap(8);
 		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		if (icon != null) {
 			button.setIcon(icon);

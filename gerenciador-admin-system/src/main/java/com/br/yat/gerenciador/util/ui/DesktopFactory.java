@@ -11,6 +11,9 @@ import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTabbedPane;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.br.yat.gerenciador.util.UITheme;
 
 /**
@@ -29,6 +32,9 @@ import com.br.yat.gerenciador.util.UITheme;
  */
 public final class DesktopFactory {
 
+	private static final Logger logger = LoggerFactory.getLogger(DesktopFactory.class);
+	
+	
 	/**
 	 * Construtor privado para evitar instanciação.
 	 */
@@ -116,6 +122,22 @@ public final class DesktopFactory {
 		int y = (desktopPane.getHeight() - frame.getHeight()) / 2;
 		frame.setLocation(Math.max(0, x), Math.max(0, y));
 	}
+	
+	public static void showFrame(JDesktopPane desktop, JInternalFrame frame) {
+		if (desktop==null||frame==null) {
+			return;
+		}
+		
+		desktop.add(frame);
+		frame.setVisible(true);
+		frame.toFront();
+		
+		try {
+			frame.setSelected(true);
+		} catch (PropertyVetoException e) {
+			logger.trace("A seleção da janela foi vetada pelo sistema: {}", frame.getTitle());	
+		}
+	}
 
 	/**
 	 * Reutiliza uma {@link JInternalFrame} já aberta dentro de um {@link JDesktopPane}.
@@ -131,6 +153,23 @@ public final class DesktopFactory {
 	public static boolean reuseIfOpen(JDesktopPane desktopPane, Class<? extends JInternalFrame> frameClass) {
 		for (JInternalFrame existing : desktopPane.getAllFrames()) {
 			if (frameClass.isInstance(existing) && !existing.isClosed()) {
+				try {
+					if (existing.isIcon()) {
+						existing.setIcon(false);
+					}
+					existing.setSelected(true);
+					existing.moveToFront();
+				} catch (PropertyVetoException ignored) {
+				}
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public static boolean reuseIfOpen(JDesktopPane desktopPane, String frameTitle) {
+		for (JInternalFrame existing : desktopPane.getAllFrames()) {
+			if (!existing.isClosed() && frameTitle.equals(existing.getTitle())) {
 				try {
 					if (existing.isIcon()) {
 						existing.setIcon(false);

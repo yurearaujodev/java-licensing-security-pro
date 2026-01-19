@@ -1,6 +1,7 @@
 package com.br.yat.gerenciador.model.enums;
 
 public enum RegimeTributario {
+	SELECIONE(0, "SELECIONE UMA OPÇÃO"),
 	SIMPLES_NACIONAL(1, "Simples Nacional"), 
 	SIMPLES_SUBLIMITE(2, "Simples Nacional - Excesso de Sublimite"),
 	REGIME_NORMAL(3, "Regime Normal (Lucro Presumido/Real)"),

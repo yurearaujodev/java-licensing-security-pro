@@ -4,7 +4,6 @@ import javax.swing.JFormattedTextField;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
-import com.br.yat.gerenciador.controller.DadoEnderecoController;
 import com.br.yat.gerenciador.util.ui.FieldFactory;
 import com.br.yat.gerenciador.util.ui.FormatterUtils;
 import com.br.yat.gerenciador.util.ui.LabelFactory;
@@ -31,7 +30,6 @@ public class DadoEnderecoPanel extends JPanel {
 		setLayout(new MigLayout("fill", "[grow]", "[grow]"));
 
 		montarTela();
-		new DadoEnderecoController(this);
 	}
 
 	private void montarTela() {
@@ -77,60 +75,93 @@ public class DadoEnderecoPanel extends JPanel {
 		panel.add(txtPais, "cell 1 5,growx, h 25!");
 	}
 
-	public JFormattedTextField getFtxCep() {
-		return ftxtCep;
+	public String getCep() {
+		return ftxtCep.getText();
 	}
 
-	public JTextField getTxtBairro() {
-		return txtBairro;
+	public String getLogradouro() {
+		return txtLogradouro.getText();
+	}
+
+	public String getComplemento() {
+		return txtComplemento.getText();
+	}
+
+	public String getBairro() {
+		return txtBairro.getText();
+	}
+
+	public String getNumero() {
+		return txtNumero.getText();
+	}
+
+	public String getCidade() {
+		return txtCidade.getText();
+	}
+
+	public String getEstado() {
+		return txtEstado.getText();
+	}
+
+	public String getPais() {
+		return txtPais.getText();
+	}
+
+	public void setCep(String cep) {
+		ftxtCep.setText(cep);
+	}
+
+	public void setLogradouro(String logradouro) {
+		txtLogradouro.setText(logradouro);
+	}
+
+	public void setComplemento(String complemento) {
+		txtComplemento.setText(complemento);
 	}
 
 	public void setBairro(String bairro) {
-		txtBairro.setText(bairro != null ? bairro.toUpperCase() : "");
+		txtBairro.setText(bairro);
+	}
+
+	public void setNumero(String numero) {
+		txtNumero.setText(numero);
+	}
+
+	public void setCidade(String cidade) {
+		txtCidade.setText(cidade);
+	}
+
+	public void setEstado(String estado) {
+		txtEstado.setText(estado);
+	}
+
+	public void setPais(String pais) {
+		txtPais.setText(pais);
+	}
+
+	public JFormattedTextField getFtxtCep() {
+		return ftxtCep;
+	}
+
+	public JTextField getTxtLogradouro() {
+		return txtLogradouro;
+	}
+	public JTextField getTxtComplemento() {
+		return txtComplemento;
+	}
+	public JTextField getTxtBairro() {
+		return txtBairro;
 	}
 
 	public JTextField getTxtCidade() {
 		return txtCidade;
 	}
 
-	public void setCidade(String cidade) {
-		txtCidade.setText(cidade != null ? cidade.toUpperCase() : "");
-	}
-
 	public JTextField getTxtEstado() {
 		return txtEstado;
-	}
-
-	public void setEstado(String estado) {
-		txtEstado.setText(estado != null ? estado.toUpperCase() : "");
 	}
 
 	public JTextField getTxtPais() {
 		return txtPais;
 	}
-
-	public void setPais(String pais) {
-		txtPais.setText(pais != null ? pais.toUpperCase() : "");
-	}
-
-	public JTextField getTxtLogradouro() {
-		return txtLogradouro;
-	}
-
-	public void setLogradouro(String logradouro) {
-		txtLogradouro.setText(logradouro != null ? logradouro.toUpperCase() : "");
-	}
-
-	public JTextField getTxtComplemento() {
-		return txtComplemento;
-	}
-
-	public void setComplemento(String complemento) {
-		txtComplemento.setText(complemento != null ? complemento.toUpperCase() : "");
-	}
-
-	public void limparCampos() {
-		setLogradouro("");
-	}
-
 }

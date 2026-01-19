@@ -38,7 +38,6 @@ public class DadoComplementarPanel extends JPanel {
 	public DadoComplementarPanel() {
 		setLayout(new MigLayout("fill", "[grow]", "[grow]"));
 		montarTela();
-		new DadoComplementarController(this);
 	}
 
 	private void montarTela() {
@@ -58,7 +57,7 @@ public class DadoComplementarPanel extends JPanel {
 		panel.add(btnLogo,"cell 3 0, growx, h 25!");
 		
 		panel.add(LabelFactory.createLabel("NÚM. DE FUNCIONÁRIOS:"),"cell 0 1,alignx trailing");
-		spinnerNum = FieldFactory.createSpinnerNumber(18, 0, 120, 1);
+		spinnerNum = FieldFactory.createSpinnerNumber(1, 0, 120, 1);
 		panel.add(spinnerNum,"cell 1 1,growx, h 25!");
 		
 		panel.add(LabelFactory.createLabel("RAMO DE ATIVIDADE:"),"cell 2 1, alignx trailing");
@@ -99,6 +98,54 @@ public class DadoComplementarPanel extends JPanel {
 	
 	public JComboBox<String> getCbTipo() {
 		return cbTipo;
+	}
+	
+	public String getTipoDocumento() {
+		return String.valueOf(cbTipo.getSelectedItem());
+	}
+	
+	public void setTipo(String tipo){
+		cbTipo.setSelectedItem(tipo);
+	}
+	
+	public String getLogo() {
+		return txtLogo.getText();
+	}
+	
+	public String getFuncionarios() {
+		return String.valueOf(spinnerNum.getValue());
+	}
+	
+	public void setFuncionarios(String numero) {
+		spinnerNum.setValue(numero);
+	}
+	
+	public JSpinner getFuncionario() {
+		return spinnerNum;
+	}
+	
+	public String getObservacoes() {
+		return jtaobs.getText();
+	}
+	
+	public void setObservacoes(String observacoes) {
+		jtaobs.setText(observacoes);
+	}
+	
+	public void setLogo(String logo) {
+		txtLogo.setText(logo);
+	}
+	
+	public String getRamo() {
+		return txtRamo.getText();
+	}
+	
+	public void setRamo(String ramo) {
+		txtRamo.setText(ramo);
+	}
+	
+	public JTextField getTxtRamo() {
+		return txtRamo;
 	}
 	
 	public JTextField getTxtLogo() {
