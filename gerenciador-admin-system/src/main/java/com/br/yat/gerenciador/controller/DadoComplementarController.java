@@ -24,6 +24,7 @@ public class DadoComplementarController {
 	private final DadoComplementarPanel view;
 	private final EmpresaService service;
 	private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+	private Complementar complementarAtual;
 
 	public DadoComplementarController(DadoComplementarPanel view, EmpresaService service) {
 		this.view = view;
@@ -141,7 +142,7 @@ public class DadoComplementarController {
 	}
 
 	public Complementar getComplementar() {
-		Complementar c = new Complementar();
+		Complementar c = (this.complementarAtual != null) ? this.complementarAtual : new Complementar();
 		c.setLogoTipoComplementar(view.getLogo());
 		c.setRamoAtividadeComplementar(view.getRamo());
 		c.setNumFuncionariosComplementar(
@@ -163,10 +164,11 @@ public class DadoComplementarController {
 	}
 
 	public void setDados(Complementar comp, List<Documento> docs) {
+		this.complementarAtual = comp;
 		if (comp != null) {
 			view.setLogo(comp.getLogoTipoComplementar());
 			view.setRamo(comp.getRamoAtividadeComplementar());
-			view.setFuncionarios(String.valueOf(comp.getNumFuncionariosComplementar()));
+			view.setFuncionarios(comp.getNumFuncionariosComplementar());
 			view.setObservacoes(comp.getObsComplementar());
 		}
 

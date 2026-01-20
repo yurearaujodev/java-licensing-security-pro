@@ -16,6 +16,7 @@ public class DadoEnderecoController {
 	private final DadoEnderecoPanel view;
 	private final EmpresaService service;
 	private String ultimoCepBuscado = "";
+	private Endereco enderecoAtual;
 
 	public DadoEnderecoController(DadoEnderecoPanel view, EmpresaService service) {
 		this.view = view;
@@ -49,9 +50,9 @@ public class DadoEnderecoController {
 		try {
 			Endereco mock = new Endereco();
 			mock.setCepEndereco(cep);
-			
+
 			service.validarEndereco(mock);
-			
+
 			ValidationUtils.removerDestaque(view.getFtxtCep());
 		} catch (IllegalArgumentException e) {
 			ValidationUtils.exibirErro(view.getFtxtCep(), e.getMessage());
@@ -127,13 +128,9 @@ public class DadoEnderecoController {
 	}
 
 	public boolean isValido() {
-		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(view.getFtxtCep(),
-				view.getTxtLogradouro(),
-				view.getTxtCidade(),
-				view.getTxtEstado(),
-				view.getTxtPais()
-				);
-		
+		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(view.getFtxtCep(), view.getTxtLogradouro(),
+				view.getTxtCidade(), view.getTxtEstado(), view.getTxtPais());
+
 		if (obrigatoriosVazios) {
 			DialogFactory.aviso(view, "POR FAVOR, PREENCHA OS CAMPOS OBRIGATÓRIOS DESTACADOS EM VERMELHO.");
 			return false;
@@ -146,18 +143,18 @@ public class DadoEnderecoController {
 
 		JComponent erro = ValidationUtils.hasErroVisual(view.getFtxtCep(), view.getTxtLogradouro(), view.getTxtCidade(),
 				view.getTxtEstado(), view.getTxtPais());
-	
-		if (erro!=null) {
+
+		if (erro != null) {
 			DialogFactory.aviso(view, "EXISTEM CAMPOS COM DADOS INVÁLIDOS.");
 			return false;
 		}
-		
+
 		return true;
 	}
 
 	public Endereco getDados() {
-		Endereco endereco = new Endereco();
-		
+		Endereco endereco = (this.enderecoAtual != null) ? this.enderecoAtual : new Endereco();
+
 		endereco.setCepEndereco(ValidationUtils.onlyNumbers(view.getCep()));
 		endereco.setLogradouroEndereco(view.getLogradouro());
 		endereco.setComplementoEndereco(view.getComplemento());
@@ -173,7 +170,7 @@ public class DadoEnderecoController {
 	public void setDados(Endereco endereco) {
 		if (endereco == null)
 			return;
-
+		this.enderecoAtual =endereco;
 		view.setCep(endereco.getCepEndereco());
 		view.setLogradouro(endereco.getLogradouroEndereco());
 		view.setComplemento(endereco.getComplementoEndereco());

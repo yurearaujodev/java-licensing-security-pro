@@ -7,45 +7,54 @@ import java.util.List;
 
 import com.br.yat.gerenciador.model.Complementar;
 
-public class ComplementarDao extends GenericDao<Complementar>{
+public class ComplementarDao extends GenericDao<Complementar> {
 
 	public ComplementarDao(Connection conn) throws SQLException {
-		super(conn,"informacoes_complementares","id_info");
+		super(conn, "informacoes_complementares", "id_info");
 	}
 
 	public Complementar save(Complementar com) {
-		var sql="INSERT INTO informacoes_complementares(logotipo,numero_funcionarios,ramo_atividade,observacoes,criado_em,atualizado_em,id_empresa) "
+		var sql = "INSERT INTO " + tableName
+				+ " (logotipo,numero_funcionarios,ramo_atividade,observacoes,criado_em,atualizado_em,id_empresa) "
 				+ "VALUES(?,?,?,?,NOW(),NOW(),?)";
-		
-		int id = executeUpdate(sql, com.getLogoTipoComplementar(),com.getNumFuncionariosComplementar(),com.getRamoAtividadeComplementar(),
-				com.getObsComplementar(),com.getEmpresa().getIdEmpresa()
-				);
+
+		int id = executeUpdate(sql, com.getLogoTipoComplementar(), com.getNumFuncionariosComplementar(),
+				com.getRamoAtividadeComplementar(), com.getObsComplementar(), com.getEmpresa().getIdEmpresa());
 		return searchById(id);
-		
+
 	}
 
-	public Complementar update(Complementar entidade){
-		return entidade;
+	public Complementar update(Complementar com) {
+		var sql = "UPDATE " + tableName
+				+ " SET logotipo=?,numero_funcionarios=?,ramo_atividade=?,observacoes=?,atualizado_em=NOW() " + "WHERE "
+				+ pkName + "=?";
+		executeUpdate(sql, com.getLogoTipoComplementar(), com.getNumFuncionariosComplementar(),
+				com.getRamoAtividadeComplementar(), com.getObsComplementar(), com.getIdComplementar());
+		return searchById(com.getIdComplementar());
 	}
 
-	public void delete(int id){
-		
-	}
-
-	public Complementar searchById(int id){
-		// TODO Auto-generated method stub
-		return null;
+	public void delete(int id) {
+		executeUpdate("DELETE FROM " + tableName + " WHERE " + pkName + " =?", id);
 	}
 
 	public List<Complementar> listAll() {
-		// TODO Auto-generated method stub
-		return null;
+		return executeQuery("SELECT * FROM " + tableName);
+	}
+
+	public Complementar buscarPorEmpresa(int idEmpresa) {
+		List<Complementar> lista = listByForeignKey("id_empresa", idEmpresa);
+		return lista.isEmpty() ? null : lista.get(0);
 	}
 
 	@Override
 	protected Complementar mapResultSetToEntity(ResultSet rs) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		Complementar c = new Complementar();
+		c.setIdComplementar(rs.getInt(pkName));
+		c.setLogoTipoComplementar(rs.getString("logotipo"));
+		c.setNumFuncionariosComplementar(rs.getInt("numero_funcionarios"));
+		c.setRamoAtividadeComplementar(rs.getString("ramo_atividade"));
+		c.setObsComplementar(rs.getString("observacoes"));
+		return c;
 	}
 
 }

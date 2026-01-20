@@ -66,7 +66,7 @@ public abstract class GenericDao<T> {
 	}
 	
 	protected List<T> listByForeignKey(String column,int value){
-		String sql = "SELECT * FROM "+tableName+"WHERE "+column+" = ?";
+		String sql = "SELECT * FROM "+tableName+" WHERE "+column+" = ?";
 		return executeQuery(sql, value);
 	}
 

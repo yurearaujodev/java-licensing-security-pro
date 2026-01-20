@@ -183,5 +183,13 @@ public final class DesktopFactory {
 		}
 		return false;
 	}
-
+	
+	public static JInternalFrame getFrameByTitle(JDesktopPane desktop,String title) {
+		for (JInternalFrame frame : desktop.getAllFrames()) {
+			if (!frame.isClosed()&&title.equals(frame.getTitle())) {
+				return frame;
+			}
+		}
+		return null;
+	}
 }

@@ -19,6 +19,7 @@ import com.br.yat.gerenciador.model.Complementar;
 import com.br.yat.gerenciador.model.Contato;
 import com.br.yat.gerenciador.model.Documento;
 import com.br.yat.gerenciador.model.Empresa;
+import com.br.yat.gerenciador.model.EmpresaDTO;
 import com.br.yat.gerenciador.model.Endereco;
 import com.br.yat.gerenciador.model.Representante;
 import com.br.yat.gerenciador.service.EmpresaService;
@@ -66,6 +67,77 @@ public class EmpresaController {
 		configuracaoInicial();
 		registrarAcoes();
 		atualizarAbas(tipoCadastro);
+
+		if ("FORNECEDORA".equals(tipoCadastro)) {
+			carregarDados();
+		}
+	}
+
+	private void carregarDados() {
+		setLoading(true);
+		executor.submit(() -> {
+			try {
+				EmpresaDTO dados = service.carregarForncedoraCompleta();
+
+				SwingUtilities.invokeLater(() -> {
+					if (dados != null) {
+						preencherFormulario(dados);
+					}
+					setLoading(false);
+				});
+
+			} catch (Exception e) {
+				SwingUtilities.invokeLater(() -> {
+					setLoading(false);
+					DialogFactory.erro(view, "ERRO AO CARREGAR DADOS: " + e.getMessage());
+				});
+			}
+		});
+	}
+	
+	public void carregarDadosCliente(int id) {
+		setLoading(true);
+		executor.submit(() -> {
+			try {
+				EmpresaDTO dados = service.carregarClienteCompleto(id);
+
+				SwingUtilities.invokeLater(() -> {
+					if (dados != null&&dados.empresa()!=null) {
+						preencherFormulario(dados);
+						setLoading(false);
+					}else {
+						setLoading(false);
+						DialogFactory.erro(view, "ERRO: EMPRESA NÃO ENCONTRADA NO BANCO DE DADOS.");
+						view.dispose();
+					}
+				});
+
+			} catch (Exception e) {
+				SwingUtilities.invokeLater(() -> {
+					setLoading(false);
+					DialogFactory.erro(view, "ERRO AO CARREGAR DADOS: " + e.getMessage());
+					view.dispose();
+				});
+			}
+		});
+	}
+	
+	private void preencherFormulario(EmpresaDTO dados) {
+		Empresa emp = dados.empresa();
+		
+		ePrincipal.setDados(emp);
+		
+		if (emp.getEndereco()!=null) {
+			eEndereco.setDados(emp.getEndereco());
+		}
+		
+		eContato.setDados(dados.contatos());
+		if ("FORNECEDORA".equals(emp.getTipoEmpresa())) {
+			eFiscal.setDadosComplementar(emp);
+			eRepresentante.setDados(dados.representantes());
+			eBancario.setDados(dados.bancos());
+			eComplementar.setDados(dados.complementar(), dados.documentos());
+		}
 	}
 
 	private void configuracaoInicial() {
@@ -127,7 +199,7 @@ public class EmpresaController {
 			} catch (Exception e) {
 				SwingUtilities.invokeLater(() -> {
 					setLoading(false);
-				DialogFactory.erro(view, e.getMessage());
+					DialogFactory.erro(view, e.getMessage());
 				});
 			}
 		});
@@ -174,45 +246,47 @@ public class EmpresaController {
 		}
 		return true;
 	}
-	
+
 	private void setLoading(boolean carregando) {
-		SwingUtilities.invokeLater(()->{
+		SwingUtilities.invokeLater(() -> {
 			view.getBtnSalvar().setEnabled(!carregando);
-			
+
 			var progressBar = DesktopFactory.createProgressBar();
 			progressBar.setIndeterminate(carregando);
 			progressBar.setVisible(carregando);
 			if (carregando) {
-				if (dialogLoading==null) criarDialogLoading();
+				if (dialogLoading == null)
+					criarDialogLoading();
 				view.getBtnSalvar().setText("A GUARDAR...");
-				
-				Thread.ofVirtual().start(()->{if(dialogLoading!=null)dialogLoading.setVisible(true); });
-			}else {
-				if (dialogLoading!=null) {
+
+				Thread.ofVirtual().start(() -> {
+					if (dialogLoading != null)
+						dialogLoading.setVisible(true);
+				});
+			} else {
+				if (dialogLoading != null) {
 					dialogLoading.setVisible(false);
 					view.getBtnSalvar().setText("SALVAR");
 				}
 			}
-			
-			
+
 		});
 	}
-	
-	
+
 	private void criarDialogLoading() {
 		Window parentWindow = SwingUtilities.getWindowAncestor(view);
-		
-		dialogLoading = new JDialog((Frame) parentWindow,"PROCESSANDO",Dialog.ModalityType.APPLICATION_MODAL);
-		var panel = new JPanel(new BorderLayout(10,10));
+
+		dialogLoading = new JDialog((Frame) parentWindow, "PROCESSANDO", Dialog.ModalityType.APPLICATION_MODAL);
+		var panel = new JPanel(new BorderLayout(10, 10));
 		panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-		
+
 		var label = LabelFactory.createLabel("AGUARDE, PROCESSANDO INFORMAÇÕES...");
 		var progressBar = DesktopFactory.createProgressBar();
 		progressBar.setIndeterminate(true);
-		
+
 		panel.add(label, BorderLayout.NORTH);
-		panel.add(progressBar,BorderLayout.CENTER);
-		
+		panel.add(progressBar, BorderLayout.CENTER);
+
 		dialogLoading.add(panel);
 		dialogLoading.pack();
 		dialogLoading.setLocationRelativeTo(view);

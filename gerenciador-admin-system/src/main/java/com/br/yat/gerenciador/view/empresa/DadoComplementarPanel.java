@@ -9,7 +9,6 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
-import com.br.yat.gerenciador.controller.DadoComplementarController;
 import com.br.yat.gerenciador.util.ui.ButtonFactory;
 import com.br.yat.gerenciador.util.ui.ComboBoxFactory;
 import com.br.yat.gerenciador.util.ui.FieldFactory;
@@ -116,7 +115,7 @@ public class DadoComplementarPanel extends JPanel {
 		return String.valueOf(spinnerNum.getValue());
 	}
 	
-	public void setFuncionarios(String numero) {
+	public void setFuncionarios(int numero) {
 		spinnerNum.setValue(numero);
 	}
 	

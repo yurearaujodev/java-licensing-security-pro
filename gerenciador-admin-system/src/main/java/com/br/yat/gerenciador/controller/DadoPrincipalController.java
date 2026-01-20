@@ -29,6 +29,7 @@ public class DadoPrincipalController {
 			.toFormatter().withResolverStyle(ResolverStyle.STRICT);
 	private static final Locale LOCALE_BR = Locale.forLanguageTag("pt-BR");
 	private static final DecimalFormat DECIMAL_FORMATTER;
+	private Empresa empresaAtual;
 
 	static {
 		var symbols = DecimalFormatSymbols.getInstance(LOCALE_BR);
@@ -222,7 +223,7 @@ public class DadoPrincipalController {
 	}
 
 	public Empresa getDados() {
-		Empresa empresa = new Empresa();
+		Empresa empresa = (this.empresaAtual!=null)?this.empresaAtual:new Empresa();
 		empresa.setIdEmpresa(parseInt(view.getCodigo()));
 		empresa.setRazaoSocialEmpresa(view.getRazaoSocial());
 		empresa.setFantasiaEmpresa(view.getNomeFantasia());
@@ -241,7 +242,7 @@ public class DadoPrincipalController {
 	public void setDados(Empresa empresa) {
 		if (empresa == null)
 			return;
-
+		this.empresaAtual=empresa;
 		view.setCodigo(String.valueOf(empresa.getIdEmpresa()));
 		view.setRazaoSocial(empresa.getRazaoSocialEmpresa());
 		view.setNomeFantasia(empresa.getFantasiaEmpresa());

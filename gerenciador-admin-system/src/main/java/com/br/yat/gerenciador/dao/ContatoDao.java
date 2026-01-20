@@ -14,43 +14,45 @@ public class ContatoDao extends GenericDao<Contato> {
 	}
 
 	public Contato save(Contato cont) throws SQLException {
-		var sql = "INSERT INTO contato_empresa(tipo_contato,valor,criado_em,atualizado_em,id_empresa) "
+		var sql = "INSERT INTO " + tableName + "(tipo_contato,valor,criado_em,atualizado_em,id_empresa) "
 				+ "VALUES(?,?,NOW(),NOW(),?)";
 
 		int id = executeUpdate(sql, cont.getTipoContato(), cont.getValorContato(), cont.getEmpresa().getIdEmpresa());
 		return searchById(id);
 	}
 
-	public Contato update(Contato cont){
-		return cont;
-		
-		
+	public Contato update(Contato cont) {
+		var sql = "UPDATE " + tableName + " SET tipo_contato=?,valor=?,atualizado_em=NOW() " + "WHERE " + pkName
+				+ " = ?";
+		executeUpdate(sql, cont.getTipoContato(), cont.getValorContato(), cont.getIdContato());
+		return searchById(cont.getIdContato());
 	}
 
-
-	public void delete(int id){
-
-	}
-
-	@Override
-	public Contato searchById(int id){
-		// TODO Auto-generated method stub
-		return null;
+	public void delete(int id) {
+		executeUpdate("DELETE FROM " + tableName + " WHERE " + pkName + " = ?", id);
 	}
 
 	public List<Contato> listAll() {
-		// TODO Auto-generated method stub
-		return null;
+		return executeQuery("SELECT * FROM " + tableName);
 	}
-	
-	public List<Contato> listarPorEmpresa(int idEmpresa){
+
+	public List<Contato> listarPorEmpresa(int idEmpresa) {
 		return listByForeignKey("id_empresa", idEmpresa);
+	}
+
+	public void deleteByEmpresa(int idEmpresa) {
+		String sql = "DELETE FROM " + tableName + " WHERE id_empresa=?";
+		executeUpdate(sql, idEmpresa);
 	}
 
 	@Override
 	protected Contato mapResultSetToEntity(ResultSet rs) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		Contato c = new Contato();
+		c.setIdContato(rs.getInt(pkName));
+		c.setTipoContato(rs.getString("tipo_contato"));
+		c.setValorContato(rs.getString("valor"));
+
+		return c;
 	}
 
 }

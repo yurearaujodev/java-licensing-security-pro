@@ -147,36 +147,4 @@ public class EmpresaView extends JInternalFrame {
 		return tabbedPane;
 	}
 
-
-//	private void aoClicarSalvar(ActionEvent e) {
-//		String tipo = String.valueOf(cbTipoDoc.getSelectedItem());
-//		if ("SELECIONE".equals(tipo)) {
-//			JOptionPane.showMessageDialog(this, "SELECIONE O TIPO DE DOCUMENTO (CNPJ OU CPF).");
-//			cbTipoDoc.requestFocusInWindow();
-//			return;
-//		}
-//		String cep = ftxtCep.getText().replaceAll("\\D", "");
-//		if (cep.length() == 8) {
-//			exibirErro(ftxtCep, "CEP INVÁLIDO. USE 8 DÍGITOS.");
-//			return;
-//		}
-//
-//		preencherEnderecoPorCep();
-//		validarDocumento();
-//		validarInscricaoEstadual();
-//		validarInscricaoMunicipal();
-//		validarFundacao();
-//		validarTelefoneCelular();
-//		validarTelefoneFixo();
-//
-//		if (hasErroVisual()) {
-//			JOptionPane.showMessageDialog(this, "CORRIGE OS CAMPOS DESTACADOS EM VERMELHO ANTES DE SALVAR.",
-//					"CAMPOS INVÁLIDOS", JOptionPane.WARNING_MESSAGE);
-//			return;
-//		}
-//
-//		JOptionPane.showMessageDialog(this, "CONFIGURAÇÂO SALVA COM SUCESSO!\nA APLICAÇÂO SERÁ REINICIADA.", "SUCESSO",
-//				JOptionPane.INFORMATION_MESSAGE);
-//	}
-
 }

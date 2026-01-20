@@ -14,40 +14,53 @@ public class BancoDao extends GenericDao<Banco> {
 	}
 
 	public Banco save(Banco ban) {
-		var sql = "INSERT INTO dados_bancarios(banco,codigo_banco,agencia,conta,tipo,criado_em,atualizado_em,id_empresa) "
+		var sql = "INSERT INTO " + tableName
+				+ "(banco,codigo_banco,agencia,conta,tipo,criado_em,atualizado_em,id_empresa) "
 				+ "VALUES(?,?,?,?,?,NOW(),NOW(),?)";
-		
-		int id = executeUpdate(sql, ban.getNomeBanco(),ban.getCodBanco(),ban.getAgenciaBanco(),ban.getContaBanco(),
-				ban.getTipoBanco(),ban.getEmpresa().getIdEmpresa()
-				);
+
+		int id = executeUpdate(sql, ban.getNomeBanco(), ban.getCodBanco(), ban.getAgenciaBanco(), ban.getContaBanco(),
+				ban.getTipoBanco(), ban.getEmpresa().getIdEmpresa());
 		return searchById(id);
-		
+
 	}
 
-	public Banco update(Banco entidade) {
-		return entidade;
+	public Banco update(Banco ban) {
+		var sql = "UPDATE " + tableName + " SET banco=?,codigo_banco=?,agencia=?,conta=?,tipo=?atualizado_em=NOW() "
+				+ "WHERE " + pkName + " = ?";
+
+		executeUpdate(sql, ban.getNomeBanco(), ban.getCodBanco(), ban.getAgenciaBanco(), ban.getContaBanco(),
+				ban.getTipoBanco(), ban.getIdBanco());
+		return searchById(ban.getIdBanco());
 
 	}
 
 	public void delete(int id) {
-		// TODO Auto-generated method stub
-
-	}
-
-	public Banco searchById(int id) {
-		// TODO Auto-generated method stub
-		return null;
+		executeUpdate("DELETE FROM " + tableName + " WHERE " + pkName + " = ?", id);
 	}
 
 	public List<Banco> listAll() {
-		// TODO Auto-generated method stub
-		return null;
+		return executeQuery("SELECT * FROM " + tableName);
+	}
+
+	public List<Banco> listarPorEmpresa(int idEmpresa) {
+		return listByForeignKey("id_empresa", idEmpresa);
+	}
+
+	public void deleteByEmpresa(int idEmpresa) {
+		String sql = "DELETE FROM " + tableName + " WHERE id_empresa=?";
+		executeUpdate(sql, idEmpresa);
 	}
 
 	@Override
 	protected Banco mapResultSetToEntity(ResultSet rs) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+		Banco b = new Banco();
+		b.setIdBanco(rs.getInt(pkName));
+		b.setNomeBanco(rs.getString("banco"));
+		b.setCodBanco(rs.getInt("codigo_banco"));
+		b.setAgenciaBanco(rs.getString("agencia"));
+		b.setContaBanco(rs.getString("conta"));
+		b.setTipoBanco(rs.getString("tipo"));
+		return b;
 	}
 
 }

@@ -20,6 +20,7 @@ import com.br.yat.gerenciador.util.ui.DesktopFactory;
 import com.br.yat.gerenciador.util.ui.ViewFactory;
 import com.br.yat.gerenciador.view.EmpresaView;
 import com.br.yat.gerenciador.view.MenuPrincipal;
+import com.br.yat.gerenciador.view.empresa.EmpresaConsultaView;
 
 public class MenuPrincipalController {
 
@@ -36,6 +37,7 @@ public class MenuPrincipalController {
 	private void registrarAcoes() {
 		configurarAcaoMenu(MenuChave.CADASTROS_EMPRESA_CLIENTE, e-> abrirEmpresaCliente());
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_EMPRESA_FORNECEDORA, e->abrirEmpresaFornecedora());
+		configurarAcaoMenu(MenuChave.CONSULTAS_EMPRESAS_CLIENTES, e->abrirEmpresaConsulta());
 	}
 
 	private void iniciarRelogio() {
@@ -102,6 +104,19 @@ public class MenuPrincipalController {
 		EmpresaView frame = ViewFactory.createEmpresaView("FORNECEDORA");
 		frame.setTitle("SISTEMA DE GERENCIAMENTO DE LICENÇA - CADASTRO DE FORNECEDORA");
 		exibirNoDesktop(desk, frame); 
+	}
+	
+
+	private void abrirEmpresaConsulta() {
+		JDesktopPane desk = view.getDesktopPane();
+		
+		if (DesktopFactory.reuseIfOpen(desk, EmpresaConsultaView.class)) {
+			return;
+		}
+		
+		EmpresaConsultaView frame = ViewFactory.createEmpresaConsultaView();
+		exibirNoDesktop(desk, frame);
+		
 	}
 
 }

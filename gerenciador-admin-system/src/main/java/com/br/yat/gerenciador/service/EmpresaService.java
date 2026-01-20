@@ -18,6 +18,7 @@ import com.br.yat.gerenciador.model.Complementar;
 import com.br.yat.gerenciador.model.Contato;
 import com.br.yat.gerenciador.model.Documento;
 import com.br.yat.gerenciador.model.Empresa;
+import com.br.yat.gerenciador.model.EmpresaDTO;
 import com.br.yat.gerenciador.model.Endereco;
 import com.br.yat.gerenciador.model.Representante;
 import com.br.yat.gerenciador.model.enums.CryptoErrorType;
@@ -34,6 +35,7 @@ public class EmpresaService {
 	public void salvarEmpresaCompleta(Endereco endereco, Empresa empresa, List<Contato> contatos,
 			List<Representante> representantes, List<Banco> bancos, Complementar complementar,
 			List<Documento> documentos) throws Exception {
+		
 		validarEndereco(endereco);
 		validarEmpresa(empresa);
 		validarContatos(contatos);
@@ -50,12 +52,22 @@ public class EmpresaService {
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			ConnectionFactory.beginTransaction(conn);
 			try {
-				Endereco enderecoSalvo = new EnderecoDao(conn).save(endereco);
-				empresa.setEndereco(enderecoSalvo);
-
-				Empresa empresaSalvo = new EmpresaDao(conn).save(empresa);
-
-				salvarFornecedora(conn, empresaSalvo, contatos, representantes, bancos, complementar, documentos,
+				EnderecoDao endDao = new EnderecoDao(conn);
+				if (endereco.getIdEndereco()>0) {
+					endDao.update(endereco);
+				}else {
+					endereco=endDao.save(endereco);
+				}
+				
+				empresa.setEndereco(endereco);
+				EmpresaDao empDao = new EmpresaDao(conn);
+				if (empresa.getIdEmpresa()>0) {
+					empresa = empDao.update(empresa);
+				} else {
+					empresa = empDao.save(empresa);
+				}
+				
+				salvarFornecedora(conn, empresa, contatos, representantes, bancos, complementar, documentos,
 						isFornecedora);
 				ConnectionFactory.commitTransaction(conn);
 			} catch (Exception e) {
@@ -65,6 +77,48 @@ public class EmpresaService {
 
 		} catch (SQLException e) {
 			throw new CryptoException(CryptoErrorType.INTERNAL_ERROR, "ERRO DE CONEXÃO" + e.getMessage());
+		}
+	}
+	
+	public EmpresaDTO carregarForncedoraCompleta()throws Exception{
+		try(Connection conn = ConnectionFactory.getConnection()){
+			EmpresaDao empDao = new EmpresaDao(conn);
+			
+			Empresa emp = empDao.buscarPorFornecedora();
+			if(emp==null)return null;
+			
+			int id = emp.getIdEmpresa();
+			
+			List<Contato> contatos = new ContatoDao(conn).listarPorEmpresa(id);
+			List<Representante> reps = new RepresentanteDao(conn).listarPorEmpresa(id);
+			List<Banco> bancos = new BancoDao(conn).listarPorEmpresa(id);
+			Complementar comp = new ComplementarDao(conn).buscarPorEmpresa(id);
+			List<Documento> docs = new DocumentoDao(conn).listarPorEmpresa(id);
+			
+			return new EmpresaDTO(emp,contatos,reps,bancos,comp,docs);
+		}
+	}
+	
+	public EmpresaDTO carregarClienteCompleto(int id)throws Exception{
+		try(Connection conn = ConnectionFactory.getConnection()){
+			EmpresaDao empDao = new EmpresaDao(conn);
+			Empresa emp = empDao.searchById(id);
+			if(emp==null)return null;
+			
+			List<Contato> contatos = new ContatoDao(conn).listarPorEmpresa(id);
+			return new EmpresaDTO(emp, contatos, null, null, null, null);
+		}
+	}
+	
+	public List<Empresa> listarClientesParaTabela()throws Exception{
+		try(Connection conn = ConnectionFactory.getConnection()){
+			return new EmpresaDao(conn).listarTodosClientes();
+		}
+	}
+	
+	public List<Empresa> filtrarClientes(String termo)throws Exception{
+		try(Connection conn = ConnectionFactory.getConnection()){
+			return new EmpresaDao(conn).filtrarClientes(termo);
 		}
 	}
 
@@ -234,7 +288,7 @@ public class EmpresaService {
 			return;
 
 		if (b.getCodBanco() != 0) {
-			if (b.getCodBanco() < 1||b.getCodBanco()>999) {
+			if (b.getCodBanco() < 1 || b.getCodBanco() > 999) {
 				throw new IllegalArgumentException("CÓDIGO DO BANCO DEVE ESTAR ENTRE 001 E 999.");
 			}
 		}
@@ -284,7 +338,10 @@ public class EmpresaService {
 			List<Representante> representantes, List<Banco> bancos, Complementar complementares,
 			List<Documento> documentos, boolean isFornecedora) throws Exception {
 
+		int id = empresa.getIdEmpresa();
+		
 		ContatoDao contDao = new ContatoDao(conn);
+		contDao.deleteByEmpresa(id);
 		if (contatos != null) {
 			for (Contato c : contatos) {
 				c.setEmpresa(empresa);
@@ -293,16 +350,18 @@ public class EmpresaService {
 		}
 
 		if (isFornecedora) {
-
+			
+			RepresentanteDao repDao = new RepresentanteDao(conn);
+			repDao.deleteByEmpresa(id);
 			if (representantes != null) {
-				RepresentanteDao repDao = new RepresentanteDao(conn);
 				for (Representante r : representantes) {
 					r.setEmpresa(empresa);
 					repDao.save(r);
 				}
 			}
+			BancoDao banDao = new BancoDao(conn);
+			banDao.deleteByEmpresa(id);
 			if (bancos != null) {
-				BancoDao banDao = new BancoDao(conn);
 				for (Banco b : bancos) {
 					b.setEmpresa(empresa);
 					banDao.save(b);
@@ -310,12 +369,17 @@ public class EmpresaService {
 			}
 			if (complementares != null) {
 				complementares.setEmpresa(empresa);
-				new ComplementarDao(conn).save(complementares);
-
+				ComplementarDao compDao = new ComplementarDao(conn);
+				if (complementares.getIdComplementar()>0) {
+					compDao.update(complementares);
+				} else {
+					compDao.save(complementares);
+				}
 			}
 
+			DocumentoDao docDao = new DocumentoDao(conn);
+			docDao.deleteByEmpresa(id);
 			if (documentos != null) {
-				DocumentoDao docDao = new DocumentoDao(conn);
 				for (Documento d : documentos) {
 					d.setEmpresa(empresa);
 					docDao.save(d);
