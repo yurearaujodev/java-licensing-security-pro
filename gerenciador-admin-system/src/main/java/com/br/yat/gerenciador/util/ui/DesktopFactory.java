@@ -33,8 +33,7 @@ import com.br.yat.gerenciador.util.UITheme;
 public final class DesktopFactory {
 
 	private static final Logger logger = LoggerFactory.getLogger(DesktopFactory.class);
-	
-	
+
 	/**
 	 * Construtor privado para evitar instanciação.
 	 */
@@ -111,7 +110,7 @@ public final class DesktopFactory {
 	 * </p>
 	 * 
 	 * @param desktopPane painel desktop onde o frame será centralizado
-	 * @param frame janela interna a ser posicionada
+	 * @param frame       janela interna a ser posicionada
 	 */
 	public static void centerDesktopPane(JDesktopPane desktopPane, JInternalFrame frame) {
 		if (desktopPane == null || frame == null) {
@@ -122,33 +121,35 @@ public final class DesktopFactory {
 		int y = (desktopPane.getHeight() - frame.getHeight()) / 2;
 		frame.setLocation(Math.max(0, x), Math.max(0, y));
 	}
-	
+
 	public static void showFrame(JDesktopPane desktop, JInternalFrame frame) {
-		if (desktop==null||frame==null) {
+		if (desktop == null || frame == null) {
 			return;
 		}
-		
+
 		desktop.add(frame);
 		frame.setVisible(true);
 		frame.toFront();
-		
+
 		try {
 			frame.setSelected(true);
 		} catch (PropertyVetoException e) {
-			logger.trace("A seleção da janela foi vetada pelo sistema: {}", frame.getTitle());	
+			logger.trace("A seleção da janela foi vetada pelo sistema: {}", frame.getTitle());
 		}
 	}
 
 	/**
-	 * Reutiliza uma {@link JInternalFrame} já aberta dentro de um {@link JDesktopPane}.
+	 * Reutiliza uma {@link JInternalFrame} já aberta dentro de um
+	 * {@link JDesktopPane}.
 	 * <p>
 	 * Caso uma instância da classe informada já esteja aberta e não esteja fechada,
 	 * ela será trazida para frente, desiconizada (se minimizada) e selecionada.
 	 * </p>
 	 * 
 	 * @param desktopPane painel desktop onde os frames estão abertos
-	 * @param frameClass classe da janela interna a ser reutilizada
-	 * @return {@code true} se uma instância existente foi reutilizada,{@code false} caso contrário
+	 * @param frameClass  classe da janela interna a ser reutilizada
+	 * @return {@code true} se uma instância existente foi reutilizada,{@code false}
+	 *         caso contrário
 	 */
 	public static boolean reuseIfOpen(JDesktopPane desktopPane, Class<? extends JInternalFrame> frameClass) {
 		for (JInternalFrame existing : desktopPane.getAllFrames()) {
@@ -166,27 +167,26 @@ public final class DesktopFactory {
 		}
 		return false;
 	}
-	
-	public static boolean reuseIfOpen(JDesktopPane desktopPane, String frameTitle) {
+
+	public static boolean reuseIfOpen(JDesktopPane desktopPane, String identifier) {
 		for (JInternalFrame existing : desktopPane.getAllFrames()) {
-			if (!existing.isClosed() && frameTitle.equals(existing.getTitle())) {
+			boolean matches = identifier.equals(existing.getTitle()) || identifier.equals(existing.getName());
+			if (!existing.isClosed() && matches) {
 				try {
-					if (existing.isIcon()) {
-						existing.setIcon(false);
-					}
+					if (existing.isIcon())existing.setIcon(false);
 					existing.setSelected(true);
 					existing.moveToFront();
+					return true;
 				} catch (PropertyVetoException ignored) {
 				}
-				return true;
 			}
 		}
 		return false;
 	}
-	
-	public static JInternalFrame getFrameByTitle(JDesktopPane desktop,String title) {
+
+	public static JInternalFrame getFrameByTitle(JDesktopPane desktop, String title) {
 		for (JInternalFrame frame : desktop.getAllFrames()) {
-			if (!frame.isClosed()&&title.equals(frame.getTitle())) {
+			if (!frame.isClosed() && title.equals(frame.getTitle())) {
 				return frame;
 			}
 		}

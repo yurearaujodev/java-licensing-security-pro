@@ -18,10 +18,10 @@ public class ComplementarDao extends GenericDao<Complementar> {
 				+ " (logotipo,numero_funcionarios,ramo_atividade,observacoes,criado_em,atualizado_em,id_empresa) "
 				+ "VALUES(?,?,?,?,NOW(),NOW(),?)";
 
-		int id = executeUpdate(sql, com.getLogoTipoComplementar(), com.getNumFuncionariosComplementar(),
+		int id = executeInsert(sql, com.getLogoTipoComplementar(), com.getNumFuncionariosComplementar(),
 				com.getRamoAtividadeComplementar(), com.getObsComplementar(), com.getEmpresa().getIdEmpresa());
-		return searchById(id);
-
+		com.setIdComplementar(id);
+		return com;
 	}
 
 	public Complementar update(Complementar com) {
@@ -30,7 +30,7 @@ public class ComplementarDao extends GenericDao<Complementar> {
 				+ pkName + "=?";
 		executeUpdate(sql, com.getLogoTipoComplementar(), com.getNumFuncionariosComplementar(),
 				com.getRamoAtividadeComplementar(), com.getObsComplementar(), com.getIdComplementar());
-		return searchById(com.getIdComplementar());
+		return com;
 	}
 
 	public void delete(int id) {
@@ -42,7 +42,8 @@ public class ComplementarDao extends GenericDao<Complementar> {
 	}
 
 	public Complementar buscarPorEmpresa(int idEmpresa) {
-		List<Complementar> lista = listByForeignKey("id_empresa", idEmpresa);
+		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ?";	
+		List<Complementar> lista = executeQuery(sql, idEmpresa);
 		return lista.isEmpty() ? null : lista.get(0);
 	}
 

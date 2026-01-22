@@ -28,15 +28,25 @@ public abstract class GenericDao<T> {
 
 	protected abstract T mapResultSetToEntity(ResultSet rs) throws SQLException;
 
-	protected int executeUpdate(String sql, Object... params) {
+	protected int executeInsert(String sql, Object... params) {
 		try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-			for (int i = 0; i < params.length; i++) {
-				setSafeParameter(stmt, i + 1, params[i], Types.NULL);
-			}
+			
+			bindParameters(stmt, params);
 			stmt.executeUpdate();
+			
 			try (ResultSet rs = stmt.getGeneratedKeys()) {
 				return rs.next() ? rs.getInt(1) : 0;
 			}
+		} catch (SQLException e) {
+			throw new RuntimeException("ERRO EM [" + tableName + "]: " + e.getMessage());
+		}
+	}
+	protected int executeUpdate(String sql, Object... params) {
+		try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+			bindParameters(stmt, params);
+			return stmt.executeUpdate();
+			
 		} catch (SQLException e) {
 			throw new RuntimeException("ERRO EM [" + tableName + "]: " + e.getMessage());
 		}
@@ -45,9 +55,9 @@ public abstract class GenericDao<T> {
 	protected List<T> executeQuery(String sql, Object... params) {
 		List<T> lista = new ArrayList<>();
 		try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-			for (int i = 0; i < params.length; i++) {
-				setSafeParameter(stmt, i + 1, params[i], Types.NULL);
-			}
+			
+			bindParameters(stmt, params);
+			
 			try (ResultSet rs = stmt.executeQuery()) {
 				while (rs.next()) {
 					lista.add(mapResultSetToEntity(rs));
@@ -64,24 +74,40 @@ public abstract class GenericDao<T> {
 		List<T> resultados = executeQuery(sql, id);
 		return resultados.isEmpty() ? null : resultados.get(0);
 	}
-	
-	protected List<T> listByForeignKey(String column,int value){
-		String sql = "SELECT * FROM "+tableName+" WHERE "+column+" = ?";
-		return executeQuery(sql, value);
-	}
 
-	protected void setSafeParameter(PreparedStatement stmt, int index, Object value, int sqlType) throws SQLException {
-		switch (value) {
-		case null -> stmt.setNull(index, sqlType == Types.NULL ? Types.VARCHAR : sqlType);
-		case String s when s.isBlank() -> stmt.setNull(index, Types.VARCHAR);
-		case String s -> stmt.setString(index, s);
-		case Integer i -> stmt.setInt(index, i);
-		case BigDecimal db -> stmt.setBigDecimal(index, db);
-		case LocalDate ld -> stmt.setDate(index, Date.valueOf(ld));
-		case Enum<?> e -> stmt.setString(index, e.name());
-		case Boolean b -> stmt.setBoolean(index, b);
+	protected void bindParameters(PreparedStatement stmt, Object... params) throws SQLException {
+		for (int i = 0; i < params.length; i++) {
+			Object value = params[i];
+			int idx = i + 1;
 
-		default -> stmt.setObject(index, value, sqlType);
+			switch (value) {
+			case null -> stmt.setNull(idx, Types.NULL);
+			case String s when s.isBlank() -> stmt.setNull(idx, Types.VARCHAR);
+			case String s -> stmt.setString(idx, s);
+			case Integer iVal -> stmt.setInt(idx, iVal);
+			case BigDecimal db -> stmt.setBigDecimal(idx, db);
+			case LocalDate ld -> stmt.setDate(idx, Date.valueOf(ld));
+			case Enum<?> e -> stmt.setString(idx, e.name());
+			case Boolean b -> stmt.setBoolean(idx, b);
+
+			default -> stmt.setObject(idx, value);
+			}
 		}
 	}
 }
+//
+//	protected void setSafeParameter(PreparedStatement stmt, int index, Object value, int sqlType) throws SQLException {
+//		switch (value) {
+//		case null -> stmt.setNull(index, sqlType == Types.NULL ? Types.VARCHAR : sqlType);
+//		case String s when s.isBlank() -> stmt.setNull(index, Types.VARCHAR);
+//		case String s -> stmt.setString(index, s);
+//		case Integer i -> stmt.setInt(index, i);
+//		case BigDecimal db -> stmt.setBigDecimal(index, db);
+//		case LocalDate ld -> stmt.setDate(index, Date.valueOf(ld));
+//		case Enum<?> e -> stmt.setString(index, e.name());
+//		case Boolean b -> stmt.setBoolean(index, b);
+//
+//		default -> stmt.setObject(index, value, sqlType);
+//		}
+//	}
+

@@ -6,8 +6,6 @@ import java.awt.Frame;
 import java.awt.Window;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import javax.swing.BorderFactory;
 import javax.swing.JDialog;
@@ -28,7 +26,7 @@ import com.br.yat.gerenciador.util.ui.DesktopFactory;
 import com.br.yat.gerenciador.util.ui.LabelFactory;
 import com.br.yat.gerenciador.view.EmpresaView;
 
-public class EmpresaController {
+public class EmpresaController  extends BaseController{
 	private final EmpresaView view;
 	private final EmpresaService service;
 	private final DadoPrincipalController ePrincipal;
@@ -39,6 +37,7 @@ public class EmpresaController {
 	private final DadoBancarioController eBancario;
 	private final DadoComplementarController eComplementar;
 	private JDialog dialogLoading;
+	private RefreshCallback refreshCallback;
 
 	private final String tipoCadastro;
 
@@ -46,7 +45,6 @@ public class EmpresaController {
 			List.of("DADOS PRINCIPAIS", "ENDEREÇO", "CONTATOS"), "FORNECEDORA",
 			List.of("DADOS PRINCIPAIS", "ENDEREÇO", "CONTATOS", "DADOS FISCAIS", "REPRESENTANTE LEGAL",
 					"DADOS BANCÁRIOS", "INFORMAÇÕES COMPLEMENTARES"));
-	private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
 	public EmpresaController(EmpresaView view, EmpresaService service, DadoPrincipalController ePrincipal,
 			DadoEnderecoController eEndereco, DadoContatoController eContato, DadoFiscalController eFiscal,
@@ -71,6 +69,10 @@ public class EmpresaController {
 		if ("FORNECEDORA".equals(tipoCadastro)) {
 			carregarDados();
 		}
+	}
+	
+	public void setRefreshCallback(RefreshCallback callback) {
+		this.refreshCallback=callback;
 	}
 
 	private void carregarDados() {
@@ -107,7 +109,7 @@ public class EmpresaController {
 						setLoading(false);
 					}else {
 						setLoading(false);
-						DialogFactory.erro(view, "ERRO: EMPRESA NÃO ENCONTRADA NO BANCO DE DADOS.");
+						DialogFactory.erro(view, "ERRO: EMPRESA NÃO ENCONTRADA.");
 						view.dispose();
 					}
 				});
@@ -147,6 +149,7 @@ public class EmpresaController {
 
 	private void registrarAcoes() {
 		view.getBtnSalvar().addActionListener(e -> aoClicarSalvar());
+		
 	}
 
 	private void atualizarAbas(String tipo) {
@@ -186,6 +189,9 @@ public class EmpresaController {
 			complementar = null;
 			documentos = null;
 		}
+		
+		final boolean isAlterar = empresa.getIdEmpresa()>0;
+		final String mensagem=isAlterar?"ALTERADO COM SUCESSO.":"SALVO COM SUCESSO.";
 		setLoading(true);
 		executor.submit(() -> {
 			try {
@@ -194,7 +200,10 @@ public class EmpresaController {
 						documentos);
 				SwingUtilities.invokeLater(() -> {
 					setLoading(false);
-					DialogFactory.informacao(view, "SALVO COM SUCESSO.");
+					DialogFactory.informacao(view, mensagem);
+					if (refreshCallback!=null) {
+						refreshCallback.onSaveSuccess();
+					}
 				});
 			} catch (Exception e) {
 				SwingUtilities.invokeLater(() -> {
@@ -266,7 +275,8 @@ public class EmpresaController {
 			} else {
 				if (dialogLoading != null) {
 					dialogLoading.setVisible(false);
-					view.getBtnSalvar().setText("SALVAR");
+					String textoBotao = (ePrincipal.getDados().getIdEmpresa()>0)?"ALTERAR":"SALVAR";
+					view.getBtnSalvar().setText(textoBotao);
 				}
 			}
 

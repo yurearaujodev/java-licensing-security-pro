@@ -17,15 +17,16 @@ public class ContatoDao extends GenericDao<Contato> {
 		var sql = "INSERT INTO " + tableName + "(tipo_contato,valor,criado_em,atualizado_em,id_empresa) "
 				+ "VALUES(?,?,NOW(),NOW(),?)";
 
-		int id = executeUpdate(sql, cont.getTipoContato(), cont.getValorContato(), cont.getEmpresa().getIdEmpresa());
-		return searchById(id);
+		int id = executeInsert(sql, cont.getTipoContato(), cont.getValorContato(), cont.getEmpresa().getIdEmpresa());
+		cont.setIdContato(id);
+		return cont;
 	}
 
 	public Contato update(Contato cont) {
 		var sql = "UPDATE " + tableName + " SET tipo_contato=?,valor=?,atualizado_em=NOW() " + "WHERE " + pkName
 				+ " = ?";
 		executeUpdate(sql, cont.getTipoContato(), cont.getValorContato(), cont.getIdContato());
-		return searchById(cont.getIdContato());
+		return cont;
 	}
 
 	public void delete(int id) {
@@ -37,7 +38,8 @@ public class ContatoDao extends GenericDao<Contato> {
 	}
 
 	public List<Contato> listarPorEmpresa(int idEmpresa) {
-		return listByForeignKey("id_empresa", idEmpresa);
+		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ?";
+		return executeQuery(sql, idEmpresa);
 	}
 
 	public void deleteByEmpresa(int idEmpresa) {

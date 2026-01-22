@@ -1,9 +1,9 @@
 package com.br.yat.gerenciador.dao;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.util.List;
 
 import com.br.yat.gerenciador.model.Empresa;
@@ -24,12 +24,13 @@ public class EmpresaDao extends GenericDao<Empresa> {
 				+ "natureza_juridica,crt,regime_tributario,capital_social,situacao_cadastral,"
 				+ "criado_em,atualizado_em,id_endereco) " + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW(),?)";
 
-		int id = executeUpdate(sql, emp.getTipoEmpresa(), emp.getFantasiaEmpresa(), emp.getRazaoSocialEmpresa(),
+		int id = executeInsert(sql, emp.getTipoEmpresa(), emp.getFantasiaEmpresa(), emp.getRazaoSocialEmpresa(),
 				emp.getTipoDocEmpresa(), emp.getDocumentoEmpresa(), emp.getInscEst(), emp.getContribuinteIcmsEmpresa(),
 				emp.getInscMun(), emp.getFundacaoEmpresa(), emp.getCnaeEmpresa(), emp.getPorteEmpresa(),
 				emp.getNaturezaJuriEmpresa(), emp.getCrtEmpresa(), emp.getRegimeTribEmpresa(), emp.getCapitalEmpresa(),
 				emp.getSituacaoEmpresa(), emp.getEndereco().getIdEndereco());
-		return searchById(id);
+		emp.setIdEmpresa(id);
+		return emp;
 	}
 
 	public Empresa update(Empresa emp) {
@@ -42,7 +43,7 @@ public class EmpresaDao extends GenericDao<Empresa> {
 				emp.getInscMun(), emp.getFundacaoEmpresa(), emp.getCnaeEmpresa(), emp.getPorteEmpresa(),
 				emp.getNaturezaJuriEmpresa(), emp.getCrtEmpresa(), emp.getRegimeTribEmpresa(), emp.getCapitalEmpresa(),
 				emp.getSituacaoEmpresa(), emp.getIdEmpresa());
-		return searchById(emp.getIdEmpresa());
+		return emp;
 	}
 
 	public void delete(int id) {
@@ -89,7 +90,8 @@ public class EmpresaDao extends GenericDao<Empresa> {
 		emp.setInscEst(rs.getString("insc_estadual"));
 		emp.setContribuinteIcmsEmpresa(rs.getString("contribuinte_icms"));
 		emp.setInscMun(rs.getString("insc_municipal"));
-		emp.setFundacaoEmpresa(rs.getObject("data_fundacao", LocalDate.class));
+		Date dt = rs.getDate("data_fundacao");
+		emp.setFundacaoEmpresa(dt != null ? dt.toLocalDate() : null);
 		emp.setCnaeEmpresa(rs.getString("cnae"));
 		emp.setPorteEmpresa(rs.getString("porte_empresa"));
 		emp.setNaturezaJuriEmpresa(rs.getString("natureza_juridica"));

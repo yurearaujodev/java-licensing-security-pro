@@ -1,5 +1,8 @@
 package com.br.yat.gerenciador.util.ui;
 
+import javax.swing.event.InternalFrameAdapter;
+import javax.swing.event.InternalFrameEvent;
+
 import com.br.yat.gerenciador.controller.DadoBancarioController;
 import com.br.yat.gerenciador.controller.DadoComplementarController;
 import com.br.yat.gerenciador.controller.DadoContatoController;
@@ -31,6 +34,13 @@ public final class ViewFactory {
 		
 		EmpresaController controller = new EmpresaController(view,service,ePrincipal,eEndereco,eContato,eFiscal,eRepresentante,eBancario,eComplementar,tipoCadastro);
 		view.putClientProperty("controller", controller);
+		view.addInternalFrameListener(new InternalFrameAdapter() {
+			@Override
+			public void internalFrameClosed(InternalFrameEvent e) {
+				controller.dispose();
+			}
+			});
+		
 		return view;
 	}
 	
@@ -45,13 +55,19 @@ public final class ViewFactory {
 	public static EmpresaConsultaView createEmpresaConsultaView() {
 		EmpresaConsultaView view = new EmpresaConsultaView();
 		EmpresaService service = new EmpresaService();
-		new EmpresaConsultaController(view, service);
+		EmpresaConsultaController controller = new EmpresaConsultaController(view, service);
+		
+		view.addInternalFrameListener(new InternalFrameAdapter() {
+		@Override
+		public void internalFrameClosed(InternalFrameEvent e) {
+			controller.dispose();
+		}
+		});
 		return view;
 	}
 	
 	public static EmpresaView createEmpresaEdicaoView(int id) {
 		EmpresaView view = createEmpresaView("CLIENTE");
-//		view.setTitle("EDITAR CLIENTE - ID: "+id);
 		view.setTitle("CARREGANDO DADOS... POR FAVOR, AGUARDE.");
 		
 		EmpresaController controller = (EmpresaController) view.getClientProperty("controller");

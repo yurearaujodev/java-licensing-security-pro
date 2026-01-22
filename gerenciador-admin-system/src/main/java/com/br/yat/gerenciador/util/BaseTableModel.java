@@ -3,7 +3,9 @@ package com.br.yat.gerenciador.util;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.SwingUtilities;
 import javax.swing.table.AbstractTableModel;
+
 /**
  * Classe base abstrata para modelos de tabela Swing.
  * <p>
@@ -16,15 +18,18 @@ import javax.swing.table.AbstractTableModel;
  * </ul>
  * </p>
  * 
- * <p>Subclasses devem implementar métodos de {@link AbstractTableModel} como
- * {@link #getColumnCount()}, {@link #getColumnName(int)} e {@link #getValueAt(int, int)}</p>
+ * <p>
+ * Subclasses devem implementar métodos de {@link AbstractTableModel} como
+ * {@link #getColumnCount()}, {@link #getColumnName(int)} e
+ * {@link #getValueAt(int, int)}
+ * </p>
  * 
  * @param <T> tipo de dado representado nas linhas da tabela
  */
 public abstract class BaseTableModel<T> extends AbstractTableModel {
 
 	private static final long serialVersionUID = 1L;
-	
+
 	protected final List<T> dados = new ArrayList<>();
 
 	/**
@@ -33,11 +38,13 @@ public abstract class BaseTableModel<T> extends AbstractTableModel {
 	 * @param lista nova lista de dados; se {@code null}, a tabela será esvaziada
 	 */
 	public void setDados(List<T> lista) {
-		dados.clear();
-		if (lista != null) {
-			dados.addAll(lista);
-		}
-		fireTableDataChanged();
+		SwingUtilities.invokeLater(() -> {
+			dados.clear();
+			if (lista != null) {
+				dados.addAll(lista);
+			}
+			fireTableDataChanged();
+		});
 	}
 
 	/**
@@ -46,8 +53,11 @@ public abstract class BaseTableModel<T> extends AbstractTableModel {
 	 * @param row índice da linha
 	 * @return objeto correspondente
 	 */
-	public T get(int row) {
-		return dados.get(row);
+	public T getAt(int row) {
+		if (row >= 0 && row < dados.size()) {
+			return dados.get(row);
+		}
+		return null;
 	}
 
 	/**
@@ -57,7 +67,15 @@ public abstract class BaseTableModel<T> extends AbstractTableModel {
 	 */
 	public void add(T obj) {
 		dados.add(obj);
-		fireTableRowsInserted(dados.size() - 1, dados.size() - 1);
+		int lastRow = dados.size() - 1;
+		fireTableRowsInserted(lastRow, lastRow);
+	}
+
+	public void updateRow(int row, T obj) {
+		if (row >= 0 && row < dados.size()) {
+			dados.set(row, obj);
+			fireTableRowsUpdated(row, row);
+		}
 	}
 
 	/**
@@ -66,8 +84,10 @@ public abstract class BaseTableModel<T> extends AbstractTableModel {
 	 * @param row índice da linha
 	 */
 	public void remove(int row) {
-		dados.remove(row);
-		fireTableRowsDeleted(row, row);
+		if (row >= 0 && row < dados.size()) {
+			dados.remove(row);
+			fireTableRowsDeleted(row, row);
+		}
 	}
 
 	/**
@@ -84,13 +104,29 @@ public abstract class BaseTableModel<T> extends AbstractTableModel {
 	 * Por padrão, retorna {@code false}, retornando a tabela somente leitura.
 	 * </p>
 	 * 
-	 * @param rowIndex índice da linha
+	 * @param rowIndex    índice da linha
 	 * @param columnIndex índice da coluna
 	 * @return sempre {@code false}
 	 */
 	@Override
 	public boolean isCellEditable(int rowIndex, int columnIndex) {
 		return false;
+	}
+
+	@Override
+	public int getRowCount() {
+		return dados.size();
+	}
+
+	@Override
+	public Class<?> getColumnClass(int columnIndex) {
+		if(getRowCount()==0)return Object.class;
+		Object value = getValueAt(0, columnIndex);
+		return (value != null) ? value.getClass() : Object.class;
+	}
+	
+	public List<T> getTodos(){
+		return new ArrayList<>(dados);
 	}
 
 }

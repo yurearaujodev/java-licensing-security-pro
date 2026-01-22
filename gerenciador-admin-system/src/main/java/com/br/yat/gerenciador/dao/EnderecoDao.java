@@ -18,11 +18,12 @@ public class EnderecoDao extends GenericDao<Endereco> {
 				+ "(cep,logradouro,complemento,bairro,numero,cidade,estado,pais,criado_em,atualizado_em) "
 				+ "VALUES(?,?,?,?,?,?,?,?, NOW(),NOW())";
 
-		int id = executeUpdate(sql, end.getCepEndereco(), end.getLogradouroEndereco(), end.getComplementoEndereco(),
+		int id = executeInsert(sql, end.getCepEndereco(), end.getLogradouroEndereco(), end.getComplementoEndereco(),
 				end.getBairroEndereco(), end.getNumeroEndereco(), end.getCidadeEndereco(), end.getEstadoEndereco(),
 				end.getPaisEndereco());
 
-		return searchById(id);
+		end.setIdEndereco(id);
+		return end;
 	}
 
 	public Endereco update(Endereco end) {
@@ -32,7 +33,7 @@ public class EnderecoDao extends GenericDao<Endereco> {
 		executeUpdate(sql, end.getCepEndereco(), end.getLogradouroEndereco(), end.getComplementoEndereco(),
 				end.getBairroEndereco(), end.getNumeroEndereco(), end.getCidadeEndereco(), end.getEstadoEndereco(),
 				end.getPaisEndereco(), end.getIdEndereco());
-		return searchById(end.getIdEndereco());
+		return end;
 	}
 
 	public void delete(int id) {

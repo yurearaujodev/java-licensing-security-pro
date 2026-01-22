@@ -16,15 +16,16 @@ public class DocumentoDao extends GenericDao<Documento> {
 	public Documento save(Documento doc) {
 		var sql = "INSERT INTO documento_empresa(tipo,arquivo,criado_em,atualizado_em,id_empresa) "
 				+ "VALUES(?,?,NOW(),NOW(),?)";
-		int id = executeUpdate(sql, doc.getTipoDocumento(), doc.getArquivoDocumento(), doc.getEmpresa().getIdEmpresa());
-		return searchById(id);
+		int id = executeInsert(sql, doc.getTipoDocumento(), doc.getArquivoDocumento(), doc.getEmpresa().getIdEmpresa());
+		doc.setIdDocumento(id);
+		return doc;
 	}
 
 	public Documento update(Documento doc) {
 		var sql = "UPDATE" + tableName + " SET tipo=?,arquivo=?,atualizado_em=NOW() " + "WHERE " + pkName + " = ?";
 
 		executeUpdate(sql, doc.getTipoDocumento(), doc.getArquivoDocumento(), doc.getIdDocumento());
-		return searchById(doc.getIdDocumento());
+		return doc;
 	}
 
 	public void delete(int id) {
@@ -36,7 +37,8 @@ public class DocumentoDao extends GenericDao<Documento> {
 	}
 
 	public List<Documento> listarPorEmpresa(int idEmpresa) {
-		return listByForeignKey("id_empresa", idEmpresa);
+		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ?";
+		return executeQuery(sql, idEmpresa);
 	}
 
 	public void deleteByEmpresa(int idEmpresa) {

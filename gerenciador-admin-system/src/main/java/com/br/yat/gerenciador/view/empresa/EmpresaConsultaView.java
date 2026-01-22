@@ -22,42 +22,61 @@ public class EmpresaConsultaView extends JInternalFrame {
 	private JTable tabela;
 	private JButton btnEditar;
 	private EmpresaTableModel tablemodel;
-	
+
 	public EmpresaConsultaView() {
-		super("CONSULTA DE CLIENTES",true,true,true,true);
+		super("CONSULTA DE CLIENTES", true, true, true, true);
 		setLayout(new BorderLayout());
 		montarTela();
 		setSize(690, 530);
 	}
-	
+
 	private void montarTela() {
 		JPanel panel = PanelFactory.createPanel("insets 10", "[right][grow,fill]", "[]");
 		txtBusca = FieldFactory.createTextField(30);
-		btnEditar=ButtonFactory.createPrimaryButton("EDITAR SELECIONADO");
-		
+		btnEditar = ButtonFactory.createPrimaryButton("EDITAR SELECIONADO");
+
 		panel.add(LabelFactory.createLabel("BUSCAR (NOME/DOC): "));
 		panel.add(txtBusca);
 		panel.add(btnEditar);
-		
+
 		tablemodel = new EmpresaTableModel();
 		tabela = TableFactory.createAbstractTable(tablemodel);
-		
-		add(panel,BorderLayout.NORTH);
-		add(TableFactory.createTableScrolling(tabela),BorderLayout.CENTER);
+
+		add(panel, BorderLayout.NORTH);
+		add(TableFactory.createTableScrolling(tabela), BorderLayout.CENTER);
+		configurarColunas(tabela);
+	}
+
+	private void configurarColunas(JTable tabela) {
+			tabela.getColumnModel().getColumn(0).setPreferredWidth(100);
+			tabela.getColumnModel().getColumn(0).setMinWidth(100);
+			tabela.getColumnModel().getColumn(0).setMaxWidth(100);
+
+			tabela.getColumnModel().getColumn(1).setPreferredWidth(462);
+			tabela.getColumnModel().getColumn(1).setMinWidth(462);
+			tabela.getColumnModel().getColumn(1).setMaxWidth(462);
+
+			tabela.getColumnModel().getColumn(2).setPreferredWidth(180);
+			tabela.getColumnModel().getColumn(2).setMinWidth(180);
+			tabela.getColumnModel().getColumn(2).setMaxWidth(180);
+
+			tabela.getColumnModel().getColumn(3).setPreferredWidth(180);
+			tabela.getColumnModel().getColumn(3).setMinWidth(180);
+			tabela.getColumnModel().getColumn(3).setMaxWidth(180);
 	}
 
 	public JTextField getTxtBusca() {
 		return txtBusca;
 	}
-	
+
 	public JTable getTabela() {
 		return tabela;
 	}
-	
+
 	public JButton getBtnEditar() {
 		return btnEditar;
 	}
-	
+
 	public EmpresaTableModel getTableModel() {
 		return tablemodel;
 	}

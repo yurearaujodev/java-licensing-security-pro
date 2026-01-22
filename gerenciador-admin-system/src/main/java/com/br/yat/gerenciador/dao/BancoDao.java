@@ -18,9 +18,10 @@ public class BancoDao extends GenericDao<Banco> {
 				+ "(banco,codigo_banco,agencia,conta,tipo,criado_em,atualizado_em,id_empresa) "
 				+ "VALUES(?,?,?,?,?,NOW(),NOW(),?)";
 
-		int id = executeUpdate(sql, ban.getNomeBanco(), ban.getCodBanco(), ban.getAgenciaBanco(), ban.getContaBanco(),
+		int id = executeInsert(sql, ban.getNomeBanco(), ban.getCodBanco(), ban.getAgenciaBanco(), ban.getContaBanco(),
 				ban.getTipoBanco(), ban.getEmpresa().getIdEmpresa());
-		return searchById(id);
+		ban.setIdBanco(id);
+		return ban;
 
 	}
 
@@ -30,7 +31,7 @@ public class BancoDao extends GenericDao<Banco> {
 
 		executeUpdate(sql, ban.getNomeBanco(), ban.getCodBanco(), ban.getAgenciaBanco(), ban.getContaBanco(),
 				ban.getTipoBanco(), ban.getIdBanco());
-		return searchById(ban.getIdBanco());
+		return ban;
 
 	}
 
@@ -43,7 +44,8 @@ public class BancoDao extends GenericDao<Banco> {
 	}
 
 	public List<Banco> listarPorEmpresa(int idEmpresa) {
-		return listByForeignKey("id_empresa", idEmpresa);
+		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ?";
+		return executeQuery(sql, idEmpresa);
 	}
 
 	public void deleteByEmpresa(int idEmpresa) {

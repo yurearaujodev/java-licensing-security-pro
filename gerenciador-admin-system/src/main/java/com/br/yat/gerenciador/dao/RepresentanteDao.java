@@ -18,10 +18,11 @@ public class RepresentanteDao extends GenericDao<Representante> {
 				+ "(nome,cpf,rg,cargo,nacionalidade,estado_civil,telefone,email,criado_em,atualizado_em,id_empresa) "
 				+ "VALUES(?,?,?,?,?,?,?,?,NOW(),NOW(),?)";
 
-		int id = executeUpdate(sql, rep.getNomeRepresentante(), rep.getCpfRepresentante(), rep.getRgRepresentante(),
+		int id = executeInsert(sql, rep.getNomeRepresentante(), rep.getCpfRepresentante(), rep.getRgRepresentante(),
 				rep.getCargoRepresentante(), rep.getNacionalidadeRepresentante(), rep.getEstadoCivilRepresentante(),
 				rep.getTelefoneRepresentante(), rep.getEmailRepresentante(), rep.getEmpresa().getIdEmpresa());
-		return searchById(id);
+		rep.setIdRepresentante(id);
+		return rep;
 	}
 
 	public Representante update(Representante rep) {
@@ -31,7 +32,7 @@ public class RepresentanteDao extends GenericDao<Representante> {
 		executeUpdate(sql, rep.getNomeRepresentante(), rep.getCpfRepresentante(), rep.getRgRepresentante(),
 				rep.getCargoRepresentante(), rep.getNacionalidadeRepresentante(), rep.getEstadoCivilRepresentante(),
 				rep.getTelefoneRepresentante(), rep.getEmailRepresentante(), rep.getIdRepresentante());
-		return searchById(rep.getIdRepresentante());
+		return rep;
 	}
 
 	public void delete(int id) {
@@ -43,7 +44,8 @@ public class RepresentanteDao extends GenericDao<Representante> {
 	}
 
 	public List<Representante> listarPorEmpresa(int idEmpresa) {
-		return listByForeignKey("id_empresa", idEmpresa);
+		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ?";
+		return executeQuery(sql, idEmpresa);
 	}
 
 	public void deleteByEmpresa(int idEmpresa) {

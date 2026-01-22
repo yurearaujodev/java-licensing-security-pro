@@ -2,12 +2,15 @@ package com.br.yat.gerenciador.util.ui;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 import javax.swing.BorderFactory;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
@@ -92,7 +95,9 @@ public final class TableFactory {
 		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		table.setSelectionBackground(UITheme.COLOR_SELECTION_BG);
 		table.setSelectionForeground(UITheme.COLOR_SELECTION_FG);
-		table.setAutoCreateRowSorter(false);
+		
+		table.setAutoCreateRowSorter(true);
+		
 		table.setShowHorizontalLines(true);
 		table.setShowVerticalLines(false);
 		table.setGridColor(UITheme.COLOR_GRID);
@@ -113,7 +118,7 @@ public final class TableFactory {
 	}
 
 	private static void aplicarEfeitoZebra(JTable table) {
-		table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+		DefaultTableCellRenderer zebra =  new DefaultTableCellRenderer() {
 			@Override
 			public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
 					boolean hasFocus, int row, int column) {
@@ -124,17 +129,25 @@ public final class TableFactory {
 				if (!isSelected) {
 					setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 248, 248));
 				}
-				
-//				if (column==1) {
-//					setHorizontalAlignment(SwingConstants.CENTER);
-//				}else {
-//					setHorizontalAlignment(SwingConstants.LEFT);
-//				}
-//				
-				setHorizontalAlignment(SwingConstants.CENTER);
+			
+				setHorizontalAlignment((column==0)? SwingConstants.CENTER:SwingConstants.CENTER);
 				
 				return this;
 			}
+		};
+		table.setDefaultRenderer(String.class, zebra);
+		table.setDefaultRenderer(Object.class, zebra);
+		table.setDefaultRenderer(Integer.class, zebra);
+	}
+	
+	public static void addDoubleClickAction(JTable table, Runnable doubleClickAction) {
+		table.addMouseListener(new MouseAdapter() {
+		@Override
+		public void mouseClicked(MouseEvent e) {
+			if(e.getClickCount()==2 &&SwingUtilities.isLeftMouseButton(e)) {
+				doubleClickAction.run();;
+			}
+		}
 		});
 	}
 
