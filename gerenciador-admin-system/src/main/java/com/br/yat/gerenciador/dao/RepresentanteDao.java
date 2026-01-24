@@ -58,6 +58,7 @@ public class RepresentanteDao extends GenericDao<Representante> {
 		Representante r = new Representante();
 		r.setIdRepresentante(rs.getInt(pkName));
 		r.setNomeRepresentante(rs.getString("nome"));
+		r.setCpfRepresentante(rs.getString("cpf"));
 		r.setRgRepresentante(rs.getString("rg"));
 		r.setCargoRepresentante(rs.getString("cargo"));
 		r.setNacionalidadeRepresentante(rs.getString("nacionalidade"));

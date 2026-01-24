@@ -10,6 +10,8 @@ import com.br.yat.gerenciador.model.Representante;
 import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
+import com.br.yat.gerenciador.util.ui.FormatterUtils;
+import com.br.yat.gerenciador.util.ui.MaskFactory;
 import com.br.yat.gerenciador.view.empresa.DadoRepresentantePanel;
 
 public class DadoRepresentanteController {
@@ -37,6 +39,10 @@ public class DadoRepresentanteController {
 				ValidationUtils.createValidationListener(view.getFtxtTelefone(), this::validarTelefone));
 		view.getBtnAdicionar().addActionListener(e -> validarAdicionar());
 		view.getBtnRemover().addActionListener(e -> removerRepresentante());
+		view.getTabela().getSelectionModel().addListSelectionListener(e -> {
+			if (!e.getValueIsAdjusting()) {
+				preencherCamposLinhaSelecionada();
+			}});
 	}
 
 	private void validarNome() {
@@ -96,7 +102,7 @@ public class DadoRepresentanteController {
 		}
 		var model = (DefaultTableModel) view.getTabela().getModel();
 
-		Object[] linha = { view.getNome(), view.getCpf(), view.getRg(), view.getCargo(), view.getNacionalidade(),
+		Object[] linha = { view.getNome(),view.getCpf(), view.getRg(), view.getCargo(), view.getNacionalidade(),
 				view.getEstadoCivil(), view.getTelefone(), view.getEmail() };
 		model.addRow(linha);
 	}
@@ -120,6 +126,15 @@ public class DadoRepresentanteController {
 		return true;
 	}
 
+	private void preencherCamposLinhaSelecionada() {
+		int selectedRow = view.getTabela().getSelectedRow();
+		if (selectedRow < 0)
+			return;
+		view.setNome(view.getTabela().getValueAt(selectedRow, 0).toString());
+		view.setCpf(view.getTabela().getValueAt(selectedRow, 1).toString());
+
+	}
+	
 	public List<Representante> getDados() {
 		List<Representante> representantes = new ArrayList<>();
 		var model = (DefaultTableModel) view.getTabela().getModel();
@@ -144,9 +159,15 @@ public class DadoRepresentanteController {
 		model.setRowCount(0);
 
 		if (representantes != null) {
-			representantes.forEach(r -> model.addRow(new Object[] { r.getNomeRepresentante(), r.getCpfRepresentante(),
-					r.getRgRepresentante(), r.getCargoRepresentante(), r.getNacionalidadeRepresentante(),
-					r.getEstadoCivilRepresentante(), r.getTelefoneRepresentante(), r.getEmailRepresentante() }));
+			representantes.forEach(r -> model.addRow(new Object[] { 
+					r.getNomeRepresentante(), 
+					FormatterUtils.formatValueWithMask(r.getCpfRepresentante(),MaskFactory.createMask().get("CPF")),
+					r.getRgRepresentante(), 
+					r.getCargoRepresentante(),
+					r.getNacionalidadeRepresentante(),
+					r.getEstadoCivilRepresentante(), 
+					FormatterUtils.formatValueWithMask(r.getTelefoneRepresentante(),MaskFactory.createMask().get("CELULAR")),
+					r.getEmailRepresentante() }));
 		}
 	}
 }

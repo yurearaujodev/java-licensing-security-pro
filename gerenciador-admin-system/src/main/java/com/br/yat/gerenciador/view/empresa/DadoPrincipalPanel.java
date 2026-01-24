@@ -221,4 +221,29 @@ public class DadoPrincipalPanel extends JPanel {
 	public JTextField getTxtFantasia() {
 		return txtFantasia;
 	}
+	
+	public void limpar() {
+		txtCodigo.setText("");
+		cbTipoDocumento.setSelectedIndex(0);
+		cbCadastro.setSelectedIndex(1);
+		ftxtDocumento.setValue(null);
+		ftxtFundacao.setValue(null);
+		txtRazao.setText("");
+		txtFantasia.setText("");
+		txtInscricaoEstadual.setText("");
+		txtInscricaoMunicipal.setText("");
+		cbSituacao.setSelectedIndex(0);
+		ftxtCapital.setValue(null);
+	}
+	
+	public void desativarAtivar(boolean ativa) {
+		cbTipoDocumento.setEnabled(ativa);
+		ftxtFundacao.setEnabled(ativa);
+		txtRazao.setEnabled(ativa);
+		txtFantasia.setEnabled(ativa);
+		txtInscricaoEstadual.setEnabled(ativa);
+		txtInscricaoMunicipal.setEnabled(ativa);
+		cbSituacao.setEnabled(ativa);
+		ftxtCapital.setEnabled(ativa);
+	}
 }

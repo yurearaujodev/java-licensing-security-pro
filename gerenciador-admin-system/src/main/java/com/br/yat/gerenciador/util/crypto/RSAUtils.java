@@ -17,7 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.br.yat.gerenciador.model.enums.CryptoErrorType;
-import com.br.yat.gerenciador.util.CryptoException;
+import com.br.yat.gerenciador.util.exception.CryptoException;
 /**
  * Classe utilitária para operações de criptografia assimétrica utilizando <b>RSA</b>.
  * <p>

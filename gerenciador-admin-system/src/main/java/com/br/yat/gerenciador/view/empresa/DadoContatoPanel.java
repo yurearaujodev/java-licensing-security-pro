@@ -100,4 +100,15 @@ public class DadoContatoPanel extends JPanel {
 	public JButton getRemover() {
 		return remover;
 	}
+	
+	public void limpar() {
+		cbTipoContato.setSelectedIndex(0);
+		ftxtContato.setText("");
+	}
+	
+	public void desativarAtivar(boolean ativa) {
+		cbTipoContato.setEnabled(ativa);
+		adicionar.setEnabled(ativa);
+		remover.setEnabled(ativa);
+	}
 }

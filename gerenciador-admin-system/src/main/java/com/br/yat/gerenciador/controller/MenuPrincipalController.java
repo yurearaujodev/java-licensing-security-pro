@@ -103,7 +103,7 @@ public class MenuPrincipalController {
 		
 		EmpresaView frame = ViewFactory.createEmpresaView("FORNECEDORA");
 		frame.setTitle("SISTEMA DE GERENCIAMENTO DE LICENÇA - CADASTRO DE FORNECEDORA");
-		exibirNoDesktop(desk, frame); 
+		exibirNoDesktop(desk, frame);
 	}
 	
 

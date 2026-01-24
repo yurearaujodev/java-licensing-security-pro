@@ -42,7 +42,7 @@ public class EmpresaView extends JInternalFrame {
 	private JButton btnNovo;
 
 	public EmpresaView() {
-		super("Cadastro de Empresa Fornecedor/Cliente", true, true, true, true);
+		super("", true, true, true, true);
 		setLayout(new MigLayout("gapx 15, gapy 15", "[grow,fill]", "[grow][]"));
 
 		JTabbedPane tabbedPane = criarTabbedPane();

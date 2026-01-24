@@ -10,6 +10,8 @@ import javax.swing.text.DefaultFormatterFactory;
 import javax.swing.text.MaskFormatter;
 import javax.swing.text.NumberFormatter;
 
+import com.br.yat.gerenciador.util.ValidationUtils;
+
 /**
  * Classe utilitária para aplicação de máscaras em campos formatados Swing.
  * <p>
@@ -41,7 +43,7 @@ public final class FormatterUtils {
 	 *                          considerados no valor
 	 */
 	private static void applyMask(JFormattedTextField field, String mask, boolean literalCharacters) {
-		if (mask == null || mask.isBlank()) {
+		if (ValidationUtils.isEmpty(mask)) {
 			field.setValue(null);
 			field.setText("");
 			return;
@@ -124,7 +126,7 @@ public final class FormatterUtils {
 	 * @param pattern padrão de formatação (ex.: "#,##0.00)
 	 */
 	public static void applyCapitalMask(JFormattedTextField field, String pattern) {
-		if (pattern == null || pattern.isBlank()) {
+		if (ValidationUtils.isEmpty(pattern)) {
 			return;
 		}
 
@@ -139,6 +141,17 @@ public final class FormatterUtils {
 
 		field.setFormatterFactory(new DefaultFormatterFactory(nf));
 		field.setFocusLostBehavior(JFormattedTextField.COMMIT_OR_REVERT);
+	}
+	
+	public static String formatValueWithMask(String value, String mask) {
+		if(ValidationUtils.isEmpty(value))return "";
+		try {
+			MaskFormatter mf = new MaskFormatter(mask);
+			mf.setValueContainsLiteralCharacters(false);
+			return mf.valueToString(value);
+		} catch (ParseException e) {
+			return value;
+		}
 	}
 
 }

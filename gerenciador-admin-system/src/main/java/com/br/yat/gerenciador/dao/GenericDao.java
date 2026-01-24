@@ -30,10 +30,10 @@ public abstract class GenericDao<T> {
 
 	protected int executeInsert(String sql, Object... params) {
 		try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-			
+
 			bindParameters(stmt, params);
 			stmt.executeUpdate();
-			
+
 			try (ResultSet rs = stmt.getGeneratedKeys()) {
 				return rs.next() ? rs.getInt(1) : 0;
 			}
@@ -41,12 +41,13 @@ public abstract class GenericDao<T> {
 			throw new RuntimeException("ERRO EM [" + tableName + "]: " + e.getMessage());
 		}
 	}
+
 	protected int executeUpdate(String sql, Object... params) {
 		try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
 			bindParameters(stmt, params);
 			return stmt.executeUpdate();
-			
+
 		} catch (SQLException e) {
 			throw new RuntimeException("ERRO EM [" + tableName + "]: " + e.getMessage());
 		}
@@ -55,9 +56,9 @@ public abstract class GenericDao<T> {
 	protected List<T> executeQuery(String sql, Object... params) {
 		List<T> lista = new ArrayList<>();
 		try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-			
+
 			bindParameters(stmt, params);
-			
+
 			try (ResultSet rs = stmt.executeQuery()) {
 				while (rs.next()) {
 					lista.add(mapResultSetToEntity(rs));
@@ -95,19 +96,3 @@ public abstract class GenericDao<T> {
 		}
 	}
 }
-//
-//	protected void setSafeParameter(PreparedStatement stmt, int index, Object value, int sqlType) throws SQLException {
-//		switch (value) {
-//		case null -> stmt.setNull(index, sqlType == Types.NULL ? Types.VARCHAR : sqlType);
-//		case String s when s.isBlank() -> stmt.setNull(index, Types.VARCHAR);
-//		case String s -> stmt.setString(index, s);
-//		case Integer i -> stmt.setInt(index, i);
-//		case BigDecimal db -> stmt.setBigDecimal(index, db);
-//		case LocalDate ld -> stmt.setDate(index, Date.valueOf(ld));
-//		case Enum<?> e -> stmt.setString(index, e.name());
-//		case Boolean b -> stmt.setBoolean(index, b);
-//
-//		default -> stmt.setObject(index, value, sqlType);
-//		}
-//	}
-

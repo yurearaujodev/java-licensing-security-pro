@@ -19,8 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.br.yat.gerenciador.model.enums.CryptoErrorType;
-import com.br.yat.gerenciador.util.CryptoException;
 import com.br.yat.gerenciador.util.SensitiveData;
+import com.br.yat.gerenciador.util.exception.CryptoException;
 /**
  * Classe utilitária para gerenciamento seguro de chaves criptográficas associadas a documentos (CPF/CNPJ).
  * <p>

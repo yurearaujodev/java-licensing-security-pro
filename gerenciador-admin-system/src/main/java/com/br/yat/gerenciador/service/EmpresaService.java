@@ -22,9 +22,9 @@ import com.br.yat.gerenciador.model.EmpresaDTO;
 import com.br.yat.gerenciador.model.Endereco;
 import com.br.yat.gerenciador.model.Representante;
 import com.br.yat.gerenciador.model.enums.CryptoErrorType;
-import com.br.yat.gerenciador.util.CryptoException;
 import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.util.database.ConnectionFactory;
+import com.br.yat.gerenciador.util.exception.CryptoException;
 import com.br.yat.gerenciador.util.validation.DocumentValidator;
 import com.br.yat.gerenciador.util.validation.FormatValidator;
 

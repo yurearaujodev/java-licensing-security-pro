@@ -1,6 +1,8 @@
-package com.br.yat.gerenciador.util;
+package com.br.yat.gerenciador.util.tables;
 
 import com.br.yat.gerenciador.model.Empresa;
+import com.br.yat.gerenciador.util.ui.FormatterUtils;
+import com.br.yat.gerenciador.util.ui.MaskFactory;
 
 public class EmpresaTableModel extends BaseTableModel<Empresa> {
 
@@ -20,10 +22,16 @@ public class EmpresaTableModel extends BaseTableModel<Empresa> {
 	@Override
 	public Object getValueAt(int rowIndex, int columnIndex) {
 		Empresa e = dados.get(rowIndex);
+		String valorFormatado = e.getDocumentoEmpresa();
+		if (e.getTipoDocEmpresa().equals("CNPJ")||e.getTipoDocEmpresa().equals("CPF")) {
+			valorFormatado = FormatterUtils.formatValueWithMask(e.getDocumentoEmpresa(),
+					MaskFactory.createMask().get(e.getTipoDocEmpresa()));
+		}
+		
 		return switch (columnIndex) {
 		case 0 -> e.getIdEmpresa();
 		case 1 -> e.getRazaoSocialEmpresa();
-		case 2 -> e.getDocumentoEmpresa();
+		case 2 -> valorFormatado;
 		case 3 -> (e.getEndereco() != null)
 				? e.getEndereco().getCidadeEndereco() + " / " + e.getEndereco().getEstadoEndereco()
 				: "SEM ENDEREÇO";

@@ -12,10 +12,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.br.yat.gerenciador.model.enums.CryptoErrorType;
-import com.br.yat.gerenciador.util.CryptoException;
 import com.br.yat.gerenciador.util.SensitiveData;
 import com.br.yat.gerenciador.util.crypto.AESUtils;
 import com.br.yat.gerenciador.util.crypto.KeyManager;
+import com.br.yat.gerenciador.util.exception.CryptoException;
 
 /**
  * Classe utilitária responsável por descriptografar a senha do banco de dados

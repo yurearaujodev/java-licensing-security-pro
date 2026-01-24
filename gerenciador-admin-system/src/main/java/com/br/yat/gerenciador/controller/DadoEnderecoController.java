@@ -126,6 +126,15 @@ public class DadoEnderecoController {
 			ValidationUtils.exibirErro(view.getTxtPais(), e.getMessage());
 		}
 	}
+	
+	public void limpar() {
+		this.enderecoAtual=new Endereco();
+		view.limpar();
+	}
+	
+	public void desativarAtivar(boolean ativa) {
+		view.desativarAtivar(ativa);
+	}
 
 	public boolean isValido() {
 		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(view.getFtxtCep(), view.getTxtLogradouro(),

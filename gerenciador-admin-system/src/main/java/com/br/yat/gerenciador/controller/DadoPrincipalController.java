@@ -221,6 +221,15 @@ public class DadoPrincipalController {
 		
 		return true;
 	}
+	
+	public void limpar() {
+		this.empresaAtual=new Empresa();
+		view.limpar();
+	}
+	
+	public void desativarAtivar(boolean ativa) {
+		view.desativarAtivar(ativa);
+	}
 
 	public Empresa getDados() {
 		Empresa empresa = (this.empresaAtual!=null)?this.empresaAtual:new Empresa();
@@ -229,7 +238,7 @@ public class DadoPrincipalController {
 		empresa.setFantasiaEmpresa(view.getNomeFantasia());
 		empresa.setTipoEmpresa(view.getTipoCadastro());
 		empresa.setTipoDocEmpresa(view.getTipoDocumento());
-		empresa.setDocumentoEmpresa(view.getDocumento());
+		empresa.setDocumentoEmpresa(ValidationUtils.onlyNumbers(view.getDocumento()));
 		empresa.setInscEst(view.getInscricaoEstadual());
 		empresa.setInscMun(view.getInscricaoMunicipal());
 		empresa.setSituacaoEmpresa(view.getSituacao());

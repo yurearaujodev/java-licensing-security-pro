@@ -1,4 +1,4 @@
-package com.br.yat.gerenciador.util;
+package com.br.yat.gerenciador.util.exception;
 
 import com.br.yat.gerenciador.model.enums.CryptoErrorType;
 /**

@@ -5,8 +5,8 @@ import java.util.Base64;
 
 import javax.crypto.SecretKey;
 
-import com.br.yat.gerenciador.util.CryptoException;
 import com.br.yat.gerenciador.util.crypto.AESUtils;
+import com.br.yat.gerenciador.util.exception.CryptoException;
 
 public class AESUtilsTest {
 

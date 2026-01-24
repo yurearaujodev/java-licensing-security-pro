@@ -7,8 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.br.yat.gerenciador.model.enums.CryptoErrorType;
-import com.br.yat.gerenciador.util.CryptoException;
 import com.br.yat.gerenciador.util.SensitiveData;
+import com.br.yat.gerenciador.util.exception.CryptoException;
 import com.zaxxer.hikari.HikariConfig;
 /**
  * Classe utilitária para construção de configurações do pool de conexões HikariCP.

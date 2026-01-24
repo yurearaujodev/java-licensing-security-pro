@@ -1,4 +1,4 @@
-package com.br.yat.gerenciador.util;
+package com.br.yat.gerenciador.util.tables;
 
 import java.util.ArrayList;
 import java.util.List;

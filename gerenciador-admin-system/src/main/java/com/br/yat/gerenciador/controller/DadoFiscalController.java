@@ -79,6 +79,14 @@ public class DadoFiscalController {
 			ValidationUtils.exibirErro(view.getCbRegimeTributario(), e.getMessage());
 		}
 	}
+	
+	public void limpar() {
+		view.limpar();
+	}
+	
+	public void desativarAtivar(boolean ativa) {
+		view.desativarAtivar(ativa);
+	}
 
 	public boolean isValido() {
 		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(

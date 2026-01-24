@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Dialog;
 import java.awt.Frame;
 import java.awt.Window;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -22,11 +23,12 @@ import com.br.yat.gerenciador.model.Endereco;
 import com.br.yat.gerenciador.model.Representante;
 import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.util.DialogFactory;
+import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.util.ui.DesktopFactory;
 import com.br.yat.gerenciador.util.ui.LabelFactory;
 import com.br.yat.gerenciador.view.EmpresaView;
 
-public class EmpresaController  extends BaseController{
+public class EmpresaController extends BaseController {
 	private final EmpresaView view;
 	private final EmpresaService service;
 	private final DadoPrincipalController ePrincipal;
@@ -65,14 +67,22 @@ public class EmpresaController  extends BaseController{
 		configuracaoInicial();
 		registrarAcoes();
 		atualizarAbas(tipoCadastro);
+		inicializarPortipo();
+	}
 
+	private void inicializarPortipo() {
 		if ("FORNECEDORA".equals(tipoCadastro)) {
 			carregarDados();
+			desativarAtiva(true);
+		} else {
+			limparFormulario();
+			desativarAtiva(false);
+			
 		}
 	}
-	
+
 	public void setRefreshCallback(RefreshCallback callback) {
-		this.refreshCallback=callback;
+		this.refreshCallback = callback;
 	}
 
 	private void carregarDados() {
@@ -96,7 +106,7 @@ public class EmpresaController  extends BaseController{
 			}
 		});
 	}
-	
+
 	public void carregarDadosCliente(int id) {
 		setLoading(true);
 		executor.submit(() -> {
@@ -104,13 +114,13 @@ public class EmpresaController  extends BaseController{
 				EmpresaDTO dados = service.carregarClienteCompleto(id);
 
 				SwingUtilities.invokeLater(() -> {
-					if (dados != null&&dados.empresa()!=null) {
+					if (dados != null && dados.empresa() != null) {
 						preencherFormulario(dados);
+						desativarAtiva(true);
 						setLoading(false);
-					}else {
+					} else {
 						setLoading(false);
 						DialogFactory.erro(view, "ERRO: EMPRESA NÃO ENCONTRADA.");
-						view.dispose();
 					}
 				});
 
@@ -123,16 +133,16 @@ public class EmpresaController  extends BaseController{
 			}
 		});
 	}
-	
+
 	private void preencherFormulario(EmpresaDTO dados) {
 		Empresa emp = dados.empresa();
-		
+
 		ePrincipal.setDados(emp);
-		
-		if (emp.getEndereco()!=null) {
+
+		if (emp.getEndereco() != null) {
 			eEndereco.setDados(emp.getEndereco());
 		}
-		
+
 		eContato.setDados(dados.contatos());
 		if ("FORNECEDORA".equals(emp.getTipoEmpresa())) {
 			eFiscal.setDadosComplementar(emp);
@@ -142,14 +152,70 @@ public class EmpresaController  extends BaseController{
 		}
 	}
 
+	public void prepararNovo() {
+		limparFormulario();
+		desativarAtiva(true);
+		view.getBtnNovo().setEnabled(false);
+	}
+
 	private void configuracaoInicial() {
 		view.getDadoPrincipal().setTipoCadastro(tipoCadastro);
 		view.getDadoPrincipal().getCbTipoCadatro().setEnabled(false);
+		if ("FORNECEDORA".equals(tipoCadastro)) {
+			view.getBtnNovo().setEnabled(false);
+			view.getBtnNovo().setToolTipText("CADASTRO ÚNICO DE FORNECEDORA NÃO PERMITE NOVOS REGISTROS.");
+		}
 	}
 
 	private void registrarAcoes() {
 		view.getBtnSalvar().addActionListener(e -> aoClicarSalvar());
+		view.getBtnNovo().addActionListener(e -> aoClicarNovo());
+		view.getBtnCancelar().addActionListener(e -> aoClicarCancelar());
+	}
+
+	private void aoClicarCancelar() {
+		view.doDefaultCloseAction();
+	}
+
+	private void aoClicarNovo() {
+		limparFormulario();
+		desativarAtiva(true);
+		view.getBtnNovo().setEnabled(false);
+	}
+
+	private void desativarAtiva(boolean ativa) {
+		ePrincipal.desativarAtivar(ativa);
+		eEndereco.desativarAtivar(ativa);
+		eContato.desativarAtivar(ativa);
+
+		view.getBtnSalvar().setEnabled(ativa);
+		view.getBtnCancelar().setEnabled(true);
 		
+
+		if ("FORNECEDORA".equals(tipoCadastro)) {
+
+			view.getBtnNovo().setEnabled(false);
+		}
+
+		if ("CLIENTE".equals(tipoCadastro)) {
+			boolean isAlterar = ePrincipal.getDados().getIdEmpresa() > 0;
+			view.getBtnNovo().setEnabled(isAlterar ? false : !ativa);
+		}
+	}
+
+	private void limparFormulario() {
+		ePrincipal.limpar();
+		eEndereco.limpar();
+		eContato.limpar();
+
+		if ("FORNECEDORA".equals(tipoCadastro)) {
+			eFiscal.setDadosComplementar(new Empresa());
+			eRepresentante.setDados(Collections.emptyList());
+			eBancario.setDados(Collections.emptyList());
+			eComplementar.setDados(new Complementar(), Collections.emptyList());
+		}
+		view.getBtnSalvar().setText("SALVAR");
+		view.getTabbedPane().setSelectedIndex(0);
 	}
 
 	private void atualizarAbas(String tipo) {
@@ -189,9 +255,9 @@ public class EmpresaController  extends BaseController{
 			complementar = null;
 			documentos = null;
 		}
-		
-		final boolean isAlterar = empresa.getIdEmpresa()>0;
-		final String mensagem=isAlterar?"ALTERADO COM SUCESSO.":"SALVO COM SUCESSO.";
+
+		final boolean isAlterar = empresa.getIdEmpresa() > 0;
+		final String mensagem = isAlterar ? "ALTERADO COM SUCESSO." : "SALVO COM SUCESSO.";
 		setLoading(true);
 		executor.submit(() -> {
 			try {
@@ -201,7 +267,12 @@ public class EmpresaController  extends BaseController{
 				SwingUtilities.invokeLater(() -> {
 					setLoading(false);
 					DialogFactory.informacao(view, mensagem);
-					if (refreshCallback!=null) {
+					if ("CLIENTE".equals(tipoCadastro)) {
+						limparFormulario();
+						desativarAtiva(false);
+					}
+
+					if (refreshCallback != null) {
 						refreshCallback.onSaveSuccess();
 					}
 				});
@@ -256,6 +327,22 @@ public class EmpresaController  extends BaseController{
 		return true;
 	}
 
+	public boolean podeFechar() {
+		if (!view.getBtnSalvar().isEnabled()) {
+			return true;
+		}
+		if (isFormularioVazio()) {
+			return true;
+		}
+
+		return DialogFactory.confirmacao(view, "EXISTEM ALTERAÇÕES NÃO SALVAS. DESEJA REALMENTE SAIR?");
+	}
+
+	private boolean isFormularioVazio() {
+		var razao = ePrincipal.getDados().getRazaoSocialEmpresa();
+		return (ePrincipal.getDados().getIdEmpresa() <= 0) && (ValidationUtils.isEmpty(razao));
+	}
+
 	private void setLoading(boolean carregando) {
 		SwingUtilities.invokeLater(() -> {
 			view.getBtnSalvar().setEnabled(!carregando);
@@ -266,7 +353,7 @@ public class EmpresaController  extends BaseController{
 			if (carregando) {
 				if (dialogLoading == null)
 					criarDialogLoading();
-				view.getBtnSalvar().setText("A GUARDAR...");
+				view.getBtnSalvar().setText("PROCESSANDO...");
 
 				Thread.ofVirtual().start(() -> {
 					if (dialogLoading != null)
@@ -275,8 +362,12 @@ public class EmpresaController  extends BaseController{
 			} else {
 				if (dialogLoading != null) {
 					dialogLoading.setVisible(false);
-					String textoBotao = (ePrincipal.getDados().getIdEmpresa()>0)?"ALTERAR":"SALVAR";
+					boolean isAlterar = ePrincipal.getDados().getIdEmpresa() > 0;
+					String textoBotao = (isAlterar ? "ALTERAR" : "SALVAR");
 					view.getBtnSalvar().setText(textoBotao);
+					if (isAlterar) {
+						view.getBtnNovo().setEnabled(false);
+					}
 				}
 			}
 

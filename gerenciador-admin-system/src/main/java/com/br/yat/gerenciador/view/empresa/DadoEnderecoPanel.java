@@ -164,4 +164,27 @@ public class DadoEnderecoPanel extends JPanel {
 	public JTextField getTxtPais() {
 		return txtPais;
 	}
+	
+	public void limpar() {
+		ftxtCep.setValue(null);
+		txtLogradouro.setText("");
+		txtComplemento.setText("");
+		txtBairro.setText("");
+		txtNumero.setText("");
+		txtCidade.setText("");
+		txtEstado.setText("");
+		txtPais.setText("");
+	}
+	
+	public void desativarAtivar(boolean ativa) {
+		ftxtCep.setEnabled(ativa);
+		txtLogradouro.setEnabled(ativa);
+		txtComplemento.setEnabled(ativa);
+		txtBairro.setEnabled(ativa);
+		txtNumero.setEnabled(ativa);
+		txtCidade.setEnabled(ativa);
+		txtEstado.setEnabled(ativa);
+		txtPais.setEnabled(ativa);
+	}
+	
 }

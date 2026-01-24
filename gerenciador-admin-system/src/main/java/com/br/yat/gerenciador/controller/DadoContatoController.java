@@ -122,8 +122,7 @@ public class DadoContatoController {
 		var model = (DefaultTableModel) view.getTabela().getModel();
 		model.addRow(new Object[] { tipo, valor });
 
-		view.setContato("");
-		view.getFtxtContato().setValue(null);
+		view.limpar();
 		ValidationUtils.removerDestaque(view.getFtxtContato());
 
 	}
@@ -159,6 +158,16 @@ public class DadoContatoController {
 
 		view.setTipoContato(tipo);
 		view.setContato(valor);
+	}
+
+	public void limpar() {
+		var model = (DefaultTableModel) view.getTabela().getModel();
+		model.setRowCount(0);
+		view.limpar();
+	}
+
+	public void desativarAtivar(boolean ativa) {
+		view.desativarAtivar(ativa);
 	}
 
 	public boolean isValido() {
@@ -212,7 +221,16 @@ public class DadoContatoController {
 		model.setRowCount(0);
 
 		if (contatos != null) {
-			contatos.forEach(c -> model.addRow(new Object[] { c.getTipoContato(), c.getValorContato() }));
+			contatos.forEach(c -> {
+				String valorFormatado = c.getValorContato();
+				if (c.getTipoContato().equals("FIXO") || c.getTipoContato().equals("CELULAR")
+						|| c.getTipoContato().equals("WHATSAPP")) {
+					valorFormatado = FormatterUtils.formatValueWithMask(c.getValorContato(),
+							mascaras.get(c.getTipoContato()));
+				}
+
+				model.addRow(new Object[] { c.getTipoContato(), valorFormatado });
+			});
 		}
 	}
 
