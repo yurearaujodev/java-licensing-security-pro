@@ -1,5 +1,7 @@
 package com.br.yat.gerenciador.util.tables;
 
+import java.util.Map;
+
 import com.br.yat.gerenciador.model.Empresa;
 import com.br.yat.gerenciador.util.ui.FormatterUtils;
 import com.br.yat.gerenciador.util.ui.MaskFactory;
@@ -8,6 +10,7 @@ public class EmpresaTableModel extends BaseTableModel<Empresa> {
 
 	private static final long serialVersionUID = 1L;
 	private final String[] colunas = { "ID", "RAZÃO SOCIAL", "CNPJ/CPF", "CIDADE/UF" };
+	private static final Map<String, String> DOC_MASKS = MaskFactory.createMask();
 
 	@Override
 	public int getColumnCount() {
@@ -22,12 +25,9 @@ public class EmpresaTableModel extends BaseTableModel<Empresa> {
 	@Override
 	public Object getValueAt(int rowIndex, int columnIndex) {
 		Empresa e = dados.get(rowIndex);
-		String valorFormatado = e.getDocumentoEmpresa();
-		if (e.getTipoDocEmpresa().equals("CNPJ")||e.getTipoDocEmpresa().equals("CPF")) {
-			valorFormatado = FormatterUtils.formatValueWithMask(e.getDocumentoEmpresa(),
-					MaskFactory.createMask().get(e.getTipoDocEmpresa()));
-		}
-		
+		String valorFormatado = DOC_MASKS.containsKey(e.getTipoDocEmpresa())
+				? FormatterUtils.formatValueWithMask(e.getDocumentoEmpresa(), DOC_MASKS.get(e.getTipoDocEmpresa()))
+				: e.getDocumentoEmpresa();
 		return switch (columnIndex) {
 		case 0 -> e.getIdEmpresa();
 		case 1 -> e.getRazaoSocialEmpresa();

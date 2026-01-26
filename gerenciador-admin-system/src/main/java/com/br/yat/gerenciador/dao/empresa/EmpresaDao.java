@@ -1,4 +1,4 @@
-package com.br.yat.gerenciador.dao;
+package com.br.yat.gerenciador.dao.empresa;
 
 import java.sql.Connection;
 import java.sql.Date;
@@ -6,15 +6,23 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
+import com.br.yat.gerenciador.dao.GenericDao;
 import com.br.yat.gerenciador.model.Empresa;
 import com.br.yat.gerenciador.model.Endereco;
+import com.br.yat.gerenciador.model.enums.Cnae;
+import com.br.yat.gerenciador.model.enums.NaturezaJuridica;
+import com.br.yat.gerenciador.model.enums.PorteEmpresa;
+import com.br.yat.gerenciador.model.enums.RegimeTributario;
+import com.br.yat.gerenciador.model.enums.SituacaoEmpresa;
+import com.br.yat.gerenciador.model.enums.TipoCadastro;
+import com.br.yat.gerenciador.model.enums.TipoDocumento;
 
 public class EmpresaDao extends GenericDao<Empresa> {
 
 	private final String SELECT_COMPLETO = "SELECT emp.*,end.* FROM " + tableName + " emp "
 			+ "INNER JOIN endereco end ON emp.id_endereco = end.id_endereco ";
 
-	public EmpresaDao(Connection conn) throws SQLException {
+	public EmpresaDao(Connection conn) {
 		super(conn, "empresa", "id_empresa");
 	}
 
@@ -82,23 +90,23 @@ public class EmpresaDao extends GenericDao<Empresa> {
 	protected Empresa mapResultSetToEntity(ResultSet rs) throws SQLException {
 		Empresa emp = new Empresa();
 		emp.setIdEmpresa(rs.getInt(pkName));
-		emp.setTipoEmpresa(rs.getString("tipo"));
+		emp.setTipoEmpresa(valueOf(TipoCadastro.class, rs.getString("tipo")));
 		emp.setFantasiaEmpresa(rs.getString("nome_fantasia"));
 		emp.setRazaoSocialEmpresa(rs.getString("razao_social"));
-		emp.setTipoDocEmpresa(rs.getString("tipo_documento"));
+		emp.setTipoDocEmpresa(valueOf(TipoDocumento.class, rs.getString("tipo_documento")));
 		emp.setDocumentoEmpresa(rs.getString("documento"));
 		emp.setInscEst(rs.getString("insc_estadual"));
 		emp.setContribuinteIcmsEmpresa(rs.getString("contribuinte_icms"));
 		emp.setInscMun(rs.getString("insc_municipal"));
 		Date dt = rs.getDate("data_fundacao");
 		emp.setFundacaoEmpresa(dt != null ? dt.toLocalDate() : null);
-		emp.setCnaeEmpresa(rs.getString("cnae"));
-		emp.setPorteEmpresa(rs.getString("porte_empresa"));
-		emp.setNaturezaJuriEmpresa(rs.getString("natureza_juridica"));
+		emp.setCnaeEmpresa(valueOf(Cnae.class, rs.getString("cnae")));
+		emp.setPorteEmpresa(valueOf(PorteEmpresa.class, rs.getString("porte_empresa")));
+		emp.setNaturezaJuriEmpresa(valueOf(NaturezaJuridica.class, rs.getString("natureza_juridica")));
 		emp.setCrtEmpresa(rs.getInt("crt"));
-		emp.setRegimeTribEmpresa(rs.getString("regime_tributario"));
+		emp.setRegimeTribEmpresa(valueOf(RegimeTributario.class, rs.getString("regime_tributario")));
 		emp.setCapitalEmpresa(rs.getBigDecimal("capital_social"));
-		emp.setSituacaoEmpresa(rs.getString("situacao_cadastral"));
+		emp.setSituacaoEmpresa(valueOf(SituacaoEmpresa.class, rs.getString("situacao_cadastral")));
 
 		Endereco end = new Endereco();
 		end.setIdEndereco(rs.getInt("id_endereco"));

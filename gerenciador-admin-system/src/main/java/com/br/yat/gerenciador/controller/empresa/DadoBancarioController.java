@@ -1,4 +1,4 @@
-package com.br.yat.gerenciador.controller;
+package com.br.yat.gerenciador.controller.empresa;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +10,7 @@ import com.br.yat.gerenciador.model.Banco;
 import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
+import com.br.yat.gerenciador.util.exception.ValidationException;
 import com.br.yat.gerenciador.view.empresa.DadoBancarioPanel;
 
 public class DadoBancarioController {
@@ -46,8 +47,10 @@ public class DadoBancarioController {
 			mock.setCodBanco(Integer.parseInt(codigo));
 			service.validarBanco(mock);
 			ValidationUtils.removerDestaque(view.getFtxtCodBanco());
-		} catch (IllegalArgumentException e) {
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getFtxtCodBanco(), e.getMessage());
+		}catch(Exception e) {
+			ValidationUtils.exibirErro(view.getFtxtCodBanco(), "ERRO NA VALIDAÇÃO");
 		}
 
 	}
@@ -58,8 +61,10 @@ public class DadoBancarioController {
 			mock.setNomeBanco(view.getBanco());
 			service.validarBanco(mock);
 			ValidationUtils.removerDestaque(view.getTxtBanco());
-		} catch (IllegalArgumentException e) {
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getTxtBanco(), e.getMessage());
+		}catch(Exception e) {
+			ValidationUtils.exibirErro(view.getTxtBanco(), "ERRO NA VALIDAÇÃO");
 		}
 	}
 

@@ -1,19 +1,21 @@
-package com.br.yat.gerenciador.dao;
+package com.br.yat.gerenciador.dao.empresa;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
+import com.br.yat.gerenciador.dao.GenericDao;
 import com.br.yat.gerenciador.model.Contato;
+import com.br.yat.gerenciador.model.enums.TipoContato;
 
 public class ContatoDao extends GenericDao<Contato> {
 
-	public ContatoDao(Connection conn) throws SQLException {
+	public ContatoDao(Connection conn){
 		super(conn, "contato_empresa", "id_contato");
 	}
 
-	public Contato save(Contato cont) throws SQLException {
+	public Contato save(Contato cont){
 		var sql = "INSERT INTO " + tableName + "(tipo_contato,valor,criado_em,atualizado_em,id_empresa) "
 				+ "VALUES(?,?,NOW(),NOW(),?)";
 
@@ -51,7 +53,7 @@ public class ContatoDao extends GenericDao<Contato> {
 	protected Contato mapResultSetToEntity(ResultSet rs) throws SQLException {
 		Contato c = new Contato();
 		c.setIdContato(rs.getInt(pkName));
-		c.setTipoContato(rs.getString("tipo_contato"));
+		c.setTipoContato(valueOf(TipoContato.class,rs.getString("tipo_contato")));
 		c.setValorContato(rs.getString("valor"));
 
 		return c;

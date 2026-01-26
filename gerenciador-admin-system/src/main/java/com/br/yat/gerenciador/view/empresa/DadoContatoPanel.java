@@ -6,6 +6,7 @@ import javax.swing.JFormattedTextField;
 import javax.swing.JPanel;
 import javax.swing.JTable;
 
+import com.br.yat.gerenciador.model.enums.TipoContato;
 import com.br.yat.gerenciador.util.ui.ButtonFactory;
 import com.br.yat.gerenciador.util.ui.ComboBoxFactory;
 import com.br.yat.gerenciador.util.ui.FieldFactory;
@@ -19,7 +20,7 @@ public class DadoContatoPanel extends JPanel {
 
 	private static final long serialVersionUID = 1L;
 	private JFormattedTextField ftxtContato;
-	private JComboBox<String> cbTipoContato;
+	private JComboBox<TipoContato> cbTipoContato;
 	private JTable tabela;
 	private JButton adicionar;
 	private JButton remover;
@@ -38,7 +39,7 @@ public class DadoContatoPanel extends JPanel {
 
 	private void montarCampos(JPanel panel) {
 		panel.add(LabelFactory.createLabel("TIPO CONTATO: "), "cell 0 0, alignx trailing");
-		cbTipoContato = ComboBoxFactory.createComboBox("SELECIONE", "FIXO", "CELULAR", "WHATSAPP", "E-MAIL", "REDE SOCIAL","SITE");
+		cbTipoContato = ComboBoxFactory.createEnumComboBox(TipoContato.class);
 		panel.add(cbTipoContato, "cell 1 0 2 1,growx,h 25!");
 
 		ftxtContato = FieldFactory.createFormattedField();
@@ -65,11 +66,11 @@ public class DadoContatoPanel extends JPanel {
 		tabela.getColumnModel().getColumn(1).setMaxWidth(462);
 	}
 	
-	public String getTipoContato() {
-		return String.valueOf(cbTipoContato.getSelectedItem());
+	public TipoContato getTipoContato() {
+		return (TipoContato)cbTipoContato.getSelectedItem();
 	}
 	
-	public void setTipoContato(String tipo) {
+	public void setTipoContato(TipoContato tipo) {
 		cbTipoContato.setSelectedItem(tipo);
 	}
 	
@@ -81,7 +82,7 @@ public class DadoContatoPanel extends JPanel {
 		ftxtContato.setText(contato);
 	}	
 
-	public JComboBox<String> getCbTipoContato() {
+	public JComboBox<TipoContato> getCbTipoContato() {
 		return cbTipoContato;
 	}
 

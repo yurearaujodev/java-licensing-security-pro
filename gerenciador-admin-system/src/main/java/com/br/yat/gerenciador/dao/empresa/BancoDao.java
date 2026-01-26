@@ -1,15 +1,16 @@
-package com.br.yat.gerenciador.dao;
+package com.br.yat.gerenciador.dao.empresa;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
+import com.br.yat.gerenciador.dao.GenericDao;
 import com.br.yat.gerenciador.model.Banco;
 
 public class BancoDao extends GenericDao<Banco> {
 
-	public BancoDao(Connection conn) throws SQLException {
+	public BancoDao(Connection conn){
 		super(conn, "dados_bancarios", "id_banco");
 	}
 

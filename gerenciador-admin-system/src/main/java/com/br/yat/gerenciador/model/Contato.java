@@ -2,9 +2,11 @@ package com.br.yat.gerenciador.model;
 
 import java.time.LocalDateTime;
 
+import com.br.yat.gerenciador.model.enums.TipoContato;
+
 public class Contato {
 	private int idContato;
-	private String tipoContato;
+	private TipoContato tipoContato;
 	private String valorContato;
 	private LocalDateTime criadoEmContato;
 	private LocalDateTime atualizadoEmContato;
@@ -21,11 +23,11 @@ public class Contato {
 		this.idContato = idContato;
 	}
 
-	public String getTipoContato() {
+	public TipoContato getTipoContato() {
 		return tipoContato;
 	}
 
-	public void setTipoContato(String tipoContato) {
+	public void setTipoContato(TipoContato tipoContato) {
 		this.tipoContato = tipoContato;
 	}
 

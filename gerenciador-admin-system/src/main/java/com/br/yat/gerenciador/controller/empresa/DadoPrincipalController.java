@@ -1,45 +1,30 @@
-package com.br.yat.gerenciador.controller;
+package com.br.yat.gerenciador.controller.empresa;
 
-import java.math.BigDecimal;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.time.format.ResolverStyle;
-import java.util.Locale;
 import java.util.Map;
 
 import javax.swing.JComponent;
 
 import com.br.yat.gerenciador.model.Empresa;
-import com.br.yat.gerenciador.service.EmpresaService;
+import com.br.yat.gerenciador.model.enums.TipoDocumento;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
+import com.br.yat.gerenciador.util.exception.ValidationException;
 import com.br.yat.gerenciador.util.ui.FormatterUtils;
 import com.br.yat.gerenciador.util.ui.MaskFactory;
+import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoPrincipalPanel;
 
 public class DadoPrincipalController {
 
 	private final DadoPrincipalPanel view;
-	private final EmpresaService service;
+
 	private final Map<String, String> mascaras = MaskFactory.createMask();
-	private static final DateTimeFormatter DATE_FORMATTER = new DateTimeFormatterBuilder().appendPattern("dd/MM/uuuu")
-			.toFormatter().withResolverStyle(ResolverStyle.STRICT);
-	private static final Locale LOCALE_BR = Locale.forLanguageTag("pt-BR");
-	private static final DecimalFormat DECIMAL_FORMATTER;
+
 	private Empresa empresaAtual;
 
-	static {
-		var symbols = DecimalFormatSymbols.getInstance(LOCALE_BR);
-		DECIMAL_FORMATTER = new DecimalFormat("#,##0.00", symbols);
-		DECIMAL_FORMATTER.setParseBigDecimal(true);
-	}
-
-	public DadoPrincipalController(DadoPrincipalPanel view,EmpresaService service) {
+	public DadoPrincipalController(DadoPrincipalPanel view) {
 		this.view = view;
-		this.service=service;
 		configurarFiltro();
 		registrarAcoes();
 		aplicarMascaraDocumento();
@@ -51,7 +36,10 @@ public class DadoPrincipalController {
 	}
 
 	private void registrarAcoes() {
-		view.getCbTipoDocumento().addActionListener(e -> aplicarMascaraDocumento());
+		view.getCbTipoDocumento().addActionListener(e -> {
+			aplicarMascaraDocumento();
+			validarDocumento();
+		});
 		view.getFtxtDocumento().addFocusListener(
 				ValidationUtils.createValidationListener(view.getFtxtDocumento(), this::validarDocumento));
 		view.getTxtRazaoSocial().addFocusListener(
@@ -67,10 +55,11 @@ public class DadoPrincipalController {
 	}
 
 	private void aplicarMascaraDocumento() {
-		var tipo = view.getTipoDocumento();
+		TipoDocumento tipo = view.getTipoDocumento();
 		var campo = view.getFtxtDocumento();
 
-		boolean isSelecionado = tipo != null && !"SELECIONE".equals(tipo);
+		boolean isSelecionado = tipo != null && tipo != TipoDocumento.SELECIONE;
+
 		campo.setEnabled(isSelecionado);
 		if (!isSelecionado) {
 			FormatterUtils.clearMask(campo);
@@ -79,132 +68,142 @@ public class DadoPrincipalController {
 			return;
 		}
 
-		var mascara = mascaras.get(tipo);
+		var mascara = mascaras.get(tipo.name());
 		if (mascara != null) {
 			FormatterUtils.applyDocumentMask(campo, mascara);
 		}
 	}
 
 	private void validarDocumento() {
+		var campo = view.getFtxtDocumento();
+
+		var combo = view.getCbTipoDocumento();
+		TipoDocumento tipo = view.getTipoDocumento();
+
+		if (tipo == null || tipo == TipoDocumento.SELECIONE) {
+			ValidationUtils.removerDestaque(campo);
+			return;
+		}
+		ValidationUtils.removerDestaque(combo);
+
+		var docBruto = view.getDocumento();
+		var doc = ValidationUtils.onlyNumbers(docBruto);
+
+		if (ValidationUtils.isEmpty(doc)) {
+			ValidationUtils.removerDestaque(campo);
+			return;
+		}
+
+		if (docBruto.contains("_")) {
+			campo.setValue(null);
+			campo.setText("");
+			ValidationUtils.exibirErro(campo, "DOCUMENTO INCOMPLETO.");
+			return;
+		}
+
 		try {
-			Empresa mock = new Empresa();
-			mock.setTipoDocEmpresa(view.getTipoDocumento());
-			mock.setDocumentoEmpresa(view.getDocumento());
-			
-			service.validarEmpresa(mock);
+			EmpresaValidationUtils.validarDocumento(tipo, doc);
+
 			ValidationUtils.removerDestaque(view.getFtxtDocumento());
-		} catch (IllegalArgumentException e) {
+
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getFtxtDocumento(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getFtxtDocumento(), "ERRO NA VALIDAÇÃO");
 		}
 	}
 
 	private void validarRazaoSocial() {
 		String texto = view.getRazaoSocial();
-		if(ValidationUtils.isEmpty(texto))return;
+		if (ValidationUtils.isEmpty(texto)) {
+			ValidationUtils.exibirErro(view.getTxtRazaoSocial(), "CAMPO OBRIGATÓRIO.");
+			return;
+		}
 		try {
-			Empresa mock = new Empresa();
-			mock.setRazaoSocialEmpresa(texto);
-
-			service.validarEmpresa(mock);
+			EmpresaValidationUtils.validarRazaoSocial(texto);
 			ValidationUtils.removerDestaque(view.getTxtRazaoSocial());
-		} catch (IllegalArgumentException e) {
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getTxtRazaoSocial(), e.getMessage());
-		}
-	}
-
-	private void validarInscricaoMunicipal() {
-		try {
-			Empresa mock = new Empresa();
-			mock.setInscMun(view.getInscricaoMunicipal());
-
-			service.validarEmpresa(mock);
-			ValidationUtils.removerDestaque(view.getTxtInscricaoMunicipal());
-		} catch (IllegalArgumentException e) {
-			ValidationUtils.exibirErro(view.getTxtInscricaoMunicipal(), e.getMessage());
-		}
-	}
-
-	private void validarInscricaoEstadual() {
-		try {
-			Empresa mock = new Empresa();
-			mock.setInscEst(view.getInscricaoEstadual());
-
-			service.validarEmpresa(mock);
-			ValidationUtils.removerDestaque(view.getTxtInscricaoEstadual());
-		} catch (IllegalArgumentException e) {
-			ValidationUtils.exibirErro(view.getTxtInscricaoEstadual(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getTxtRazaoSocial(), "ERRO NA VALIDAÇÃO");
 		}
 	}
 
 	private void validarCapitalSocial() {
 		try {
-			Empresa mock = new Empresa();
-			mock.setCapitalEmpresa(parseBigDecimal(view.getCapitalSocial()));
+			var valor = ValidationUtils.parseBigDecimal(view.getCapitalSocial());
 
-			service.validarEmpresa(mock);
+			EmpresaValidationUtils.validarCapital(valor);
 			ValidationUtils.removerDestaque(view.getFtxtCapital());
-		} catch (IllegalArgumentException e) {
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getFtxtCapital(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getFtxtCapital(), "ERRO NA VALIDAÇÃO");
 		}
 	}
 
 	private void validarFundacao() {
-		try {
-			Empresa mock = new Empresa();
-			mock.setFundacaoEmpresa(parseDate(view.getDataFundacao()));
+		var texto = view.getDataFundacao();
 
-			service.validarEmpresa(mock);
+		if (ValidationUtils.onlyNumbers(texto).isBlank()) {
 			ValidationUtils.removerDestaque(view.getFtxtFundacao());
-		} catch (IllegalArgumentException e) {
+			return;
+		}
+
+		LocalDate dataParsed = ValidationUtils.parseDate(texto);
+
+		if (dataParsed == null) {
+			ValidationUtils.exibirErro(view.getFtxtFundacao(), "DATA INEXISTENTE NO CALENDÁRIO.");
+			return;
+		}
+
+		try {
+			EmpresaValidationUtils.validarFundacao(dataParsed);
+
+			ValidationUtils.removerDestaque(view.getFtxtFundacao());
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getFtxtFundacao(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getFtxtFundacao(), "ERRO NA VALIDAÇÃO");
 		}
 	}
 
-	private int parseInt(String valor) {
-		if (valor == null || valor.isBlank())
-			return 0;
+	private void validarInscricaoMunicipal() {
 		try {
-			return Integer.parseInt(valor.trim());
+			EmpresaValidationUtils.validarInscricaoMunicipal(view.getInscricaoMunicipal());
+
+			ValidationUtils.removerDestaque(view.getTxtInscricaoMunicipal());
+		} catch (ValidationException e) {
+			ValidationUtils.exibirErro(view.getTxtInscricaoMunicipal(), e.getMessage());
 		} catch (Exception e) {
-			return 0;
+			ValidationUtils.exibirErro(view.getTxtInscricaoMunicipal(), "ERRO NA VALIDAÇÃO");
 		}
 	}
 
-	private LocalDate parseDate(String valor) {
-		if (valor == null || valor.isBlank())
-			return null;
+	private void validarInscricaoEstadual() {
 		try {
-			return LocalDate.parse(valor, DATE_FORMATTER);
-		} catch (Exception e) {
-			return null;
-		}
-	}
+			EmpresaValidationUtils.validarInscricaoEstadual(view.getInscricaoEstadual());
 
-	private BigDecimal parseBigDecimal(String valor) {
-		if (valor == null || valor.isBlank())
-			return null;
-		try {
-			return (BigDecimal) DECIMAL_FORMATTER.parse(valor.trim());
+			ValidationUtils.removerDestaque(view.getTxtInscricaoEstadual());
+		} catch (ValidationException e) {
+			ValidationUtils.exibirErro(view.getTxtInscricaoEstadual(), e.getMessage());
 		} catch (Exception e) {
-			return null;
+			ValidationUtils.exibirErro(view.getTxtInscricaoEstadual(), "ERRO NA VALIDAÇÃO");
 		}
 	}
 
 	public boolean isValido() {
-		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(
-				view.getTxtRazaoSocial(),
-				view.getFtxtDocumento(),
-				view.getFtxtCapital(),
-				view.getFtxtFundacao()
-				);
-		
+		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(view.getCbTipoDocumento(),
+				view.getTxtRazaoSocial(), view.getFtxtFundacao(), view.getTxtInscricaoEstadual(),
+				view.getTxtInscricaoMunicipal());
+
 		if (obrigatoriosVazios) {
 			DialogFactory.aviso(view, "POR FAVOR, PREENCHA OS CAMPOS OBRIGATÓRIOS DESTACADOS EM VERMELHO.");
 			return false;
 		}
-		
-		validarRazaoSocial();
+
 		validarDocumento();
+		validarRazaoSocial();
 		validarInscricaoEstadual();
 		validarInscricaoMunicipal();
 		validarFundacao();
@@ -214,26 +213,26 @@ public class DadoPrincipalController {
 				view.getTxtInscricaoEstadual(), view.getTxtInscricaoMunicipal(), view.getFtxtCapital(),
 				view.getTxtRazaoSocial());
 
-		if (erro!=null) {
+		if (erro != null) {
 			DialogFactory.aviso(view, "EXISTEM CAMPOS COM DADOS INVÁLIDOS.");
 			return false;
 		}
-		
+
 		return true;
 	}
-	
+
 	public void limpar() {
-		this.empresaAtual=new Empresa();
+		this.empresaAtual = new Empresa();
 		view.limpar();
 	}
-	
+
 	public void desativarAtivar(boolean ativa) {
 		view.desativarAtivar(ativa);
 	}
 
 	public Empresa getDados() {
-		Empresa empresa = (this.empresaAtual!=null)?this.empresaAtual:new Empresa();
-		empresa.setIdEmpresa(parseInt(view.getCodigo()));
+		Empresa empresa = (this.empresaAtual != null) ? this.empresaAtual : new Empresa();
+		empresa.setIdEmpresa(ValidationUtils.parseInt(view.getCodigo()));
 		empresa.setRazaoSocialEmpresa(view.getRazaoSocial());
 		empresa.setFantasiaEmpresa(view.getNomeFantasia());
 		empresa.setTipoEmpresa(view.getTipoCadastro());
@@ -242,8 +241,8 @@ public class DadoPrincipalController {
 		empresa.setInscEst(view.getInscricaoEstadual());
 		empresa.setInscMun(view.getInscricaoMunicipal());
 		empresa.setSituacaoEmpresa(view.getSituacao());
-		empresa.setCapitalEmpresa(parseBigDecimal(view.getCapitalSocial()));
-		empresa.setFundacaoEmpresa(parseDate(view.getDataFundacao()));
+		empresa.setCapitalEmpresa(ValidationUtils.parseBigDecimal(view.getCapitalSocial()));
+		empresa.setFundacaoEmpresa(ValidationUtils.parseDate(view.getDataFundacao()));
 
 		return empresa;
 	}
@@ -251,7 +250,7 @@ public class DadoPrincipalController {
 	public void setDados(Empresa empresa) {
 		if (empresa == null)
 			return;
-		this.empresaAtual=empresa;
+		this.empresaAtual = empresa;
 		view.setCodigo(String.valueOf(empresa.getIdEmpresa()));
 		view.setRazaoSocial(empresa.getRazaoSocialEmpresa());
 		view.setNomeFantasia(empresa.getFantasiaEmpresa());
@@ -261,12 +260,7 @@ public class DadoPrincipalController {
 		view.setInscricaoEstadual(empresa.getInscEst());
 		view.setInscricaoMunicipal(empresa.getInscMun());
 		view.setSituacao(empresa.getSituacaoEmpresa());
-		String capitalStr = (empresa.getCapitalEmpresa() != null)
-				? DECIMAL_FORMATTER.format(empresa.getCapitalEmpresa())
-				: "";
-		view.setCapitalSocial(capitalStr);
-
-		view.setDataFundacao(
-				empresa.getFundacaoEmpresa() != null ? empresa.getFundacaoEmpresa().format(DATE_FORMATTER) : "");
+		view.setCapitalSocial(ValidationUtils.formatBigDecimal(empresa.getCapitalEmpresa()));
+		view.setDataFundacao(ValidationUtils.formatDate(empresa.getFundacaoEmpresa()));
 	}
 }

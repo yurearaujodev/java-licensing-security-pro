@@ -1,15 +1,16 @@
-package com.br.yat.gerenciador.dao;
+package com.br.yat.gerenciador.dao.empresa;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
+import com.br.yat.gerenciador.dao.GenericDao;
 import com.br.yat.gerenciador.model.Representante;
 
 public class RepresentanteDao extends GenericDao<Representante> {
 
-	public RepresentanteDao(Connection conn) throws SQLException {
+	public RepresentanteDao(Connection conn){
 		super(conn, "representante_legal", "id_representante");
 	}
 

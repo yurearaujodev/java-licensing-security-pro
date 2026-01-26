@@ -4,10 +4,19 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.math.BigDecimal;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.ResolverStyle;
+import java.util.Locale;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JFormattedTextField;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
 import javax.swing.event.DocumentEvent;
@@ -22,6 +31,16 @@ public final class ValidationUtils {
 
 	private static final Border BORDA_PADRAO = UIManager.getBorder("TextField.border");
 	private static final Border BORDA_ERRO = BorderFactory.createLineBorder(Color.RED, 2);
+	private static final DateTimeFormatter DATE_FORMATTER = new DateTimeFormatterBuilder().appendPattern("dd/MM/uuuu")
+			.toFormatter().withResolverStyle(ResolverStyle.STRICT);
+	private static final Locale LOCALE_BR = Locale.forLanguageTag("pt-BR");
+	private static final DecimalFormat DECIMAL_FORMATTER;
+
+	static {
+		var symbols = DecimalFormatSymbols.getInstance(LOCALE_BR);
+		DECIMAL_FORMATTER = new DecimalFormat("#,##0.00", symbols);
+		DECIMAL_FORMATTER.setParseBigDecimal(true);
+	}
 
 	private ValidationUtils() {
 		throw new AssertionError("Classe Utilitária não deve ser instanciada");
@@ -58,8 +77,15 @@ public final class ValidationUtils {
 		boolean erro = false;
 		for (JComponent campo : campos) {
 			String valor = switch (campo) {
-			case JTextComponent txt -> txt.getText();
-			case JComboBox<?> combo -> (combo.getSelectedItem() == null ? "" : combo.getSelectedItem().toString());
+			case JFormattedTextField ftxt -> ftxt.getText();
+			case JTextComponent txt -> txt.getText().trim();
+			case JComboBox<?> combo -> {
+				Object selected = combo.getSelectedItem();
+				if (selected == null || "SELECIONE".equals(selected.toString().toUpperCase())) {
+					yield "";
+				}
+				yield selected.toString().trim();
+			}
 			case null, default -> "";
 			};
 
@@ -67,7 +93,9 @@ public final class ValidationUtils {
 				exibirErro(campo, "CAMPO OBRIGATÓRIO.");
 				erro = true;
 			} else {
-				removerDestaque(campo);
+				if (!isHighLighted(campo)) {
+					removerDestaque(campo);
+				}
 			}
 
 		}
@@ -87,6 +115,23 @@ public final class ValidationUtils {
 		if (campo == null)
 			return;
 		campo.setBorder(BORDA_PADRAO);
+		if (campo instanceof JTextComponent txt) {
+			txt.setToolTipText("");
+		}
+	}
+
+	public static void removerDestaque(JComponent... campos) {
+		if (campos == null)
+			return;
+		for (JComponent campo : campos) {
+			if (campo == null)
+				continue;
+			campo.setBorder(BORDA_PADRAO);
+
+			if (campo instanceof JTextComponent txt) {
+				txt.setToolTipText("");
+			}
+		}
 	}
 
 	public static boolean isHighLighted(JComponent campo) {
@@ -202,6 +247,44 @@ public final class ValidationUtils {
 				((AbstractDocument) campo.getDocument()).setDocumentFilter(filtro);
 			}
 		}
+	}
+
+	public static int parseInt(String valor) {
+		if (isEmpty(valor))
+			return 0;
+		try {
+			return Integer.parseInt(valor.replaceAll("\\D", ""));
+		} catch (NumberFormatException e) {
+			return 0;
+		}
+	}
+
+	public static LocalDate parseDate(String valor) {
+		if (isEmpty(valor) || valor.contains("_"))
+			return null;
+		try {
+			return LocalDate.parse(valor, DATE_FORMATTER);
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	public static BigDecimal parseBigDecimal(String valor) {
+		if (isEmpty(valor))
+			return null;
+		try {
+			return (BigDecimal) DECIMAL_FORMATTER.parse(valor.trim());
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	public static String formatBigDecimal(BigDecimal valor) {
+		return (valor != null) ? DECIMAL_FORMATTER.format(valor) : "";
+	}
+
+	public static String formatDate(LocalDate data) {
+		return (data != null) ? data.format(DATE_FORMATTER) : "";
 	}
 
 }

@@ -1,30 +1,32 @@
-package com.br.yat.gerenciador.controller;
+package com.br.yat.gerenciador.controller.empresa;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
+import javax.swing.JComponent;
 import javax.swing.table.DefaultTableModel;
 
 import com.br.yat.gerenciador.model.Contato;
-import com.br.yat.gerenciador.service.EmpresaService;
+import com.br.yat.gerenciador.model.enums.TipoContato;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
+import com.br.yat.gerenciador.util.exception.ValidationException;
 import com.br.yat.gerenciador.util.ui.FormatterUtils;
 import com.br.yat.gerenciador.util.ui.MaskFactory;
+import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoContatoPanel;
 
 public class DadoContatoController {
 
 	private final DadoContatoPanel view;
-	private final EmpresaService service;
-	private final Map<String, Runnable> estrategiasConfiguracao = new HashMap<>();
+	private final Map<TipoContato, Runnable> estrategiasConfiguracao = new HashMap<>();
 	private final Map<String, String> mascaras = MaskFactory.createMask();
 
-	public DadoContatoController(DadoContatoPanel view, EmpresaService service) {
+	public DadoContatoController(DadoContatoPanel view) {
 		this.view = view;
-		this.service = service;
 		registrarEstrategias();
 		registrarAcoes();
 	}
@@ -43,22 +45,22 @@ public class DadoContatoController {
 	}
 
 	private void registrarEstrategias() {
-		estrategiasConfiguracao.put("FIXO", () -> aplicarMascara("FIXO"));
-		estrategiasConfiguracao.put("CELULAR", () -> aplicarMascara("CELULAR"));
-		estrategiasConfiguracao.put("WHATSAPP", () -> aplicarMascara("WHATSAPP"));
-		estrategiasConfiguracao.put("E-MAIL", this::limparMascara);
-		estrategiasConfiguracao.put("SITE", this::limparMascara);
-		estrategiasConfiguracao.put("REDE SOCIAL", this::limparMascara);
+		estrategiasConfiguracao.put(TipoContato.FIXO, () -> aplicarMascara(TipoContato.FIXO));
+		estrategiasConfiguracao.put(TipoContato.CELULAR, () -> aplicarMascara(TipoContato.CELULAR));
+		estrategiasConfiguracao.put(TipoContato.WHATSAPP, () -> aplicarMascara(TipoContato.WHATSAPP));
+		estrategiasConfiguracao.put(TipoContato.EMAIL, this::limparMascara);
+		estrategiasConfiguracao.put(TipoContato.SITE, this::limparMascara);
+		estrategiasConfiguracao.put(TipoContato.REDESOCIAL, this::limparMascara);
 
 	}
 
 	private void alternarConfiguracao() {
-		var tipo = view.getTipoContato();
+		TipoContato tipo = view.getTipoContato();
 		var campo = view.getFtxtContato();
 
 		ValidationUtils.removerDestaque(campo);
 
-		if ("SELECIONE".equalsIgnoreCase(tipo) || tipo == null) {
+		if (tipo == null || tipo == TipoContato.SELECIONE) {
 			campo.setEnabled(false);
 			limparMascara();
 			return;
@@ -70,8 +72,8 @@ public class DadoContatoController {
 		campo.requestFocusInWindow();
 	}
 
-	private void aplicarMascara(String tipo) {
-		FormatterUtils.applyPhoneMask(view.getFtxtContato(), mascaras.get(tipo));
+	private void aplicarMascara(TipoContato tipo) {
+		FormatterUtils.applyPhoneMask(view.getFtxtContato(), mascaras.get(tipo.name()));
 	}
 
 	private void limparMascara() {
@@ -82,35 +84,40 @@ public class DadoContatoController {
 	private void validarTelefone() {
 		var tipo = view.getTipoContato();
 		var valor = view.getContato();
-		if ("SELECIONE".equals(tipo) || ValidationUtils.isEmpty(valor)) {
+		if (tipo == TipoContato.SELECIONE || ValidationUtils.isEmpty(valor)) {
 			return;
 		}
 		try {
-			Contato mock = new Contato();
-			mock.setTipoContato(tipo);
-			mock.setValorContato(valor);
-
-			service.validarContatoIndividual(mock);
+			EmpresaValidationUtils.validarContato(tipo, valor);
 
 			ValidationUtils.removerDestaque(view.getFtxtContato());
-		} catch (IllegalArgumentException e) {
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getFtxtContato(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getFtxtContato(), "ERRO NA VALIDAÇÃO");
 		}
 
 	}
 
 	private void adicionarContato() {
-		var tipo = view.getTipoContato();
+		TipoContato tipo = view.getTipoContato();
 		var valor = view.getContato();
 
-		if ("SELECIONE".equals(tipo)) {
+		if (tipo == TipoContato.SELECIONE) {
 			DialogFactory.aviso(view, "SELECIONE UM TIPO DE CONTATO.");
+			return;
+		}
+
+		if (ValidationUtils.temCamposVazios(view.getFtxtContato(), view.getCbTipoContato())) {
+			DialogFactory.aviso(view, "POR FAVOR, PREENCHA OS CAMPOS OBRIGATÓRIOS DESTACADOS EM VERMELHO.");
 			return;
 		}
 
 		validarTelefone();
 
-		if (ValidationUtils.isHighLighted(view.getFtxtContato())) {
+		JComponent erro = ValidationUtils.hasErroVisual(view.getFtxtContato(), view.getCbTipoContato());
+		if (erro != null) {
+			DialogFactory.aviso(view, "EXISTEM CAMPOS COM DADOS INVÁLIDOS.");
 			return;
 		}
 
@@ -127,11 +134,11 @@ public class DadoContatoController {
 
 	}
 
-	private boolean contatoJaExiste(String tipo, String valor) {
+	private boolean contatoJaExiste(TipoContato tipo, String valor) {
 		var model = (DefaultTableModel) view.getTabela().getModel();
 
 		for (int i = 0; i < model.getRowCount(); i++) {
-			if (model.getValueAt(i, 0).equals(tipo) && model.getValueAt(i, 1).equals(valor)) {
+			if (Objects.equals(model.getValueAt(i, 0), tipo) && Objects.equals(model.getValueAt(i, 1), valor)) {
 				return true;
 			}
 		}
@@ -153,7 +160,7 @@ public class DadoContatoController {
 		if (selectedRow < 0)
 			return;
 
-		String tipo = view.getTabela().getValueAt(selectedRow, 0).toString();
+		TipoContato tipo = (TipoContato) view.getTabela().getValueAt(selectedRow, 0);
 		String valor = view.getTabela().getValueAt(selectedRow, 1).toString();
 
 		view.setTipoContato(tipo);
@@ -171,10 +178,8 @@ public class DadoContatoController {
 	}
 
 	public boolean isValido() {
-		var model = (DefaultTableModel) view.getTabela().getModel();
-
-		if (model.getRowCount() == 0) {
-			ValidationUtils.exibirErro(view.getCbTipoContato(), "ADICIONE PELO MENOS UM CONTATO.");
+		if (view.getTabela().getRowCount() == 0) {
+			ValidationUtils.exibirErro(view.getTabela(), "ADICIONE PELO MENOS UM CONTATO.");
 			DialogFactory.aviso(view, "A LISTA DE CONTATOS NÃO PODE ESTAR VAZIA.");
 			return false;
 		}
@@ -185,7 +190,8 @@ public class DadoContatoController {
 
 			if (adicionarAgora) {
 				adicionarContato();
-				if (ValidationUtils.isHighLighted(view.getFtxtContato())) {
+				JComponent erro = ValidationUtils.hasErroVisual(view.getFtxtContato(), view.getCbTipoContato());
+				if (erro != null) {
 					return false;
 				}
 			}
@@ -201,10 +207,10 @@ public class DadoContatoController {
 
 		for (int i = 0; i < model.getRowCount(); i++) {
 			Contato contato = new Contato();
-			var tipo = model.getValueAt(i, 0).toString();
+			TipoContato tipo = (TipoContato) model.getValueAt(i, 0);
 			var valor = model.getValueAt(i, 1).toString();
 			contato.setTipoContato(tipo);
-			if (tipo.equals("FIXO") || tipo.equals("CELULAR") || tipo.equals("WHATSAPP")) {
+			if (tipo == TipoContato.FIXO || tipo == TipoContato.CELULAR || tipo == TipoContato.WHATSAPP) {
 				contato.setValorContato(ValidationUtils.onlyNumbers(valor));
 			} else {
 				contato.setValorContato(valor);
@@ -223,10 +229,10 @@ public class DadoContatoController {
 		if (contatos != null) {
 			contatos.forEach(c -> {
 				String valorFormatado = c.getValorContato();
-				if (c.getTipoContato().equals("FIXO") || c.getTipoContato().equals("CELULAR")
-						|| c.getTipoContato().equals("WHATSAPP")) {
+				if (c.getTipoContato() == TipoContato.FIXO || c.getTipoContato() == TipoContato.CELULAR
+						|| c.getTipoContato() == TipoContato.WHATSAPP) {
 					valorFormatado = FormatterUtils.formatValueWithMask(c.getValorContato(),
-							mascaras.get(c.getTipoContato()));
+							mascaras.get(c.getTipoContato().name()));
 				}
 
 				model.addRow(new Object[] { c.getTipoContato(), valorFormatado });

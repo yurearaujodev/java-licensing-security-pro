@@ -1,4 +1,4 @@
-package com.br.yat.gerenciador.controller;
+package com.br.yat.gerenciador.controller.empresa;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,6 +18,7 @@ import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.FileStorageFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
+import com.br.yat.gerenciador.util.exception.ValidationException;
 import com.br.yat.gerenciador.view.empresa.DadoComplementarPanel;
 
 public class DadoComplementarController {
@@ -51,8 +52,10 @@ public class DadoComplementarController {
 			mock.setRamoAtividadeComplementar(view.getRamo());
 			service.validarComplementarIndividual(mock);
 			ValidationUtils.removerDestaque(view.getTxtRamo());
-		} catch (IllegalArgumentException e) {
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getTxtRamo(), e.getMessage());
+		}catch (Exception e) {
+			ValidationUtils.exibirErro(view.getTxtRamo(), "ERRO NA VALIDAÇÃO");
 		}
 	}
 

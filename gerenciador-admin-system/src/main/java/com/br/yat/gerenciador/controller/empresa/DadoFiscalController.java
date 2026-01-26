@@ -1,4 +1,4 @@
-package com.br.yat.gerenciador.controller;
+package com.br.yat.gerenciador.controller.empresa;
 
 import javax.swing.JComponent;
 
@@ -7,19 +7,18 @@ import com.br.yat.gerenciador.model.enums.Cnae;
 import com.br.yat.gerenciador.model.enums.NaturezaJuridica;
 import com.br.yat.gerenciador.model.enums.PorteEmpresa;
 import com.br.yat.gerenciador.model.enums.RegimeTributario;
-import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
+import com.br.yat.gerenciador.util.exception.ValidationException;
+import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoFiscalPanel;
 
 public class DadoFiscalController {
 
 	private final DadoFiscalPanel view;
-	private final EmpresaService service;
 
-	public DadoFiscalController(DadoFiscalPanel view, EmpresaService service) {
+	public DadoFiscalController(DadoFiscalPanel view) {
 		this.view = view;
-		this.service = service;
 		registrarAcoes();
 		atualizarCodigoCrt();
 	}
@@ -46,60 +45,56 @@ public class DadoFiscalController {
 
 	private void validarCnae() {
 		try {
-			Empresa mock = new Empresa();
-			var cnae = view.getCnae();
-			mock.setCnaeEmpresa(cnae != null ? cnae.name() : "");
-			service.validarEmpresaComplementar(mock);
+			EmpresaValidationUtils.validarCnae(view.getCnae());
 			ValidationUtils.removerDestaque(view.getCbCnae());
-		} catch (IllegalArgumentException e) {
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getCbCnae(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getCbCnae(), "ERRO NA VALIDAÇÃO");
 		}
 	}
 
 	private void validarNaturezaJuridica() {
-		var selecionado = view.getNaturezaJuridica();
-		if (selecionado == null || selecionado == NaturezaJuridica.SELECIONE) {
-			ValidationUtils.exibirErro(view.getCbNaturezaJuridica(), "POR FAVOR, SELECIONE UMA OPÇÃO VÁLIDA.");
-			return;
+		try {
+			EmpresaValidationUtils.validarNaturezaJuridica(view.getNaturezaJuridica());
+			ValidationUtils.removerDestaque(view.getCbNaturezaJuridica());
+		} catch (ValidationException e) {
+			ValidationUtils.exibirErro(view.getCbNaturezaJuridica(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getCbNaturezaJuridica(), "ERRO NA VALIDAÇÃO");
 		}
-		ValidationUtils.removerDestaque(view.getCbNaturezaJuridica());
-
 	}
 
 	private void validarRegimeTributario() {
 		try {
-			Empresa mock = new Empresa();
-			var regime = view.getRegimeTributario();
-			mock.setRegimeTribEmpresa(regime != null ? regime.name() : "");
-			var crtStr = view.getCrt();
-			mock.setCrtEmpresa(ValidationUtils.isEmpty(crtStr)?0:Integer.parseInt(crtStr));
-			service.validarEmpresaComplementar(mock);
+			EmpresaValidationUtils.validarRegimeTributario(view.getRegimeTributario(),
+					ValidationUtils.parseInt(view.getCrt()));
+
 			ValidationUtils.removerDestaque(view.getCbRegimeTributario());
-		} catch (IllegalArgumentException e) {
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getCbRegimeTributario(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getCbRegimeTributario(), "ERRO NA VALIDAÇÃO");
 		}
 	}
-	
+
 	public void limpar() {
 		view.limpar();
 	}
-	
+
 	public void desativarAtivar(boolean ativa) {
 		view.desativarAtivar(ativa);
 	}
 
 	public boolean isValido() {
-		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(
-				view.getCbCnae(),
-				view.getCbRegimeTributario(),
-				view.getCbNaturezaJuridica()
-				);
-		
+		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(view.getCbCnae(), view.getCbRegimeTributario(),
+				view.getCbNaturezaJuridica());
+
 		if (obrigatoriosVazios) {
 			DialogFactory.aviso(view, "POR FAVOR, PREENCHA OS CAMPOS OBRIGATÓRIOS DESTACADOS EM VERMELHO.");
 			return false;
 		}
-		
+
 		validarCnae();
 		validarNaturezaJuridica();
 		validarRegimeTributario();
@@ -115,13 +110,12 @@ public class DadoFiscalController {
 	}
 
 	public Empresa getDadosComplementar(Empresa empresa) {
-		empresa.setCnaeEmpresa(view.getCnae().name()!=null? view.getCnae().name():Cnae.SELECIONE.name());
-		empresa.setNaturezaJuriEmpresa(view.getNaturezaJuridica().name());
-		empresa.setPorteEmpresa(view.getPorteEmpresa().name());
-		empresa.setRegimeTribEmpresa(view.getRegimeTributario().name());
+		empresa.setCnaeEmpresa(view.getCnae() != null ? view.getCnae() : Cnae.SELECIONE);
+		empresa.setNaturezaJuriEmpresa(view.getNaturezaJuridica());
+		empresa.setPorteEmpresa(view.getPorteEmpresa());
+		empresa.setRegimeTribEmpresa(view.getRegimeTributario());
 		empresa.setContribuinteIcmsEmpresa(view.getContribuinteIcms());
-		var crtValue = view.getCrt();
-		empresa.setCrtEmpresa(ValidationUtils.isEmpty(crtValue)?0: Integer.parseInt(crtValue));
+		empresa.setCrtEmpresa(ValidationUtils.parseInt(view.getCrt()));
 		return empresa;
 	}
 
@@ -131,16 +125,16 @@ public class DadoFiscalController {
 
 		try {
 			if (empresa.getCnaeEmpresa() != null) {
-				view.setCnae(Cnae.valueOf(empresa.getCnaeEmpresa()));
+				view.setCnae(empresa.getCnaeEmpresa());
 			}
 			if (empresa.getNaturezaJuriEmpresa() != null) {
-				view.setNaturezaJuridica(NaturezaJuridica.valueOf(empresa.getNaturezaJuriEmpresa()));
+				view.setNaturezaJuridica(empresa.getNaturezaJuriEmpresa());
 			}
 			if (empresa.getPorteEmpresa() != null) {
-				view.setPorteEmpresa(PorteEmpresa.valueOf(empresa.getPorteEmpresa()));
+				view.setPorteEmpresa(empresa.getPorteEmpresa());
 			}
 			if (empresa.getRegimeTribEmpresa() != null) {
-				view.setRegimeTributario(RegimeTributario.valueOf(empresa.getRegimeTribEmpresa()));
+				view.setRegimeTributario(empresa.getRegimeTribEmpresa());
 			}
 			view.setCrt(String.valueOf(empresa.getCrtEmpresa()));
 			view.setContribuinteIcms(empresa.getContribuinteIcmsEmpresa());

@@ -211,4 +211,26 @@ public class DadoRepresentantePanel extends JPanel {
 		return tabela;
 	}
 
+	public void limpar() {
+		txtNome.setText("");
+		txtCargo.setText("");
+		txtEmail.setText("");
+		txtRg.setText("");
+		ftxtCpf.setValue(null);
+		cbEstadoCivil.setSelectedIndex(0);
+		cbNacionalidade.setSelectedIndex(0);
+		ftxtTelefone.setValue(null);
+	}
+
+	public void desativarAtivar(boolean ativa) {
+		txtNome.setEnabled(ativa);
+		txtCargo.setEnabled(ativa);
+		txtEmail.setEnabled(ativa);
+		txtRg.setEnabled(ativa);
+		ftxtCpf.setEnabled(ativa);
+		cbEstadoCivil.setEnabled(ativa);
+		cbNacionalidade.setEnabled(ativa);
+		ftxtTelefone.setEnabled(ativa);
+	}
+
 }

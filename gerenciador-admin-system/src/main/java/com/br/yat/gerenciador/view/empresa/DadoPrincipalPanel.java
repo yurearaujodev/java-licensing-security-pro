@@ -7,6 +7,9 @@ import javax.swing.JFormattedTextField;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
+import com.br.yat.gerenciador.model.enums.SituacaoEmpresa;
+import com.br.yat.gerenciador.model.enums.TipoCadastro;
+import com.br.yat.gerenciador.model.enums.TipoDocumento;
 import com.br.yat.gerenciador.util.ui.ComboBoxFactory;
 import com.br.yat.gerenciador.util.ui.FieldFactory;
 import com.br.yat.gerenciador.util.ui.FormatterUtils;
@@ -30,9 +33,9 @@ public class DadoPrincipalPanel extends JPanel {
 	private JFormattedTextField ftxtDocumento;
 	private JFormattedTextField ftxtCapital;
 
-	private JComboBox<String> cbTipoDocumento;
-	private JComboBox<String> cbSituacao;
-	private JComboBox<String> cbCadastro;
+	private JComboBox<TipoDocumento> cbTipoDocumento;
+	private JComboBox<SituacaoEmpresa> cbSituacao;
+	private JComboBox<TipoCadastro> cbCadastro;
 
 	Map<String, String> mascaras = MaskFactory.createMask();
 
@@ -56,11 +59,11 @@ public class DadoPrincipalPanel extends JPanel {
 		panel.add(txtCodigo, "cell 1 0,growx, h 25!,wmax 120");
 
 		panel.add(LabelFactory.createLabel("TIPO DOC.:"), "cell 0 1,alignx trailing");
-		cbTipoDocumento = ComboBoxFactory.createComboBox("SELECIONE", "CNPJ", "CPF");
+		cbTipoDocumento = ComboBoxFactory.createEnumComboBox(TipoDocumento.class);
 		panel.add(cbTipoDocumento, "cell 1 1,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("TP. CADASTRO:"), "cell 2 1, alignx trailing");
-		cbCadastro = ComboBoxFactory.createComboBox("SELECIONE", "CLIENTE", "FORNECEDORA");
+		cbCadastro = ComboBoxFactory.createEnumComboBox(TipoCadastro.class);
 		panel.add(cbCadastro, "cell 3 1,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("DOCUMENTO:"), "cell 0 2,alignx trailing");
@@ -89,7 +92,7 @@ public class DadoPrincipalPanel extends JPanel {
 		panel.add(txtInscricaoMunicipal, "cell 3 5,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("SITUAÇÂO GERAL:"), "cell 0 6,alignx trailing");
-		cbSituacao = ComboBoxFactory.createComboBox("SELECIONE", "ATIVA", "INAPTA", "SUSPENSA", "BAIXADA", "NULA");
+		cbSituacao = ComboBoxFactory.createEnumComboBox(SituacaoEmpresa.class);
 		panel.add(cbSituacao, "cell 1 6,growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("CAPITAL SOCIAL:"), "cell 2 6,alignx trailing");
@@ -115,8 +118,8 @@ public class DadoPrincipalPanel extends JPanel {
 		return ftxtDocumento.getText();
 	}
 
-	public String getTipoDocumento() {
-		return String.valueOf(cbTipoDocumento.getSelectedItem());
+	public TipoDocumento getTipoDocumento() {
+		return (TipoDocumento)cbTipoDocumento.getSelectedItem();
 	}
 
 	public String getDataFundacao() {
@@ -131,16 +134,16 @@ public class DadoPrincipalPanel extends JPanel {
 		return txtInscricaoMunicipal.getText();
 	}
 
-	public String getSituacao() {
-		return String.valueOf(cbSituacao.getSelectedItem());
+	public SituacaoEmpresa getSituacao() {
+		return (SituacaoEmpresa)cbSituacao.getSelectedItem();
 	}
 
 	public String getCapitalSocial() {
 		return ftxtCapital.getText();
 	}
 
-	public String getTipoCadastro() {
-		return String.valueOf(cbCadastro.getSelectedItem());
+	public TipoCadastro getTipoCadastro() {
+		return (TipoCadastro) cbCadastro.getSelectedItem();
 	}
 
 	public void setCodigo(String codigo) {
@@ -159,7 +162,7 @@ public class DadoPrincipalPanel extends JPanel {
 		ftxtDocumento.setText(documento);
 	}
 
-	public void setTipoDocumento(String tipo) {
+	public void setTipoDocumento(TipoDocumento tipo) {
 		cbTipoDocumento.setSelectedItem(tipo);
 	}
 
@@ -175,7 +178,7 @@ public class DadoPrincipalPanel extends JPanel {
 		txtInscricaoMunicipal.setText(municipal);
 	}
 
-	public void setSituacao(String situacao) {
+	public void setSituacao(SituacaoEmpresa situacao) {
 		cbSituacao.setSelectedItem(situacao);
 	}
 
@@ -183,15 +186,15 @@ public class DadoPrincipalPanel extends JPanel {
 		ftxtCapital.setText(capital);
 	}
 
-	public void setTipoCadastro(String tipoCadastro) {
+	public void setTipoCadastro(TipoCadastro tipoCadastro) {
 		cbCadastro.setSelectedItem(tipoCadastro);
 	}
 
-	public JComboBox<String> getCbTipoDocumento() {
+	public JComboBox<TipoDocumento> getCbTipoDocumento() {
 		return cbTipoDocumento;
 	}
-	
-	public JComboBox<String> getCbTipoCadatro() {
+
+	public JComboBox<TipoCadastro> getCbTipoCadatro() {
 		return cbCadastro;
 	}
 
@@ -214,14 +217,15 @@ public class DadoPrincipalPanel extends JPanel {
 	public JFormattedTextField getFtxtFundacao() {
 		return ftxtFundacao;
 	}
-	
+
 	public JTextField getTxtRazaoSocial() {
 		return txtRazao;
 	}
+
 	public JTextField getTxtFantasia() {
 		return txtFantasia;
 	}
-	
+
 	public void limpar() {
 		txtCodigo.setText("");
 		cbTipoDocumento.setSelectedIndex(0);
@@ -235,7 +239,7 @@ public class DadoPrincipalPanel extends JPanel {
 		cbSituacao.setSelectedIndex(0);
 		ftxtCapital.setValue(null);
 	}
-	
+
 	public void desativarAtivar(boolean ativa) {
 		cbTipoDocumento.setEnabled(ativa);
 		ftxtFundacao.setEnabled(ativa);

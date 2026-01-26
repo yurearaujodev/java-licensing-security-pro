@@ -1,26 +1,25 @@
-package com.br.yat.gerenciador.controller;
+package com.br.yat.gerenciador.controller.empresa;
 
 import java.awt.EventQueue;
 
 import javax.swing.JComponent;
 
 import com.br.yat.gerenciador.model.Endereco;
-import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.util.CepUtils;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
+import com.br.yat.gerenciador.util.exception.ValidationException;
+import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoEnderecoPanel;
 
 public class DadoEnderecoController {
 
 	private final DadoEnderecoPanel view;
-	private final EmpresaService service;
 	private String ultimoCepBuscado = "";
 	private Endereco enderecoAtual;
 
-	public DadoEnderecoController(DadoEnderecoPanel view, EmpresaService service) {
+	public DadoEnderecoController(DadoEnderecoPanel view) {
 		this.view = view;
-		this.service = service;
 		configurarFiltro();
 		registrarAcoes();
 	}
@@ -32,30 +31,27 @@ public class DadoEnderecoController {
 
 	private void registrarAcoes() {
 		view.getFtxtCep().addActionListener(e -> preencherEnderecoPorCep());
-		view.getFtxtCep().addFocusListener(
-				ValidationUtils.createValidationListener(view.getFtxtCep(), this::preencherEnderecoPorCep));
-		view.getTxtLogradouro().addFocusListener(
-				ValidationUtils.createValidationListener(view.getTxtLogradouro(), this::validarLogradouro));
-		view.getTxtCidade()
-				.addFocusListener(ValidationUtils.createValidationListener(view.getTxtCidade(), this::validarCidade));
-		view.getTxtEstado()
-				.addFocusListener(ValidationUtils.createValidationListener(view.getTxtEstado(), this::validarEstado));
-		view.getTxtPais()
-				.addFocusListener(ValidationUtils.createValidationListener(view.getTxtPais(), this::validarPais));
+		view.getFtxtCep().addFocusListener(	ValidationUtils.createValidationListener(view.getFtxtCep(), this::preencherEnderecoPorCep));
+		view.getTxtLogradouro().addFocusListener(ValidationUtils.createValidationListener(view.getTxtLogradouro(), this::validarLogradouro));
+		view.getTxtBairro().addFocusListener(ValidationUtils.createValidationListener(view.getTxtBairro(), this::validarBairro));
+		view.getTxtCidade().addFocusListener(ValidationUtils.createValidationListener(view.getTxtCidade(), this::validarCidade));
+		view.getTxtEstado().addFocusListener(ValidationUtils.createValidationListener(view.getTxtEstado(), this::validarEstado));
+		view.getTxtPais().addFocusListener(ValidationUtils.createValidationListener(view.getTxtPais(), this::validarPais));
 	}
 
 	private void preencherEnderecoPorCep() {
 		String cep = ValidationUtils.onlyNumbers(view.getCep());
 
 		try {
-			Endereco mock = new Endereco();
-			mock.setCepEndereco(cep);
-
-			service.validarEndereco(mock);
-
+			EmpresaValidationUtils.validarCep(cep);
+			
 			ValidationUtils.removerDestaque(view.getFtxtCep());
-		} catch (IllegalArgumentException e) {
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getFtxtCep(), e.getMessage());
+			return;
+		} catch (Exception e) {
+			e.printStackTrace();
+			ValidationUtils.exibirErro(view.getFtxtCep(), "ERRO NA VALIDAÇÃO ");
 			return;
 		}
 
@@ -63,7 +59,7 @@ public class DadoEnderecoController {
 			return;
 		}
 
-		view.setLogradouro("BUSCANDO...");
+		buscandoCep();
 
 		CepUtils.searchCep(cep).thenAccept(optEndereco -> {
 			EventQueue.invokeLater(() -> {
@@ -76,68 +72,92 @@ public class DadoEnderecoController {
 				} else {
 					ultimoCepBuscado = null;
 					ValidationUtils.exibirErro(view.getFtxtCep(), "CEP NÃO ENCONTRADO.");
-					view.setLogradouro("");
+					view.limpar();
 					view.getFtxtCep().requestFocusInWindow();
 				}
 			});
 		});
 	}
+	
+	private void buscandoCep() {
+		view.setLogradouro("BUSCANDO...");
+		view.setBairro("BUSCANDO...");
+		view.setCidade("BUSCANDO...");
+		view.setEstado("BUSCANDO...");
+		view.setPais("BUSCANDO...");
+	}
 
 	private void validarLogradouro() {
 		try {
-			Endereco mock = new Endereco();
-			mock.setLogradouroEndereco(view.getLogradouro());
-			service.validarEndereco(mock);
+			EmpresaValidationUtils.validarLogradouro(view.getLogradouro());
+			
 			ValidationUtils.removerDestaque(view.getTxtLogradouro());
-		} catch (IllegalArgumentException e) {
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getTxtLogradouro(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getTxtLogradouro(), "ERRO NA VALIDAÇÃO");
+		}
+	}
+	
+	private void validarBairro() {
+		try {
+			EmpresaValidationUtils.validarBairro(view.getBairro());
+			
+			ValidationUtils.removerDestaque(view.getTxtBairro());
+		} catch (ValidationException e) {
+			ValidationUtils.exibirErro(view.getTxtBairro(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getTxtBairro(), "ERRO NA VALIDAÇÃO");
 		}
 	}
 
 	private void validarCidade() {
 		try {
-			Endereco mock = new Endereco();
-			mock.setCidadeEndereco(view.getCidade());
-			service.validarEndereco(mock);
+			EmpresaValidationUtils.validarCidade(view.getCidade());
+
 			ValidationUtils.removerDestaque(view.getTxtCidade());
-		} catch (IllegalArgumentException e) {
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getTxtCidade(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getTxtCidade(), "ERRO NA VALIDAÇÃO");
 		}
 	}
 
 	private void validarEstado() {
 		try {
-			Endereco mock = new Endereco();
-			mock.setEstadoEndereco(view.getEstado());
-			service.validarEndereco(mock);
+			EmpresaValidationUtils.validarEstado(view.getEstado());
+			
 			ValidationUtils.removerDestaque(view.getTxtEstado());
-		} catch (IllegalArgumentException e) {
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getTxtEstado(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getTxtEstado(), "ERRO NA VALIDAÇÃO");
 		}
 	}
 
 	private void validarPais() {
 		try {
-			Endereco mock = new Endereco();
-			mock.setPaisEndereco(view.getPais());
-			service.validarEndereco(mock);
+			EmpresaValidationUtils.validarPais(view.getPais());
+			
 			ValidationUtils.removerDestaque(view.getTxtPais());
-		} catch (IllegalArgumentException e) {
+		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getTxtPais(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getTxtPais(), "ERRO NA VALIDAÇÃO");
 		}
 	}
-	
+
 	public void limpar() {
-		this.enderecoAtual=new Endereco();
+		this.enderecoAtual = new Endereco();
 		view.limpar();
 	}
-	
+
 	public void desativarAtivar(boolean ativa) {
 		view.desativarAtivar(ativa);
 	}
 
 	public boolean isValido() {
-		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(view.getFtxtCep(), view.getTxtLogradouro(),
+		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(view.getFtxtCep(), view.getTxtLogradouro(),view.getTxtBairro(),
 				view.getTxtCidade(), view.getTxtEstado(), view.getTxtPais());
 
 		if (obrigatoriosVazios) {
@@ -146,11 +166,12 @@ public class DadoEnderecoController {
 		}
 
 		validarLogradouro();
+		validarBairro();
 		validarCidade();
 		validarEstado();
 		validarPais();
 
-		JComponent erro = ValidationUtils.hasErroVisual(view.getFtxtCep(), view.getTxtLogradouro(), view.getTxtCidade(),
+		JComponent erro = ValidationUtils.hasErroVisual(view.getFtxtCep(), view.getTxtLogradouro(),view.getTxtBairro(), view.getTxtCidade(),
 				view.getTxtEstado(), view.getTxtPais());
 
 		if (erro != null) {
@@ -179,7 +200,7 @@ public class DadoEnderecoController {
 	public void setDados(Endereco endereco) {
 		if (endereco == null)
 			return;
-		this.enderecoAtual =endereco;
+		this.enderecoAtual = endereco;
 		view.setCep(endereco.getCepEndereco());
 		view.setLogradouro(endereco.getLogradouroEndereco());
 		view.setComplemento(endereco.getComplementoEndereco());

@@ -1,4 +1,4 @@
-package com.br.yat.gerenciador.controller;
+package com.br.yat.gerenciador.controller.empresa;
 
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
@@ -7,11 +7,13 @@ import java.util.concurrent.TimeUnit;
 import javax.swing.JDesktopPane;
 import javax.swing.SwingUtilities;
 
+import com.br.yat.gerenciador.controller.BaseController;
 import com.br.yat.gerenciador.model.Empresa;
+import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
-import com.br.yat.gerenciador.util.ui.DesktopFactory;
+import com.br.yat.gerenciador.util.ui.DesktopUtils;
 import com.br.yat.gerenciador.util.ui.TableFactory;
 import com.br.yat.gerenciador.util.ui.ViewFactory;
 import com.br.yat.gerenciador.view.EmpresaView;
@@ -42,7 +44,6 @@ public class EmpresaConsultaController extends BaseController {
 		view.getBtnEditar().addActionListener(e -> aoClicarEditar());
 		view.getBtnNovo().addActionListener(e -> aoClicarNovo());
 		TableFactory.addDoubleClickAction(view.getTabela(), () -> aoClicarEditar());
-		// view.getBtnEditar().setEnabled(false);
 	}
 
 	private void aoClicarNovo() {
@@ -65,15 +66,14 @@ public class EmpresaConsultaController extends BaseController {
 		JDesktopPane desk = view.getDesktopPane();
 		String idJanela = (empresa == null) ? "NOVA_EMPRESA" : "EDIT_EMPRESA_" + empresa.getIdEmpresa();
 
-		if (DesktopFactory.reuseIfOpen(desk, idJanela))
+		if (DesktopUtils.reuseIfOpen(desk, idJanela))
 			return;
 
-		EmpresaView cadastroView = (empresa == null) 
-				? ViewFactory.createEmpresaView("CLIENTE")
+		EmpresaView cadastroView = (empresa == null) ? ViewFactory.createEmpresaView(TipoCadastro.CLIENTE)
 				: ViewFactory.createEmpresaEdicaoView(empresa.getIdEmpresa());
-		
+
 		cadastroView.setName(idJanela);
-		
+
 		EmpresaController cadastroCtrl = (EmpresaController) cadastroView.getClientProperty("controller");
 		cadastroCtrl.setRefreshCallback(() -> carregarDados());
 
@@ -84,9 +84,8 @@ public class EmpresaConsultaController extends BaseController {
 			cadastroView.setTitle("EDITANDO: " + empresa.getRazaoSocialEmpresa());
 			cadastroCtrl.carregarDadosCliente(empresa.getIdEmpresa());
 		}
-	
-		DesktopFactory.showFrame(desk, cadastroView);
-		DesktopFactory.centerDesktopPane(desk, cadastroView);
+
+		DesktopUtils.showFrame(desk, cadastroView);
 	}
 
 	private void filtrar() {
@@ -106,7 +105,7 @@ public class EmpresaConsultaController extends BaseController {
 
 					SwingUtilities.invokeLater(() -> view.getTableModel().setDados(lista));
 				} catch (Exception e) {
-					DialogFactory.erro(view, "ERRO: ", e);
+					handleException(e, SwingUtilities.getWindowAncestor(view));
 				}
 			});
 		}, 800, TimeUnit.MILLISECONDS);
@@ -118,7 +117,7 @@ public class EmpresaConsultaController extends BaseController {
 				List<Empresa> lista = service.listarClientesParaTabela();
 				SwingUtilities.invokeLater(() -> view.getTableModel().setDados(lista));
 			} catch (Exception e) {
-				SwingUtilities.invokeLater(() -> DialogFactory.erro(view, "ERRO AO CARREGAR: " + e.getMessage()));
+				handleException(e, SwingUtilities.getWindowAncestor(view));
 			}
 		});
 	}

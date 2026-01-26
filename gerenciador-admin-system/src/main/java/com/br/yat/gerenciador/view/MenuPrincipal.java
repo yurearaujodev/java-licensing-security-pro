@@ -50,7 +50,7 @@ public class MenuPrincipal extends JFrame {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setSize(1300, 800);
 		setLocationRelativeTo(null);
-		//setExtendedState(JFrame.MAXIMIZED_BOTH);
+		setExtendedState(JFrame.MAXIMIZED_BOTH);
 		getRootPane().setWindowDecorationStyle(JRootPane.FRAME);
 		setVisible(true);
 		

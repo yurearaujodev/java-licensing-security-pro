@@ -12,14 +12,24 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
+import com.br.yat.gerenciador.util.ValidationUtils;
+import com.br.yat.gerenciador.util.exception.DataAccessException;
+
 public abstract class GenericDao<T> {
 	protected Connection conn;
 	protected String tableName;
 	protected String pkName;
 
-	public GenericDao(Connection conn, String tableName, String pkName) throws SQLException {
-		if (conn == null || conn.isClosed()) {
-			throw new IllegalArgumentException("Conexão inválida!");
+	public GenericDao(Connection conn, String tableName, String pkName) {
+		try {
+			if (conn == null || conn.isClosed()) {
+				throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "CONEXÃO INVÁLIDA OU FECHADA.",
+						null);
+			}
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "FALHA AO VERIFICAR STATUS DA CONEXÃO",
+					e);
 		}
 		this.conn = conn;
 		this.tableName = tableName;
@@ -38,7 +48,8 @@ public abstract class GenericDao<T> {
 				return rs.next() ? rs.getInt(1) : 0;
 			}
 		} catch (SQLException e) {
-			throw new RuntimeException("ERRO EM [" + tableName + "]: " + e.getMessage());
+			throw new DataAccessException(DataAccessErrorType.QUERY_FAILED,
+					"ERRO AO INSERIR EM [" + tableName + "]: " + e.getMessage(), e);
 		}
 	}
 
@@ -49,7 +60,8 @@ public abstract class GenericDao<T> {
 			return stmt.executeUpdate();
 
 		} catch (SQLException e) {
-			throw new RuntimeException("ERRO EM [" + tableName + "]: " + e.getMessage());
+			throw new DataAccessException(DataAccessErrorType.QUERY_FAILED,
+					"ERRO AO ATUALIZAR EM [" + tableName + "]: " + e.getMessage(), e);
 		}
 	}
 
@@ -65,7 +77,8 @@ public abstract class GenericDao<T> {
 				}
 			}
 		} catch (SQLException e) {
-			throw new RuntimeException("ERRO AO CONSULTAR [" + tableName + "]: " + e.getMessage());
+			throw new DataAccessException(DataAccessErrorType.QUERY_FAILED,
+					"ERRO AO CONSULTAR [" + tableName + "]: " + e.getMessage(), e);
 		}
 		return lista;
 	}
@@ -93,6 +106,16 @@ public abstract class GenericDao<T> {
 
 			default -> stmt.setObject(idx, value);
 			}
+		}
+	}
+
+	protected <E extends Enum<E>> E valueOf(Class<E> enumClass, String value) {
+		if (ValidationUtils.isEmpty(value))
+			return null;
+		try {
+			return Enum.valueOf(enumClass, value);
+		} catch (IllegalArgumentException e) {
+			return null;
 		}
 	}
 }

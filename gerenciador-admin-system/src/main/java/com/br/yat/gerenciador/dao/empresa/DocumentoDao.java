@@ -1,15 +1,16 @@
-package com.br.yat.gerenciador.dao;
+package com.br.yat.gerenciador.dao.empresa;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
+import com.br.yat.gerenciador.dao.GenericDao;
 import com.br.yat.gerenciador.model.Documento;
 
 public class DocumentoDao extends GenericDao<Documento> {
 
-	public DocumentoDao(Connection conn) throws SQLException {
+	public DocumentoDao(Connection conn) {
 		super(conn, "documento_empresa", "id_documento");
 	}
 

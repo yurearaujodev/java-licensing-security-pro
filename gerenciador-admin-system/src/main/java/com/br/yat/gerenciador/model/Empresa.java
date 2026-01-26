@@ -4,24 +4,32 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.br.yat.gerenciador.model.enums.Cnae;
+import com.br.yat.gerenciador.model.enums.NaturezaJuridica;
+import com.br.yat.gerenciador.model.enums.PorteEmpresa;
+import com.br.yat.gerenciador.model.enums.RegimeTributario;
+import com.br.yat.gerenciador.model.enums.SituacaoEmpresa;
+import com.br.yat.gerenciador.model.enums.TipoCadastro;
+import com.br.yat.gerenciador.model.enums.TipoDocumento;
+
 public class Empresa {
 	private int idEmpresa;
-	private String tipoEmpresa;
+	private TipoCadastro tipoEmpresa;
 	private String fantasiaEmpresa;
 	private String razaoSocialEmpresa;
-	private String tipoDocEmpresa;
+	private TipoDocumento tipoDocEmpresa;
 	private String documentoEmpresa;
 	private String inscEst;
 	private String inscMun;
 	private String contribuinteIcmsEmpresa;
 	private LocalDate fundacaoEmpresa;
-	private String cnaeEmpresa;
-	private String porteEmpresa;
-	private String naturezaJuriEmpresa;
+	private Cnae cnaeEmpresa;
+	private PorteEmpresa porteEmpresa;
+	private NaturezaJuridica naturezaJuriEmpresa;
 	private int crtEmpresa;
-	private String regimeTribEmpresa;
+	private RegimeTributario regimeTribEmpresa;
 	private BigDecimal capitalEmpresa;
-	private String situacaoEmpresa;
+	private SituacaoEmpresa situacaoEmpresa;
 	private LocalDateTime criadoEmEmpresa;
 	private LocalDateTime atualizadoEmEmpresa;
 	private Endereco endereco;
@@ -37,11 +45,11 @@ public class Empresa {
 		this.idEmpresa = idEmpresa;
 	}
 
-	public String getTipoEmpresa() {
+	public TipoCadastro getTipoEmpresa() {
 		return tipoEmpresa;
 	}
 
-	public void setTipoEmpresa(String tipoEmpresa) {
+	public void setTipoEmpresa(TipoCadastro tipoEmpresa) {
 		this.tipoEmpresa = tipoEmpresa;
 	}
 
@@ -61,11 +69,11 @@ public class Empresa {
 		this.razaoSocialEmpresa = razaoSocialEmpresa;
 	}
 
-	public String getTipoDocEmpresa() {
+	public TipoDocumento getTipoDocEmpresa() {
 		return tipoDocEmpresa;
 	}
 
-	public void setTipoDocEmpresa(String tipoDocEmpresa) {
+	public void setTipoDocEmpresa(TipoDocumento tipoDocEmpresa) {
 		this.tipoDocEmpresa = tipoDocEmpresa;
 	}
 
@@ -109,27 +117,27 @@ public class Empresa {
 		this.fundacaoEmpresa = fundacaoEmpresa;
 	}
 
-	public String getCnaeEmpresa() {
+	public Cnae getCnaeEmpresa() {
 		return cnaeEmpresa;
 	}
 
-	public void setCnaeEmpresa(String cnaeEmpresa) {
+	public void setCnaeEmpresa(Cnae cnaeEmpresa) {
 		this.cnaeEmpresa = cnaeEmpresa;
 	}
 
-	public String getPorteEmpresa() {
+	public PorteEmpresa getPorteEmpresa() {
 		return porteEmpresa;
 	}
 
-	public void setPorteEmpresa(String porteEmpresa) {
+	public void setPorteEmpresa(PorteEmpresa porteEmpresa) {
 		this.porteEmpresa = porteEmpresa;
 	}
 
-	public String getNaturezaJuriEmpresa() {
+	public NaturezaJuridica getNaturezaJuriEmpresa() {
 		return naturezaJuriEmpresa;
 	}
 
-	public void setNaturezaJuriEmpresa(String naturezaJuriEmpresa) {
+	public void setNaturezaJuriEmpresa(NaturezaJuridica naturezaJuriEmpresa) {
 		this.naturezaJuriEmpresa = naturezaJuriEmpresa;
 	}
 
@@ -141,11 +149,11 @@ public class Empresa {
 		this.crtEmpresa = crtEmpresa;
 	}
 
-	public String getRegimeTribEmpresa() {
+	public RegimeTributario getRegimeTribEmpresa() {
 		return regimeTribEmpresa;
 	}
 
-	public void setRegimeTribEmpresa(String regimeTribEmpresa) {
+	public void setRegimeTribEmpresa(RegimeTributario regimeTribEmpresa) {
 		this.regimeTribEmpresa = regimeTribEmpresa;
 	}
 
@@ -157,11 +165,11 @@ public class Empresa {
 		this.capitalEmpresa = capitalEmpresa;
 	}
 
-	public String getSituacaoEmpresa() {
+	public SituacaoEmpresa getSituacaoEmpresa() {
 		return situacaoEmpresa;
 	}
 
-	public void setSituacaoEmpresa(String situacaoEmpresa) {
+	public void setSituacaoEmpresa(SituacaoEmpresa situacaoEmpresa) {
 		this.situacaoEmpresa = situacaoEmpresa;
 	}
 

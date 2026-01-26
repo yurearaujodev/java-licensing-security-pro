@@ -55,7 +55,7 @@ public final class FormatterUtils {
 			mf.setValueContainsLiteralCharacters(literalCharacters);
 
 			field.setFormatterFactory(new DefaultFormatterFactory(mf));
-			field.setFocusLostBehavior(JFormattedTextField.COMMIT_OR_REVERT);
+			field.setFocusLostBehavior(JFormattedTextField.COMMIT);
 			field.setValue(null);
 			field.setCaretPosition(0);
 		} catch (ParseException e) {
@@ -140,7 +140,7 @@ public final class FormatterUtils {
 		nf.setMaximum(Double.MAX_VALUE);
 
 		field.setFormatterFactory(new DefaultFormatterFactory(nf));
-		field.setFocusLostBehavior(JFormattedTextField.COMMIT_OR_REVERT);
+		field.setFocusLostBehavior(JFormattedTextField.COMMIT);
 	}
 	
 	public static String formatValueWithMask(String value, String mask) {
