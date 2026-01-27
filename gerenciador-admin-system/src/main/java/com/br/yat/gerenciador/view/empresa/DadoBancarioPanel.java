@@ -1,12 +1,15 @@
 package com.br.yat.gerenciador.view.empresa;
 
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JFormattedTextField;
 import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 
+import com.br.yat.gerenciador.model.enums.TipoConta;
 import com.br.yat.gerenciador.util.ui.ButtonFactory;
+import com.br.yat.gerenciador.util.ui.ComboBoxFactory;
 import com.br.yat.gerenciador.util.ui.FieldFactory;
 import com.br.yat.gerenciador.util.ui.FormatterUtils;
 import com.br.yat.gerenciador.util.ui.LabelFactory;
@@ -22,7 +25,7 @@ public class DadoBancarioPanel extends JPanel {
 	private JTextField txtBanco;
 	private JTextField txtAgencia;
 	private JTextField txtConta;
-	private JTextField txtTipo;
+	private JComboBox<TipoConta> cbTipo;
 
 	private JFormattedTextField ftxtCodigo;
 
@@ -61,8 +64,8 @@ public class DadoBancarioPanel extends JPanel {
 		panel.add(txtConta, "cell 3 1, growx, h 25!");
 
 		panel.add(LabelFactory.createLabel("TIPO DE CONTA:"), "cell 0 2,alignx trailing");
-		txtTipo = FieldFactory.createTextField(20);
-		panel.add(txtTipo, "cell 1 2 3 1, growx, h 25!");
+		cbTipo = ComboBoxFactory.createEnumComboBox(TipoConta.class);
+		panel.add(cbTipo, "cell 1 2, growx, h 25!");
 
 		btnAdicionar = ButtonFactory.createPrimaryButton("ADICIONAR");
 		panel.add(btnAdicionar, "cell 0 3 4 1, split 2, align right,w 120!, h 25!");
@@ -96,8 +99,8 @@ public class DadoBancarioPanel extends JPanel {
 		return txtConta.getText();
 	}
 
-	public String getTipoConta() {
-		return txtTipo.getText();
+	public TipoConta getTipoConta() {
+		return (TipoConta)cbTipo.getSelectedItem();
 	}
 
 	public JFormattedTextField getFtxtCodBanco() {
@@ -120,8 +123,8 @@ public class DadoBancarioPanel extends JPanel {
 		txtConta.setText(conta);
 	}
 
-	public void setTipoConta(String tipo) {
-		txtTipo.setText(tipo);
+	public void setTipoConta(TipoConta tipo) {
+		cbTipo.setSelectedItem(tipo);
 	}
 
 	public JTextField getTxtBanco() {
@@ -136,8 +139,8 @@ public class DadoBancarioPanel extends JPanel {
 		return txtConta;
 	}
 
-	public JTextField getTxtTipo() {
-		return txtTipo;
+	public JComboBox<TipoConta> getCbTipo() {
+		return cbTipo;
 	}
 
 	public JButton getBtnAdicionar() {
@@ -150,6 +153,22 @@ public class DadoBancarioPanel extends JPanel {
 
 	public JTable getTabela() {
 		return tabela;
+	}
+	
+	public void limpar() {
+		ftxtCodigo.setValue(null);
+		txtBanco.setText("");
+		txtAgencia.setText("");
+		txtConta.setText("");
+		cbTipo.setSelectedIndex(0);
+	}
+	
+	public void desativarAtivar(boolean ativa) {
+		ftxtCodigo.setEnabled(ativa);
+		txtBanco.setEnabled(ativa);
+		txtAgencia.setEnabled(ativa);
+		txtConta.setEnabled(ativa);
+		cbTipo.setEnabled(ativa);
 	}
 
 }

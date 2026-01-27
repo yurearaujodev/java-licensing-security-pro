@@ -2,13 +2,15 @@ package com.br.yat.gerenciador.model;
 
 import java.time.LocalDateTime;
 
+import com.br.yat.gerenciador.model.enums.TipoConta;
+
 public class Banco {
 	private int idBanco;
 	private String nomeBanco;
 	private int codBanco;
 	private String agenciaBanco;
 	private String contaBanco;
-	private String tipoBanco;
+	private TipoConta tipoBanco;
 	private LocalDateTime criadoEmBanco;
 	private LocalDateTime atualizadoEmBanco;
 	private Empresa empresa;
@@ -56,11 +58,11 @@ public class Banco {
 		this.contaBanco = contaBanco;
 	}
 
-	public String getTipoBanco() {
+	public TipoConta getTipoBanco() {
 		return tipoBanco;
 	}
 
-	public void setTipoBanco(String tipoBanco) {
+	public void setTipoBanco(TipoConta tipoBanco) {
 		this.tipoBanco = tipoBanco;
 	}
 

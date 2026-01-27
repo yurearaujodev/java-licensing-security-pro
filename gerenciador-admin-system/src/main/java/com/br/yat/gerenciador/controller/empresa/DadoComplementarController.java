@@ -2,6 +2,7 @@ package com.br.yat.gerenciador.controller.empresa;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -14,22 +15,20 @@ import javax.swing.table.DefaultTableModel;
 
 import com.br.yat.gerenciador.model.Complementar;
 import com.br.yat.gerenciador.model.Documento;
-import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.FileStorageFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.util.exception.ValidationException;
+import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoComplementarPanel;
 
 public class DadoComplementarController {
 	private final DadoComplementarPanel view;
-	private final EmpresaService service;
 	private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 	private Complementar complementarAtual;
 
-	public DadoComplementarController(DadoComplementarPanel view, EmpresaService service) {
+	public DadoComplementarController(DadoComplementarPanel view) {
 		this.view = view;
-		this.service = service;
 		configurarFiltros();
 		registrarAcoes();
 	}
@@ -37,6 +36,8 @@ public class DadoComplementarController {
 	private void registrarAcoes() {
 		view.getTxtRamo()
 				.addFocusListener(ValidationUtils.createValidationListener(view.getTxtRamo(), this::validarRamo));
+		view.getFuncionario().addFocusListener(
+				ValidationUtils.createValidationListener(view.getFuncionario(), this::validarFuncionario));
 		view.getBtnLogoTipo().addActionListener(e -> uploadLogo());
 		view.getBtnAdicionar().addActionListener(e -> anexarDocumento());
 		view.getBtnRemover().addActionListener(e -> removerDocumento());
@@ -48,14 +49,25 @@ public class DadoComplementarController {
 
 	private void validarRamo() {
 		try {
-			Complementar mock = new Complementar();
-			mock.setRamoAtividadeComplementar(view.getRamo());
-			service.validarComplementarIndividual(mock);
+			EmpresaValidationUtils.validarRamoAtividade(view.getRamo());
+
 			ValidationUtils.removerDestaque(view.getTxtRamo());
 		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getTxtRamo(), e.getMessage());
-		}catch (Exception e) {
+		} catch (Exception e) {
 			ValidationUtils.exibirErro(view.getTxtRamo(), "ERRO NA VALIDAÇÃO");
+		}
+	}
+
+	private void validarFuncionario() {
+		try {
+			EmpresaValidationUtils.validarNumeroFuncionarios(ValidationUtils.parseInt(view.getFuncionarios()));
+
+			ValidationUtils.removerDestaque(view.getFuncionario());
+		} catch (ValidationException e) {
+			ValidationUtils.exibirErro(view.getFuncionario(), e.getMessage());
+		} catch (Exception e) {
+			ValidationUtils.exibirErro(view.getFuncionario(), "ERRO NA VALIDAÇÃO");
 		}
 	}
 
@@ -110,7 +122,8 @@ public class DadoComplementarController {
 	}
 
 	public boolean isValido() {
-		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(view.getTxtRamo(), view.getTxtLogo());
+		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(view.getTxtRamo(), view.getFuncionario(),
+				view.getCbTipo());
 
 		if (obrigatoriosVazios) {
 			DialogFactory.aviso(view, "POR FAVOR, PREENCHA OS CAMPOS OBRIGATÓRIOS DESTACADOS EM VERMELHO.");
@@ -118,8 +131,15 @@ public class DadoComplementarController {
 		}
 
 		validarRamo();
+		validarFuncionario();
 
-		JComponent erro = ValidationUtils.hasErroVisual(view.getTxtLogo(), view.getTxtRamo());
+		if (view.getTabela().getRowCount() == 0) {
+			ValidationUtils.exibirErro(view.getTabela(), "ADICIONE PELO MENOS UM DOCUMENTO.");
+			DialogFactory.aviso(view, "A LISTA DE DOCUMENTOS NÃO PODE ESTAR VAZIA.");
+			return false;
+		}
+
+		JComponent erro = ValidationUtils.hasErroVisual(view.getTxtRamo(), view.getFuncionario(), view.getCbTipo());
 
 		if (erro != null) {
 			DialogFactory.aviso(view, "EXISTEM CAMPOS COM DADOS INVÁLIDOS.");
@@ -134,22 +154,42 @@ public class DadoComplementarController {
 			return "---";
 
 		try {
-			int ultimaUnderline = caminho.lastIndexOf("_");
-			if (ultimaUnderline != -1 && caminho.length() > 16) {
-				return caminho.substring(ultimaUnderline - 10, ultimaUnderline + 6);
+			var nomeArquivo = Paths.get(caminho).getFileName().toString();
+
+			int ponto = nomeArquivo.lastIndexOf(".");
+			if (ponto != -1) {
+				var semExtensao = nomeArquivo.substring(0, ponto);
+
+				String[] partes = semExtensao.split("_");
+				if (partes.length >= 2) {
+					var dataStr = partes[partes.length - 2] + "_" + partes[partes.length - 1];
+					DateTimeFormatter parser = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+					LocalDateTime data = LocalDateTime.parse(dataStr, parser);
+					return data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+				}
 			}
 		} catch (Exception e) {
+			e.printStackTrace();
 			return "---";
 		}
 		return "---";
+	}
+
+	public void limpar() {
+		var model = (DefaultTableModel) view.getTabela().getModel();
+		model.setRowCount(0);
+		view.limpar();
+	}
+
+	public void desativarAtivar(boolean ativa) {
+		view.desativarAtivar(ativa);
 	}
 
 	public Complementar getComplementar() {
 		Complementar c = (this.complementarAtual != null) ? this.complementarAtual : new Complementar();
 		c.setLogoTipoComplementar(view.getLogo());
 		c.setRamoAtividadeComplementar(view.getRamo());
-		c.setNumFuncionariosComplementar(
-				view.getFuncionarios().isEmpty() ? 0 : Integer.parseInt(view.getFuncionarios()));
+		c.setNumFuncionariosComplementar(ValidationUtils.parseInt(view.getFuncionarios()));
 		c.setObsComplementar(view.getObservacoes());
 		return c;
 	}

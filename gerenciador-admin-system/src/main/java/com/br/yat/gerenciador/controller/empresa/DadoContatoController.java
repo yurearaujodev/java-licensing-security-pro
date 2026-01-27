@@ -161,7 +161,7 @@ public class DadoContatoController {
 			return;
 
 		TipoContato tipo = (TipoContato) view.getTabela().getValueAt(selectedRow, 0);
-		String valor = view.getTabela().getValueAt(selectedRow, 1).toString();
+		String valor = (String)view.getTabela().getValueAt(selectedRow, 1);
 
 		view.setTipoContato(tipo);
 		view.setContato(valor);

@@ -21,13 +21,8 @@ import com.br.yat.gerenciador.model.Endereco;
 import com.br.yat.gerenciador.model.Representante;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
-import com.br.yat.gerenciador.model.enums.ValidationErrorType;
-import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.util.database.ConnectionFactory;
 import com.br.yat.gerenciador.util.exception.DataAccessException;
-import com.br.yat.gerenciador.util.exception.ValidationException;
-import com.br.yat.gerenciador.util.validation.DocumentValidator;
-import com.br.yat.gerenciador.util.validation.FormatValidator;
 import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 
 public class EmpresaService {
@@ -40,13 +35,13 @@ public class EmpresaService {
 		EmpresaValidationUtils.validarEmpresa(empresa);
 		EmpresaValidationUtils.validarContatos(contatos);
 
-		boolean isFornecedora = empresa.getTipoEmpresa()==TipoCadastro.FORNECEDORA;
+		boolean isFornecedora = empresa.getTipoEmpresa() == TipoCadastro.FORNECEDORA;
 		if (isFornecedora) {
 			EmpresaValidationUtils.validarEmpresaFiscal(empresa);
-			validarRepresentante(representantes);
-			validarBanco(bancos);
-			validarComplementarIndividual(complementar);
-			validarDocumentos(documentos);
+			EmpresaValidationUtils.validarRepresentantes(representantes);
+			EmpresaValidationUtils.validarBancos(bancos);
+			EmpresaValidationUtils.validarComplementar(complementar);
+			EmpresaValidationUtils.validarDocumentos(documentos);
 		}
 
 		try (Connection conn = ConnectionFactory.getConnection()) {
@@ -130,102 +125,6 @@ public class EmpresaService {
 			return new EmpresaDao(conn).filtrarClientes(termo);
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
-		}
-	}
-
-	public void validarRepresentante(Representante r) {
-		if (r == null)
-			return;
-
-		if (r.getNomeRepresentante() != null && ValidationUtils.isEmpty(r.getNomeRepresentante())) {
-			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING,
-					"NOME DO REPRESENTANTE É OBRIGATÓRIO.");
-		}
-
-		if (r.getCpfRepresentante() != null) {
-			if (!DocumentValidator.isValidaCPF(r.getCpfRepresentante())) {
-				throw new ValidationException(ValidationErrorType.INVALID_FIELD, "CPF INVÁLIDO.");
-			}
-		}
-
-		if (!ValidationUtils.isEmpty(r.getTelefoneRepresentante())) {
-			if (!FormatValidator.isValidPhoneNumberBR(r.getTelefoneRepresentante())) {
-				throw new ValidationException(ValidationErrorType.INVALID_FIELD, "TELEFONE INVÁLIDO.");
-			}
-		}
-
-	}
-
-	public void validarRepresentante(List<Representante> representantes) {
-		if (representantes == null || representantes.isEmpty())
-			return;
-		for (Representante r : representantes) {
-			if (ValidationUtils.isEmpty(r.getNomeRepresentante())) {
-				throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "NOME OBRIGATÓRIO.");
-			}
-
-			if (ValidationUtils.isEmpty(r.getCpfRepresentante())) {
-				throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "CPF OBRIGATÓRIO.");
-			}
-
-			validarRepresentante(r);
-		}
-	}
-
-	public void validarBanco(Banco b) {
-		if (b == null)
-			return;
-
-		if (b.getCodBanco() != 0) {
-			if (b.getCodBanco() < 1 || b.getCodBanco() > 999) {
-				throw new ValidationException(ValidationErrorType.INVALID_FIELD,
-						"CÓDIGO DO BANCO DEVE ESTAR ENTRE 001 E 999.");
-			}
-		}
-		if (b.getNomeBanco() != null && ValidationUtils.isEmpty(b.getNomeBanco())) {
-			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "NOME DO BANCO É OBRIGATÓRIO.");
-		}
-	}
-
-	public void validarBanco(List<Banco> bancos) {
-		if (bancos == null || bancos.isEmpty()) {
-			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING,
-					"AO MENOS UM BANCO DEVE SER CADASTRADO.");
-		}
-		for (Banco b : bancos) {
-			if (ValidationUtils.isEmpty(b.getNomeBanco())) {
-				throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING,
-						"NOME DO BANCO NA LISTA NÃO PODE ESTAR VAZIO.");
-			}
-
-			validarBanco(b);
-		}
-	}
-
-	public void validarComplementarIndividual(Complementar comp) {
-		if (comp == null)
-			return;
-
-		if (comp.getRamoAtividadeComplementar() != null
-				&& ValidationUtils.isEmpty(comp.getRamoAtividadeComplementar())) {
-			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING,
-					"RAMO DE ATIVIDADE É OBRIGATÓRIO.");
-		}
-	}
-
-	public void validarDocumentos(List<Documento> doc) {
-		if (doc == null || doc.isEmpty()) {
-			return;
-		}
-		for (Documento d : doc) {
-			if (ValidationUtils.isEmpty(d.getTipoDocumento())) {
-				throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING,
-						"TIPO DE DOCUMENTO INVÁLIDO NA LISTA.");
-			}
-			if (ValidationUtils.isEmpty(d.getArquivoDocumento())) {
-				throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING,
-						"CAMINHO DO ARQUIVO INVÁLIDO.");
-			}
 		}
 	}
 

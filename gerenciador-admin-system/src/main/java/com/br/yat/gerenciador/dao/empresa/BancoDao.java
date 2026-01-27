@@ -7,6 +7,7 @@ import java.util.List;
 
 import com.br.yat.gerenciador.dao.GenericDao;
 import com.br.yat.gerenciador.model.Banco;
+import com.br.yat.gerenciador.model.enums.TipoConta;
 
 public class BancoDao extends GenericDao<Banco> {
 
@@ -62,7 +63,7 @@ public class BancoDao extends GenericDao<Banco> {
 		b.setCodBanco(rs.getInt("codigo_banco"));
 		b.setAgenciaBanco(rs.getString("agencia"));
 		b.setContaBanco(rs.getString("conta"));
-		b.setTipoBanco(rs.getString("tipo"));
+		b.setTipoBanco(valueOf(TipoConta.class,rs.getString("tipo")));
 		return b;
 	}
 

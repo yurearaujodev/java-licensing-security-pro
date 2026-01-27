@@ -5,7 +5,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.br.yat.gerenciador.model.Banco;
+import com.br.yat.gerenciador.model.Complementar;
 import com.br.yat.gerenciador.model.Contato;
+import com.br.yat.gerenciador.model.Documento;
 import com.br.yat.gerenciador.model.Empresa;
 import com.br.yat.gerenciador.model.Endereco;
 import com.br.yat.gerenciador.model.Representante;
@@ -254,6 +256,18 @@ public final class EmpresaValidationUtils {
 		}
 	}
 
+	public static void validarAgencia(String agencia) {
+		if (ValidationUtils.isEmpty(agencia)) {
+			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "AGÊNCIA É OBRIGATÓRIO.");
+		}
+	}
+
+	public static void validarConta(String conta) {
+		if (ValidationUtils.isEmpty(conta)) {
+			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "NÚMERO DA CONTA É OBRIGATÓRIO.");
+		}
+	}
+
 	public static void validarBancos(List<Banco> bancos) {
 		if (bancos == null || bancos.isEmpty()) {
 			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING,
@@ -263,7 +277,47 @@ public final class EmpresaValidationUtils {
 		for (Banco b : bancos) {
 			validarCodigoBanco(b.getIdBanco());
 			validarNomeBanco(b.getNomeBanco());
+			validarAgencia(b.getAgenciaBanco());
+			validarConta(b.getContaBanco());
 		}
 	}
 
+	public static void validarRamoAtividade(String ramo) {
+		if (ValidationUtils.isEmpty(ramo)) {
+			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING,
+					"RAMO DE ATIVIDADE É OBRIGATÓRIO.");
+		}
+	}
+
+	public static void validarNumeroFuncionarios(int numero) {
+		if (numero < 0) {
+			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "FUNCIONÁRIOS É OBRIGATÓRIO.");
+		}
+	}
+
+	public static void validarComplementar(Complementar c) {
+		if (c == null) {
+//			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING,
+//			"OS DADOS FISCAIS DA EMPRESA NÃO FORAM INFORMADOS.");
+			return;
+		}
+		validarRamoAtividade(c.getRamoAtividadeComplementar());
+		validarNumeroFuncionarios(c.getNumFuncionariosComplementar());
+	}
+	
+	public static void validarDocumentos(List<Documento>doc) {
+		if (doc == null || doc.isEmpty()) {
+			return;
+		}
+		for (Documento d : doc) {
+			if (ValidationUtils.isEmpty(d.getTipoDocumento())) {
+				throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING,
+						"TIPO DE DOCUMENTO INVÁLIDO NA LISTA.");
+			}
+			if (ValidationUtils.isEmpty(d.getArquivoDocumento())) {
+				throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING,
+						"CAMINHO DO ARQUIVO INVÁLIDO.");
+			}
+		}
+	}
 }

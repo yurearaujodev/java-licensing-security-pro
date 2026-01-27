@@ -69,7 +69,7 @@ public class DadoComplementarPanel extends JPanel {
 		panel.add(jsobs,"cell 1 2 3 1, growx, h 60!");
 		
 		panel.add(LabelFactory.createLabel("TIPO DOCUMENTO:"),"cell 0 3,alignx trailing");
-		cbTipo = ComboBoxFactory.createComboBox("CONTRATO SOCIAL","ALVARÁ DE FUNCIONAMENTO","CERTIDÕES NEGATIVAS","REGISTRO NA JUNTA COMERCIAL","LICENÇAS ESPECÍFICAS");
+		cbTipo = ComboBoxFactory.createComboBox("SELECIONE UMA OPÇÃO","CONTRATO SOCIAL","ALVARÁ DE FUNCIONAMENTO","CERTIDÕES NEGATIVAS","REGISTRO NA JUNTA COMERCIAL","LICENÇAS ESPECÍFICAS");
 		panel.add(cbTipo,"cell 1 3 2 1,growx, h 25!");
 		
 		btnAdicionar = ButtonFactory.createPrimaryButton("ADICIONAR");
@@ -161,6 +161,21 @@ public class DadoComplementarPanel extends JPanel {
 
 	public JTable getTabela() {
 		return tabela;
+	}
+	
+	public void limpar() {
+		txtLogo.setText("");
+		txtRamo.setText("");
+		jtaobs.setText("");
+		cbTipo.setSelectedIndex(0);
+		spinnerNum.setValue(null);
+	}
+	
+	public void desativarAtivar(boolean ativa) {
+		txtRamo.setEnabled(ativa);
+		jtaobs.setEnabled(ativa);
+		cbTipo.setEnabled(ativa);
+		spinnerNum.setEnabled(ativa);
 	}
 
 }

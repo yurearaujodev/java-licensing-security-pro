@@ -1,6 +1,5 @@
 package com.br.yat.gerenciador.controller.empresa;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -176,8 +175,8 @@ public class EmpresaController extends BaseController {
 		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
 			eFiscal.limpar();
 			eRepresentante.limpar();
-			eBancario.setDados(Collections.emptyList());
-			eComplementar.setDados(new Complementar(), Collections.emptyList());
+			eBancario.limpar();
+			eComplementar.limpar();
 		}
 		view.getBtnSalvar().setText("SALVAR");
 		view.getTabbedPane().setSelectedIndex(0);

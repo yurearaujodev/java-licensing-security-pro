@@ -31,8 +31,8 @@ public final class ViewFactory {
 		var eContato = new DadoContatoController(view.getDadoContato());
 		var eFiscal = new DadoFiscalController(view.getDadoFiscal());
 		var eRepresentante = new DadoRepresentanteController(view.getDadoRepresentante());
-		var eBancario = new DadoBancarioController(view.getDadoBancario(), service);
-		var eComplementar = new DadoComplementarController(view.getDadoComplementar(), service);
+		var eBancario = new DadoBancarioController(view.getDadoBancario());
+		var eComplementar = new DadoComplementarController(view.getDadoComplementar());
 
 		EmpresaController controller = new EmpresaController(view, service, ePrincipal, eEndereco, eContato, eFiscal,
 				eRepresentante, eBancario, eComplementar, tipoCadastro);

@@ -1,5 +1,6 @@
 package com.br.yat.gerenciador.controller.empresa;
 
+import java.awt.Window;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -98,27 +99,28 @@ public class EmpresaConsultaController extends BaseController {
 			ValidationUtils.removerDestaque(view.getTxtBusca());
 		}
 
-		debounceTask = scheduler.schedule(() -> {
-			executor.submit(() -> {
-				try {
-					List<Empresa> lista = service.filtrarClientes(termo);
+		if (!termo.isBlank()) {
+			ValidationUtils.removerDestaque(view.getTxtBusca());
+		}
 
-					SwingUtilities.invokeLater(() -> view.getTableModel().setDados(lista));
-				} catch (Exception e) {
-					handleException(e, SwingUtilities.getWindowAncestor(view));
-				}
+		Window parent = SwingUtilities.getWindowAncestor(view);
+		debounceTask = scheduler.schedule(() -> {
+			runAsyncSilent(parent, () -> {
+				List<Empresa> lista = service.filtrarClientes(termo);
+				return lista;
+			}, lista -> {
+				view.getTableModel().setDados(lista);
 			});
+
 		}, 800, TimeUnit.MILLISECONDS);
 	}
 
 	private void carregarDados() {
-		executor.submit(() -> {
-			try {
-				List<Empresa> lista = service.listarClientesParaTabela();
-				SwingUtilities.invokeLater(() -> view.getTableModel().setDados(lista));
-			} catch (Exception e) {
-				handleException(e, SwingUtilities.getWindowAncestor(view));
-			}
+		Window parent = SwingUtilities.getWindowAncestor(view);
+		runAsync(parent, () -> {
+			return service.listarClientesParaTabela();
+		}, lista -> {
+			view.getTableModel().setDados(lista);
 		});
 	}
 }

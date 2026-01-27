@@ -30,7 +30,7 @@ public abstract class BaseController {
 		if (!scheduler.isShutdown()) {
 			scheduler.shutdown();
 		}
-		logger.info("{} ENCERRANDO E THREADS LIBERADAS.", this.getClass().getSimpleName());
+		logger.info("{} ENCERRANDO E THREADS LIBERADAS.", getClass().getSimpleName());
 	}
 
 	protected void handleException(Exception e, Window view) {
@@ -59,19 +59,23 @@ public abstract class BaseController {
 
 	protected <T> void runAsync(Window view, TaskWithResult<T> task, Consumer<T> onSuccess) {
 		showLoading(view);
+		runAsyncSilent(view, task, result -> {
+			hideLoading();
+			if (onSuccess != null) {
+				onSuccess.accept(result);
+			}
+		});
+
+	}
+
+	protected <T> void runAsyncSilent(Window view, TaskWithResult<T> task, Consumer<T> onSuccess) {
 		executor.submit(() -> {
 			try {
 				T result = task.execute();
-				SwingUtilities.invokeLater(() -> {
-					hideLoading();
-					if (onSuccess != null)
-						onSuccess.accept(result);
-				});
+				SwingUtilities.invokeLater(() -> onSuccess.accept(result));
+
 			} catch (Exception e) {
-				SwingUtilities.invokeLater(() -> {
-					hideLoading();
-					handleException(e, view);
-				});
+				SwingUtilities.invokeLater(() -> handleException(e, view));
 			}
 		});
 	}

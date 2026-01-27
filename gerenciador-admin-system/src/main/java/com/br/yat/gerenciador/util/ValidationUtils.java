@@ -249,6 +249,40 @@ public final class ValidationUtils {
 		}
 	}
 
+	public static void createDocumentFilterNumeric(JTextComponent... campos) {
+		if (campos == null)
+			return;
+		DocumentFilter filtro = new DocumentFilter() {
+			@Override
+			public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr)
+					throws BadLocationException {
+				if (string != null) {
+					String somenteNumeros = string.replaceAll("\\D", "");
+					if (!somenteNumeros.isBlank()) {
+						super.insertString(fb,offset, somenteNumeros, attr);	
+					}
+				}
+			}
+
+			@Override
+			public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs)
+					throws BadLocationException {
+				if (text != null) {
+					String somenteNumeros = text.replaceAll("\\D", "");
+					if (!somenteNumeros.isBlank()) {
+						super.replace(fb,offset,length, somenteNumeros, attrs);	
+					}
+				}
+			}
+
+		};
+		for (JTextComponent campo : campos) {
+			if (campo != null) {
+				((AbstractDocument) campo.getDocument()).setDocumentFilter(filtro);
+			}
+		}
+	}
+
 	public static int parseInt(String valor) {
 		if (isEmpty(valor))
 			return 0;
