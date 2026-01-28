@@ -13,12 +13,12 @@ import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 
+import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Complementar;
 import com.br.yat.gerenciador.model.Documento;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.FileStorageFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
-import com.br.yat.gerenciador.util.exception.ValidationException;
 import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoComplementarPanel;
 

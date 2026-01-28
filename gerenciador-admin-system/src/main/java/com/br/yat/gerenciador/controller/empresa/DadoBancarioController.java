@@ -7,11 +7,11 @@ import java.util.Objects;
 import javax.swing.JComponent;
 import javax.swing.table.DefaultTableModel;
 
+import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Banco;
 import com.br.yat.gerenciador.model.enums.TipoConta;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
-import com.br.yat.gerenciador.util.exception.ValidationException;
 import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoBancarioPanel;
 

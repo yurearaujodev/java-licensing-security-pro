@@ -4,9 +4,6 @@ import javax.swing.JPanel;
 import net.miginfocom.swing.MigLayout;
 
 import com.br.yat.gerenciador.util.IconFactory;
-import com.br.yat.gerenciador.util.ui.ButtonFactory;
-import com.br.yat.gerenciador.util.ui.DesktopFactory;
-import com.br.yat.gerenciador.util.ui.PanelFactory;
 import com.br.yat.gerenciador.view.empresa.DadoBancarioPanel;
 import com.br.yat.gerenciador.view.empresa.DadoComplementarPanel;
 import com.br.yat.gerenciador.view.empresa.DadoContatoPanel;
@@ -14,6 +11,9 @@ import com.br.yat.gerenciador.view.empresa.DadoPrincipalPanel;
 import com.br.yat.gerenciador.view.empresa.DadoEnderecoPanel;
 import com.br.yat.gerenciador.view.empresa.DadoFiscalPanel;
 import com.br.yat.gerenciador.view.empresa.DadoRepresentantePanel;
+import com.br.yat.gerenciador.view.factory.ButtonFactory;
+import com.br.yat.gerenciador.view.factory.DesktopFactory;
+import com.br.yat.gerenciador.view.factory.PanelFactory;
 
 import java.util.HashMap;
 import java.util.Map;

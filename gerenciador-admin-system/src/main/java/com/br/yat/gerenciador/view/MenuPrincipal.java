@@ -5,10 +5,10 @@ import javax.swing.JPanel;
 import javax.swing.JRootPane;
 
 import com.br.yat.gerenciador.util.IconFactory;
-import com.br.yat.gerenciador.util.ui.DesktopFactory;
-import com.br.yat.gerenciador.util.ui.LabelFactory;
-import com.br.yat.gerenciador.util.ui.MenuFactory;
-import com.br.yat.gerenciador.util.ui.PanelFactory;
+import com.br.yat.gerenciador.view.factory.DesktopFactory;
+import com.br.yat.gerenciador.view.factory.LabelFactory;
+import com.br.yat.gerenciador.view.factory.MenuFactory;
+import com.br.yat.gerenciador.view.factory.PanelFactory;
 import com.br.yat.gerenciador.view.menu.AjudaMenuBuilder;
 import com.br.yat.gerenciador.view.menu.AuditoriaMenuBuilder;
 import com.br.yat.gerenciador.view.menu.CadastroMenuBuilder;

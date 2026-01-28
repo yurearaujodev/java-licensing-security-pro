@@ -7,7 +7,7 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
 import com.br.yat.gerenciador.controller.ConfiguracaoBancoController;
-import com.br.yat.gerenciador.util.SensitiveData;
+import com.br.yat.gerenciador.security.SensitiveData;
 
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;

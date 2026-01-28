@@ -2,6 +2,7 @@ package com.br.yat.gerenciador.controller.empresa;
 
 import javax.swing.JComponent;
 
+import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Empresa;
 import com.br.yat.gerenciador.model.enums.Cnae;
 import com.br.yat.gerenciador.model.enums.NaturezaJuridica;
@@ -9,7 +10,6 @@ import com.br.yat.gerenciador.model.enums.PorteEmpresa;
 import com.br.yat.gerenciador.model.enums.RegimeTributario;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
-import com.br.yat.gerenciador.util.exception.ValidationException;
 import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoFiscalPanel;
 

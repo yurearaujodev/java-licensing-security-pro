@@ -11,11 +11,11 @@ import javax.swing.SwingUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.br.yat.gerenciador.exception.DataAccessException;
+import com.br.yat.gerenciador.exception.ServiceOperationException;
+import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.util.DialogFactory;
-import com.br.yat.gerenciador.util.exception.DataAccessException;
-import com.br.yat.gerenciador.util.exception.ServiceOperationException;
-import com.br.yat.gerenciador.util.exception.ValidationException;
-import com.br.yat.gerenciador.util.ui.LoadingDialog;
+import com.br.yat.gerenciador.view.factory.LoadingDialog;
 
 public abstract class BaseController {
 	private static final Logger logger = LoggerFactory.getLogger(BaseController.class);

@@ -12,9 +12,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 import com.br.yat.gerenciador.util.ValidationUtils;
-import com.br.yat.gerenciador.util.exception.DataAccessException;
 
 public abstract class GenericDao<T> {
 	protected Connection conn;

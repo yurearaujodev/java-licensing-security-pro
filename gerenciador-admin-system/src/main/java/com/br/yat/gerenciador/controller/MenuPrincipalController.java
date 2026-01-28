@@ -15,11 +15,11 @@ import org.slf4j.LoggerFactory;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.util.MenuRegistry;
-import com.br.yat.gerenciador.util.ui.DesktopUtils;
-import com.br.yat.gerenciador.util.ui.ViewFactory;
 import com.br.yat.gerenciador.view.EmpresaView;
 import com.br.yat.gerenciador.view.MenuPrincipal;
 import com.br.yat.gerenciador.view.empresa.EmpresaConsultaView;
+import com.br.yat.gerenciador.view.factory.DesktopUtils;
+import com.br.yat.gerenciador.view.factory.ViewFactory;
 
 public class MenuPrincipalController {
 

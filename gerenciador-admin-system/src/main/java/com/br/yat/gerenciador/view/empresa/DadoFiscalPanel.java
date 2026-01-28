@@ -9,10 +9,10 @@ import com.br.yat.gerenciador.model.enums.Cnae;
 import com.br.yat.gerenciador.model.enums.NaturezaJuridica;
 import com.br.yat.gerenciador.model.enums.PorteEmpresa;
 import com.br.yat.gerenciador.model.enums.RegimeTributario;
-import com.br.yat.gerenciador.util.ui.ComboBoxFactory;
-import com.br.yat.gerenciador.util.ui.FieldFactory;
-import com.br.yat.gerenciador.util.ui.LabelFactory;
-import com.br.yat.gerenciador.util.ui.PanelFactory;
+import com.br.yat.gerenciador.view.factory.ComboBoxFactory;
+import com.br.yat.gerenciador.view.factory.FieldFactory;
+import com.br.yat.gerenciador.view.factory.LabelFactory;
+import com.br.yat.gerenciador.view.factory.PanelFactory;
 
 import net.miginfocom.swing.MigLayout;
 

@@ -5,8 +5,8 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.br.yat.gerenciador.exception.CryptoException;
 import com.br.yat.gerenciador.service.DatabaseSetupService;
-import com.br.yat.gerenciador.util.exception.CryptoException;
 
 public class ConfiguracaoBancoController {
 

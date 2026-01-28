@@ -10,12 +10,12 @@ import javax.swing.JTextField;
 import com.br.yat.gerenciador.model.enums.SituacaoEmpresa;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.model.enums.TipoDocumento;
-import com.br.yat.gerenciador.util.ui.ComboBoxFactory;
-import com.br.yat.gerenciador.util.ui.FieldFactory;
-import com.br.yat.gerenciador.util.ui.FormatterUtils;
-import com.br.yat.gerenciador.util.ui.LabelFactory;
-import com.br.yat.gerenciador.util.ui.MaskFactory;
-import com.br.yat.gerenciador.util.ui.PanelFactory;
+import com.br.yat.gerenciador.view.factory.ComboBoxFactory;
+import com.br.yat.gerenciador.view.factory.FieldFactory;
+import com.br.yat.gerenciador.view.factory.FormatterUtils;
+import com.br.yat.gerenciador.view.factory.LabelFactory;
+import com.br.yat.gerenciador.view.factory.MaskFactory;
+import com.br.yat.gerenciador.view.factory.PanelFactory;
 
 import net.miginfocom.swing.MigLayout;
 

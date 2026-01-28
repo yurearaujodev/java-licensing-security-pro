@@ -7,12 +7,12 @@ import javax.swing.JPanel;
 import javax.swing.JTable;
 
 import com.br.yat.gerenciador.model.enums.TipoContato;
-import com.br.yat.gerenciador.util.ui.ButtonFactory;
-import com.br.yat.gerenciador.util.ui.ComboBoxFactory;
-import com.br.yat.gerenciador.util.ui.FieldFactory;
-import com.br.yat.gerenciador.util.ui.LabelFactory;
-import com.br.yat.gerenciador.util.ui.PanelFactory;
-import com.br.yat.gerenciador.util.ui.TableFactory;
+import com.br.yat.gerenciador.view.factory.ButtonFactory;
+import com.br.yat.gerenciador.view.factory.ComboBoxFactory;
+import com.br.yat.gerenciador.view.factory.FieldFactory;
+import com.br.yat.gerenciador.view.factory.LabelFactory;
+import com.br.yat.gerenciador.view.factory.PanelFactory;
+import com.br.yat.gerenciador.view.factory.TableFactory;
 
 import net.miginfocom.swing.MigLayout;
 

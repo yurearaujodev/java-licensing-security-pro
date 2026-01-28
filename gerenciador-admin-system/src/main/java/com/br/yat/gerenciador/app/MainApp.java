@@ -5,7 +5,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
 import com.br.yat.gerenciador.util.DialogFactory;
-import com.br.yat.gerenciador.util.ui.ViewFactory;
+import com.br.yat.gerenciador.view.factory.ViewFactory;
 import com.formdev.flatlaf.FlatIntelliJLaf;
 
 public class MainApp {

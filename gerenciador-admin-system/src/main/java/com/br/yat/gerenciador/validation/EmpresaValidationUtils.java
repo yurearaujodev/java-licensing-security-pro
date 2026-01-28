@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Banco;
 import com.br.yat.gerenciador.model.Complementar;
 import com.br.yat.gerenciador.model.Contato;
@@ -18,9 +19,6 @@ import com.br.yat.gerenciador.model.enums.TipoContato;
 import com.br.yat.gerenciador.model.enums.TipoDocumento;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.util.ValidationUtils;
-import com.br.yat.gerenciador.util.exception.ValidationException;
-import com.br.yat.gerenciador.util.validation.DocumentValidator;
-import com.br.yat.gerenciador.util.validation.FormatValidator;
 
 public final class EmpresaValidationUtils {
 

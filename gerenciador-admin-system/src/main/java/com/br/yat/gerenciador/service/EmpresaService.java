@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
+import com.br.yat.gerenciador.config.ConnectionFactory;
 import com.br.yat.gerenciador.dao.empresa.BancoDao;
 import com.br.yat.gerenciador.dao.empresa.ComplementarDao;
 import com.br.yat.gerenciador.dao.empresa.ContatoDao;
@@ -11,18 +12,17 @@ import com.br.yat.gerenciador.dao.empresa.DocumentoDao;
 import com.br.yat.gerenciador.dao.empresa.EmpresaDao;
 import com.br.yat.gerenciador.dao.empresa.EnderecoDao;
 import com.br.yat.gerenciador.dao.empresa.RepresentanteDao;
+import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.model.Banco;
 import com.br.yat.gerenciador.model.Complementar;
 import com.br.yat.gerenciador.model.Contato;
 import com.br.yat.gerenciador.model.Documento;
 import com.br.yat.gerenciador.model.Empresa;
-import com.br.yat.gerenciador.model.EmpresaDTO;
 import com.br.yat.gerenciador.model.Endereco;
 import com.br.yat.gerenciador.model.Representante;
+import com.br.yat.gerenciador.model.dto.EmpresaDTO;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
-import com.br.yat.gerenciador.util.database.ConnectionFactory;
-import com.br.yat.gerenciador.util.exception.DataAccessException;
 import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 
 public class EmpresaService {

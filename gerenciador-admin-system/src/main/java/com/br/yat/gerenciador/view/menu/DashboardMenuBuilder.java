@@ -5,7 +5,7 @@ import javax.swing.JMenuItem;
 
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.util.MenuRegistry;
-import com.br.yat.gerenciador.util.ui.MenuFactory;
+import com.br.yat.gerenciador.view.factory.MenuFactory;
 
 public final class DashboardMenuBuilder {
 	

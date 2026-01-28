@@ -13,9 +13,9 @@ import com.br.yat.gerenciador.model.Complementar;
 import com.br.yat.gerenciador.model.Contato;
 import com.br.yat.gerenciador.model.Documento;
 import com.br.yat.gerenciador.model.Empresa;
-import com.br.yat.gerenciador.model.EmpresaDTO;
 import com.br.yat.gerenciador.model.Endereco;
 import com.br.yat.gerenciador.model.Representante;
+import com.br.yat.gerenciador.model.dto.EmpresaDTO;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.util.DialogFactory;
@@ -66,10 +66,10 @@ public class EmpresaController extends BaseController {
 	private void inicializarPortipo() {
 		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
 			carregarDados();
-			desativarAtiva(true);
+			setModoAlterar(true);
 		} else {
 			limparFormulario();
-			desativarAtiva(false);
+			setModoAlterar(false);
 
 		}
 	}
@@ -91,7 +91,7 @@ public class EmpresaController extends BaseController {
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> service.carregarClienteCompleto(id), dados -> {
 			if (dados != null && dados.empresa() != null) {
 				preencherFormulario(dados);
-				desativarAtiva(true);
+				setModoAlterar(true);
 			} else {
 				DialogFactory.erro(view, "ERRO: EMPRESA NÃO ENCONTRADA.");
 			}
@@ -114,12 +114,12 @@ public class EmpresaController extends BaseController {
 			eBancario.setDados(dados.bancos());
 			eComplementar.setDados(dados.complementar(), dados.documentos());
 		}
-		atualizarBotaoSalvar();
+		atualizarTextoSalvar();
 	}
 
 	public void prepararNovo() {
 		limparFormulario();
-		desativarAtiva(true);
+		setModoAlterar(true);
 		view.getBtnNovo().setEnabled(false);
 	}
 
@@ -135,20 +135,16 @@ public class EmpresaController extends BaseController {
 	private void registrarAcoes() {
 		view.getBtnSalvar().addActionListener(e -> aoClicarSalvar());
 		view.getBtnNovo().addActionListener(e -> aoClicarNovo());
-		view.getBtnCancelar().addActionListener(e -> aoClicarCancelar());
-	}
-
-	private void aoClicarCancelar() {
-		view.doDefaultCloseAction();
+		view.getBtnCancelar().addActionListener(e -> view.doDefaultCloseAction());
 	}
 
 	private void aoClicarNovo() {
 		limparFormulario();
-		desativarAtiva(true);
+		setModoAlterar(true);
 		view.getBtnNovo().setEnabled(false);
 	}
 
-	private void desativarAtiva(boolean ativa) {
+	private void setModoAlterar(boolean ativa) {
 		ePrincipal.desativarAtivar(ativa);
 		eEndereco.desativarAtivar(ativa);
 		eContato.desativarAtivar(ativa);
@@ -180,7 +176,7 @@ public class EmpresaController extends BaseController {
 		}
 		view.getBtnSalvar().setText("SALVAR");
 		view.getTabbedPane().setSelectedIndex(0);
-		atualizarBotaoSalvar();
+		atualizarTextoSalvar();
 	}
 
 	private void atualizarAbas(TipoCadastro tipo) {
@@ -231,15 +227,15 @@ public class EmpresaController extends BaseController {
 			DialogFactory.informacao(view, mensagem);
 			if (tipoCadastro == TipoCadastro.CLIENTE) {
 				limparFormulario();
-				desativarAtiva(false);
+				setModoAlterar(false);
 			}
 			if (refreshCallback != null)
 				refreshCallback.onSaveSuccess();
 		});
 	}
 
-	private void focarAba(String nomeAba) {
-		var panel = view.getPanelByName(nomeAba);
+	private void focar(String Aba) {
+		var panel = view.getPanelByName(Aba);
 		if (panel != null) {
 			view.getTabbedPane().setSelectedComponent(panel);
 		}
@@ -247,32 +243,32 @@ public class EmpresaController extends BaseController {
 
 	private boolean validarFormulario() {
 		if (!ePrincipal.isValido()) {
-			focarAba("DADOS PRINCIPAIS");
+			focar("DADOS PRINCIPAIS");
 			return false;
 		}
 		if (!eEndereco.isValido()) {
-			focarAba("ENDEREÇO");
+			focar("ENDEREÇO");
 			return false;
 		}
 		if (!eContato.isValido()) {
-			focarAba("CONTATOS");
+			focar("CONTATOS");
 			return false;
 		}
 		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
 			if (!eFiscal.isValido()) {
-				focarAba("DADOS FISCAIS");
+				focar("DADOS FISCAIS");
 				return false;
 			}
 			if (!eRepresentante.isValido()) {
-				focarAba("REPRESENTANTE LEGAL");
+				focar("REPRESENTANTE LEGAL");
 				return false;
 			}
 			if (!eBancario.isValido()) {
-				focarAba("DADOS BANCÁRIOS");
+				focar("DADOS BANCÁRIOS");
 				return false;
 			}
 			if (!eComplementar.isValido()) {
-				focarAba("INFORMAÇÕES COMPLEMENTARES");
+				focar("INFORMAÇÕES COMPLEMENTARES");
 				return false;
 			}
 
@@ -280,7 +276,7 @@ public class EmpresaController extends BaseController {
 		return true;
 	}
 	
-	private void atualizarBotaoSalvar() {
+	private void atualizarTextoSalvar() {
 		boolean isAlterar = ePrincipal.getDados().getIdEmpresa()>0;
 		view.getBtnSalvar().setText(isAlterar?"ALTERAR":"SALVAR");
 	}

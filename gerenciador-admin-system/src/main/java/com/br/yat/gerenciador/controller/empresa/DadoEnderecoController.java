@@ -4,11 +4,11 @@ import java.awt.EventQueue;
 
 import javax.swing.JComponent;
 
+import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Endereco;
-import com.br.yat.gerenciador.util.CepUtils;
+import com.br.yat.gerenciador.service.CepUtils;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
-import com.br.yat.gerenciador.util.exception.ValidationException;
 import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoEnderecoPanel;
 

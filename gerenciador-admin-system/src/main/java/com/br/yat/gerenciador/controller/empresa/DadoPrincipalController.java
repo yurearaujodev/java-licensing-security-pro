@@ -5,15 +5,15 @@ import java.util.Map;
 
 import javax.swing.JComponent;
 
+import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Empresa;
 import com.br.yat.gerenciador.model.enums.TipoDocumento;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
-import com.br.yat.gerenciador.util.exception.ValidationException;
-import com.br.yat.gerenciador.util.ui.FormatterUtils;
-import com.br.yat.gerenciador.util.ui.MaskFactory;
 import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoPrincipalPanel;
+import com.br.yat.gerenciador.view.factory.FormatterUtils;
+import com.br.yat.gerenciador.view.factory.MaskFactory;
 
 public class DadoPrincipalController {
 

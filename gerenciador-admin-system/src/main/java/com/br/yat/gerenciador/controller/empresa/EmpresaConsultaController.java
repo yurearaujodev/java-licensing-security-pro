@@ -14,11 +14,11 @@ import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
-import com.br.yat.gerenciador.util.ui.DesktopUtils;
-import com.br.yat.gerenciador.util.ui.TableFactory;
-import com.br.yat.gerenciador.util.ui.ViewFactory;
 import com.br.yat.gerenciador.view.EmpresaView;
 import com.br.yat.gerenciador.view.empresa.EmpresaConsultaView;
+import com.br.yat.gerenciador.view.factory.DesktopUtils;
+import com.br.yat.gerenciador.view.factory.TableFactory;
+import com.br.yat.gerenciador.view.factory.ViewFactory;
 
 public class EmpresaConsultaController extends BaseController {
 	private final EmpresaConsultaView view;

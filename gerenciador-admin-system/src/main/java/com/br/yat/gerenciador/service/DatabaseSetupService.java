@@ -12,12 +12,12 @@ import javax.crypto.SecretKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.br.yat.gerenciador.util.SensitiveData;
-import com.br.yat.gerenciador.util.crypto.AESUtils;
-import com.br.yat.gerenciador.util.crypto.FileManager;
-import com.br.yat.gerenciador.util.crypto.KeyManager;
-import com.br.yat.gerenciador.util.database.DatabaseConfigLoader;
-import com.br.yat.gerenciador.util.exception.CryptoException;
+import com.br.yat.gerenciador.config.DatabaseConfigLoader;
+import com.br.yat.gerenciador.exception.CryptoException;
+import com.br.yat.gerenciador.security.AESUtils;
+import com.br.yat.gerenciador.security.FileManager;
+import com.br.yat.gerenciador.security.KeyManager;
+import com.br.yat.gerenciador.security.SensitiveData;
 
 public final class DatabaseSetupService {
 

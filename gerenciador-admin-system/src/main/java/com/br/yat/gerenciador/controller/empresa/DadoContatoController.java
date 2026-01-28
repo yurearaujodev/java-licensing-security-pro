@@ -9,15 +9,15 @@ import java.util.Objects;
 import javax.swing.JComponent;
 import javax.swing.table.DefaultTableModel;
 
+import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Contato;
 import com.br.yat.gerenciador.model.enums.TipoContato;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
-import com.br.yat.gerenciador.util.exception.ValidationException;
-import com.br.yat.gerenciador.util.ui.FormatterUtils;
-import com.br.yat.gerenciador.util.ui.MaskFactory;
 import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoContatoPanel;
+import com.br.yat.gerenciador.view.factory.FormatterUtils;
+import com.br.yat.gerenciador.view.factory.MaskFactory;
 
 public class DadoContatoController {
 
