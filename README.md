@@ -13,7 +13,7 @@ O sistema implementa **segurança nativa**, criptografia híbrida e uma interfac
 
 ## 📺 Demonstração (Prints)
 
-<img src="screenshots/fornecedor.png" width="700"> <img src="screenshots/cliente.png" width="700">
+<img src="gerenciador-admin-system/screenshots/fornecedor.png" width="700"> <img src="gerenciador-admin-system/screenshots/cliente.png" width="700">
 
 *Fornecedor (7 abas configuradas) vs Cliente (interface simplificada)*
 
