@@ -37,12 +37,8 @@ public class EnderecoDao extends GenericDao<Endereco> {
 		return end;
 	}
 
-	public void delete(int id) {
-		executeUpdate("DELETE FROM " + tableName + " WHERE " + pkName + " = ?", id);
-	}
-
 	public List<Endereco> listAll() {
-		return executeQuery("SELECT * FROM " + tableName);
+		return executeQuery("SELECT * FROM " + tableName+" WHERE deletado_em IS NULL");
 	}
 
 	@Override

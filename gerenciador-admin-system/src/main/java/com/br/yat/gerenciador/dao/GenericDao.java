@@ -11,6 +11,9 @@ import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
@@ -84,9 +87,14 @@ public abstract class GenericDao<T> {
 	}
 
 	public T searchById(int id) {
-		String sql = "SELECT * FROM " + tableName + " WHERE " + pkName + " = ?";
+		String sql = "SELECT * FROM " + tableName + " WHERE " + pkName + " = ? AND deletado_em IS NULL";
 		List<T> resultados = executeQuery(sql, id);
 		return resultados.isEmpty() ? null : resultados.get(0);
+	}
+	
+	public void softDeleteById(int id) {
+		String sql = "UPDATE "+tableName+" SET deletado_em = NOW() WHERE "+pkName+" =? AND deletado_em IS NULL";
+		executeUpdate(sql, id);
 	}
 
 	protected void bindParameters(PreparedStatement stmt, Object... params) throws SQLException {
@@ -118,4 +126,22 @@ public abstract class GenericDao<T> {
 			return null;
 		}
 	}
+
+	protected <E> void syncByParentId(List<E> novos, List<E> atuais, Function<E, Integer> getId, Consumer<E> inserir,
+			Consumer<E> alterar, Consumer<E> softDelete) {
+		var mapaAtuais = atuais.stream().collect(Collectors.toMap(getId, e -> e));
+
+		for (E novo : novos) {
+			Integer id = getId.apply(novo);
+
+			if (id == null || id == 0) {
+				inserir.accept(novo);
+			} else {
+				alterar.accept(novo);
+				mapaAtuais.remove(id);
+			}
+		}
+		mapaAtuais.values().forEach(softDelete);
+	}
+
 }

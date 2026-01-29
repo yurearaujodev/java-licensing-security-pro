@@ -11,11 +11,11 @@ import com.br.yat.gerenciador.model.enums.TipoContato;
 
 public class ContatoDao extends GenericDao<Contato> {
 
-	public ContatoDao(Connection conn){
+	public ContatoDao(Connection conn) {
 		super(conn, "contato_empresa", "id_contato");
 	}
 
-	public Contato save(Contato cont){
+	public Contato save(Contato cont) {
 		var sql = "INSERT INTO " + tableName + "(tipo_contato,valor,criado_em,atualizado_em,id_empresa) "
 				+ "VALUES(?,?,NOW(),NOW(),?)";
 
@@ -31,32 +31,30 @@ public class ContatoDao extends GenericDao<Contato> {
 		return cont;
 	}
 
-	public void delete(int id) {
-		executeUpdate("DELETE FROM " + tableName + " WHERE " + pkName + " = ?", id);
-	}
-
 	public List<Contato> listAll() {
-		return executeQuery("SELECT * FROM " + tableName);
+		return executeQuery("SELECT * FROM " + tableName+" WHERE deletado_em IS NULL");
 	}
 
 	public List<Contato> listarPorEmpresa(int idEmpresa) {
-		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ?";
+		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ? AND deletado_em IS NULL";
 		return executeQuery(sql, idEmpresa);
-	}
-
-	public void deleteByEmpresa(int idEmpresa) {
-		String sql = "DELETE FROM " + tableName + " WHERE id_empresa=?";
-		executeUpdate(sql, idEmpresa);
 	}
 
 	@Override
 	protected Contato mapResultSetToEntity(ResultSet rs) throws SQLException {
 		Contato c = new Contato();
 		c.setIdContato(rs.getInt(pkName));
-		c.setTipoContato(valueOf(TipoContato.class,rs.getString("tipo_contato")));
+		c.setTipoContato(valueOf(TipoContato.class, rs.getString("tipo_contato")));
 		c.setValorContato(rs.getString("valor"));
 
 		return c;
+	}
+
+	public void syncByEmpresa(int idEmpresa, List<Contato> novos) {
+		List<Contato> atuais = listarPorEmpresa(idEmpresa);
+
+		syncByParentId(novos, atuais, Contato::getIdContato, this::save, this::update, c -> softDeleteById(c.getIdContato()));
+
 	}
 
 }

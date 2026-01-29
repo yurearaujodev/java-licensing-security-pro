@@ -20,7 +20,8 @@ import com.br.yat.gerenciador.model.enums.TipoDocumento;
 public class EmpresaDao extends GenericDao<Empresa> {
 
 	private final String SELECT_COMPLETO = "SELECT emp.*,end.* FROM " + tableName + " emp "
-			+ "INNER JOIN endereco end ON emp.id_endereco = end.id_endereco ";
+			+ "INNER JOIN endereco end ON emp.id_endereco = end.id_endereco "
+			+ "WHERE emp.deletado_em IS NULL";
 
 	public EmpresaDao(Connection conn) {
 		super(conn, "empresa", "id_empresa");
@@ -54,13 +55,9 @@ public class EmpresaDao extends GenericDao<Empresa> {
 		return emp;
 	}
 
-	public void delete(int id) {
-		executeUpdate("DELETE FROM " + tableName + " WHERE " + pkName + " =?", id);
-	}
-
 	@Override
 	public Empresa searchById(int id) {
-		String sql = SELECT_COMPLETO + " WHERE emp." + pkName + " = ?";
+		String sql = SELECT_COMPLETO + " AND emp." + pkName + " = ?";
 		List<Empresa> lista = executeQuery(sql, id);
 		return lista.isEmpty() ? null : lista.get(0);
 	}
@@ -70,19 +67,19 @@ public class EmpresaDao extends GenericDao<Empresa> {
 	}
 
 	public Empresa buscarPorFornecedora() {
-		var sql = SELECT_COMPLETO + " WHERE emp.tipo = 'FORNECEDORA' LIMIT 1";
+		var sql = SELECT_COMPLETO + " AND emp.tipo = 'FORNECEDORA' LIMIT 1";
 		List<Empresa> resultados = executeQuery(sql);
 		return resultados.isEmpty() ? null : resultados.get(0);
 	}
 
 	public List<Empresa> filtrarClientes(String termo) {
-		var sql = SELECT_COMPLETO + " WHERE emp.tipo = 'CLIENTE' AND (emp.razao_social LIKE ? OR emp.documento LIKE ?)";
+		var sql = SELECT_COMPLETO + " AND emp.tipo = 'CLIENTE' AND (emp.razao_social LIKE ? OR emp.documento LIKE ?)";
 		var busca = "%" + termo + "%";
 		return executeQuery(sql, busca, busca);
 	}
 
 	public List<Empresa> listarTodosClientes() {
-		var sql = SELECT_COMPLETO + " WHERE emp.tipo = 'CLIENTE'";
+		var sql = SELECT_COMPLETO + " AND emp.tipo = 'CLIENTE'";
 		return executeQuery(sql);
 	}
 

@@ -159,7 +159,7 @@ O sistema utiliza um banco de dados **MySQL 8.4** altamente normalizado, compost
 ---
   
 <p align="center">
-  <img src="screenshots/banco.png" width="1000">
+  <img src="gerenciador-admin-system/screenshots/banco.png" width="1000">
 </p>
 
 

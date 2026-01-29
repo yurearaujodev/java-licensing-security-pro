@@ -1,7 +1,6 @@
 package com.br.yat.gerenciador.controller.empresa;
 
 import java.awt.Window;
-import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -21,6 +20,7 @@ import com.br.yat.gerenciador.view.factory.TableFactory;
 import com.br.yat.gerenciador.view.factory.ViewFactory;
 
 public class EmpresaConsultaController extends BaseController {
+
 	private final EmpresaConsultaView view;
 	private final EmpresaService service;
 	private ScheduledFuture<?> debounceTask;
@@ -28,99 +28,125 @@ public class EmpresaConsultaController extends BaseController {
 	public EmpresaConsultaController(EmpresaConsultaView view, EmpresaService service) {
 		this.view = view;
 		this.service = service;
+		configurar();
+	}
 
+	private void configurar() {
+		configurarFiltros();
 		registrarAcoes();
 		carregarDados();
-		configurarFiltros();
+		view.getBtnExcluir().setEnabled(false);
 	}
 
 	private void configurarFiltros() {
 		ValidationUtils.createDocumentFilter(view.getTxtBusca());
+		view.getTxtBusca().getDocument()
+				.addDocumentListener(ValidationUtils.createDocumentListener(view.getTxtBusca(), this::filtrar));
 	}
 
 	private void registrarAcoes() {
-		view.getTxtBusca().getDocument()
-				.addDocumentListener(ValidationUtils.createDocumentListener(view.getTxtBusca(), () -> filtrar()));
+		view.getBtnEditar().addActionListener(e -> editarSelecionado());
+		view.getBtnNovo().addActionListener(e -> abrirFormulario(null));
+		 view.getBtnExcluir().addActionListener(e -> excluirSelecionado());
 
-		view.getBtnEditar().addActionListener(e -> aoClicarEditar());
-		view.getBtnNovo().addActionListener(e -> aoClicarNovo());
-		TableFactory.addDoubleClickAction(view.getTabela(), () -> aoClicarEditar());
+		TableFactory.addDoubleClickAction(view.getTabela(), this::editarSelecionado);
+		view.getTabela().getSelectionModel().addListSelectionListener(e->{
+			boolean selecionado = view.getTabela().getSelectedRow()>=0;
+			view.getBtnEditar().setEnabled(selecionado);
+			view.getBtnExcluir().setEnabled(selecionado);
+		});
 	}
 
-	private void aoClicarNovo() {
-		abrirFormulario(null);
-	}
-
-	private void aoClicarEditar() {
+	private void editarSelecionado() {
 		int linha = view.getTabela().getSelectedRow();
 		if (linha < 0) {
 			DialogFactory.aviso(view, "SELECIONE UM CLIENTE NA TABELA PARA ALTERAR.");
 			return;
 		}
-		int linhaSelecionada = view.getTabela().convertRowIndexToModel(linha);
-		Empresa selecionada = view.getTableModel().getAt(linhaSelecionada);
-
-		abrirFormulario(selecionada);
+		int modelIndex = view.getTabela().convertRowIndexToModel(linha);
+		Empresa empresa = view.getTableModel().getAt(modelIndex);
+		abrirFormulario(empresa);
 	}
 
 	private void abrirFormulario(Empresa empresa) {
 		JDesktopPane desk = view.getDesktopPane();
-		String idJanela = (empresa == null) ? "NOVA_EMPRESA" : "EDIT_EMPRESA_" + empresa.getIdEmpresa();
+		String idJanela = empresa == null ? "NOVA_EMPRESA" : "EDIT_EMPRESA_" + empresa.getIdEmpresa();
 
 		if (DesktopUtils.reuseIfOpen(desk, idJanela))
 			return;
 
-		EmpresaView cadastroView = (empresa == null) ? ViewFactory.createEmpresaView(TipoCadastro.CLIENTE)
-				: ViewFactory.createEmpresaEdicaoView(empresa.getIdEmpresa());
-
+		EmpresaView cadastroView = criarView(empresa);
 		cadastroView.setName(idJanela);
 
-		EmpresaController cadastroCtrl = (EmpresaController) cadastroView.getClientProperty("controller");
-		cadastroCtrl.setRefreshCallback(() -> carregarDados());
-
-		if (empresa == null) {
-			cadastroView.setTitle("NOVO CADASTRO");
-			cadastroCtrl.prepararNovo();
-		} else {
-			cadastroView.setTitle("EDITANDO: " + empresa.getRazaoSocialEmpresa());
-			cadastroCtrl.carregarDadosCliente(empresa.getIdEmpresa());
-		}
-
+		configurarController(cadastroView, empresa);
 		DesktopUtils.showFrame(desk, cadastroView);
 	}
 
+	private EmpresaView criarView(Empresa empresa) {
+		return empresa == null ? ViewFactory.createEmpresaView(TipoCadastro.CLIENTE)
+				: ViewFactory.createEmpresaEdicaoView(empresa.getIdEmpresa());
+	}
+
+	private void configurarController(EmpresaView view, Empresa empresa) {
+		EmpresaController controller = (EmpresaController) view.getClientProperty("controller");
+		controller.setRefreshCallback(this::carregarDados);
+
+		if (empresa == null) {
+			view.setTitle("NOVO CADASTRO");
+			controller.prepararNovo();
+		} else {
+			view.setTitle("EDITANDO: " + empresa.getRazaoSocialEmpresa());
+
+			controller.carregarDados(empresa.getIdEmpresa());
+		}
+	}
+
 	private void filtrar() {
-		var termo = view.getTxtBusca().getText();
+		String termo = view.getTxtBusca().getText();
 
 		if (debounceTask != null)
 			debounceTask.cancel(false);
 
-		if (termo.length() > 0) {
+		if (!termo.isBlank())
 			ValidationUtils.removerDestaque(view.getTxtBusca());
-		}
-
-		if (!termo.isBlank()) {
-			ValidationUtils.removerDestaque(view.getTxtBusca());
-		}
 
 		Window parent = SwingUtilities.getWindowAncestor(view);
-		debounceTask = scheduler.schedule(() -> {
-			runAsyncSilent(parent, () -> {
-				List<Empresa> lista = service.filtrarClientes(termo);
-				return lista;
-			}, lista -> {
-				view.getTableModel().setDados(lista);
-			});
 
-		}, 800, TimeUnit.MILLISECONDS);
+		debounceTask = scheduler.schedule(() -> runAsyncSilent(parent, () -> service.filtrarClientes(termo),
+				lista -> view.getTableModel().setDados(lista)), 800, TimeUnit.MILLISECONDS);
 	}
 
 	private void carregarDados() {
 		Window parent = SwingUtilities.getWindowAncestor(view);
-		runAsync(parent, () -> {
-			return service.listarClientesParaTabela();
-		}, lista -> {
-			view.getTableModel().setDados(lista);
-		});
+		runAsync(parent, service::listarClientesParaTabela, lista -> view.getTableModel().setDados(lista));
 	}
+
+	private void excluirSelecionado() {
+		int linha = view.getTabela().getSelectedRow();
+
+		if (linha < 0) {
+			DialogFactory.aviso(view, "SELECIONE UM CLIENTE PRA EXCLUIR.");
+			return;
+		}
+
+		int modelIndex = view.getTabela().convertRowIndexToModel(linha);
+		Empresa empresa = view.getTableModel().getAt(modelIndex);
+
+		boolean confirmar = DialogFactory.confirmacao(view,
+				"DESEJA REALMENTE INATIVAR A EMPRESA?\n\n" + empresa.getRazaoSocialEmpresa());
+
+		if (!confirmar)
+			return;
+
+		Window parent = SwingUtilities.getWindowAncestor(view);
+		runAsync(parent, () -> {
+			service.inativarEmpresa(empresa.getIdEmpresa());
+			return true;
+		}, ok -> {
+			DialogFactory.informacao(view, "EMPRESA INATIVADA COM SUCESSO.");
+			carregarDados();
+		});
+
+	}
+
 }

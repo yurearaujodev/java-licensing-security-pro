@@ -79,7 +79,7 @@ public final class ViewFactory {
 		view.setTitle("CARREGANDO DADOS... POR FAVOR, AGUARDE.");
 
 		EmpresaController controller = (EmpresaController) view.getClientProperty("controller");
-		controller.carregarDadosCliente(id);
+		controller.carregarDados(id);
 		return view;
 	}
 

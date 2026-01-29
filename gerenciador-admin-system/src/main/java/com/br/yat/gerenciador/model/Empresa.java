@@ -2,7 +2,6 @@ package com.br.yat.gerenciador.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 import com.br.yat.gerenciador.model.enums.Cnae;
 import com.br.yat.gerenciador.model.enums.NaturezaJuridica;
@@ -12,7 +11,7 @@ import com.br.yat.gerenciador.model.enums.SituacaoEmpresa;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.model.enums.TipoDocumento;
 
-public class Empresa {
+public class Empresa extends BaseEntity{
 	private int idEmpresa;
 	private TipoCadastro tipoEmpresa;
 	private String fantasiaEmpresa;
@@ -30,8 +29,6 @@ public class Empresa {
 	private RegimeTributario regimeTribEmpresa;
 	private BigDecimal capitalEmpresa;
 	private SituacaoEmpresa situacaoEmpresa;
-	private LocalDateTime criadoEmEmpresa;
-	private LocalDateTime atualizadoEmEmpresa;
 	private Endereco endereco;
 
 	public Empresa() {
@@ -171,22 +168,6 @@ public class Empresa {
 
 	public void setSituacaoEmpresa(SituacaoEmpresa situacaoEmpresa) {
 		this.situacaoEmpresa = situacaoEmpresa;
-	}
-
-	public LocalDateTime getCriadoEmEmpresa() {
-		return criadoEmEmpresa;
-	}
-
-	public void setCriadoEmEmpresa(LocalDateTime criadoEmEmpresa) {
-		this.criadoEmEmpresa = criadoEmEmpresa;
-	}
-
-	public LocalDateTime getAtualizadoEmEmpresa() {
-		return atualizadoEmEmpresa;
-	}
-
-	public void setAtualizadoEmEmpresa(LocalDateTime atualizadoEmEmpresa) {
-		this.atualizadoEmEmpresa = atualizadoEmEmpresa;
 	}
 
 	public Endereco getEndereco() {

@@ -76,6 +76,8 @@ public abstract class BaseController {
 
 			} catch (Exception e) {
 				SwingUtilities.invokeLater(() -> handleException(e, view));
+			} finally {
+				SwingUtilities.invokeLater(this::hideLoading);
 			}
 		});
 	}

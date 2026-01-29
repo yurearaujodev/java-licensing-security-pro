@@ -22,6 +22,7 @@ public class EmpresaConsultaView extends JInternalFrame {
 	private JTextField txtBusca;
 	private JTable tabela;
 	private JButton btnEditar;
+	private JButton btnExcluir;
 	private JButton btnNovo;
 	private EmpresaTableModel tablemodel;
 
@@ -58,7 +59,9 @@ public class EmpresaConsultaView extends JInternalFrame {
 		panel.add(btnNovo, "cell 0 0,h 35!,w 140!");
 
 		btnEditar = ButtonFactory.createPrimaryButton("ALTERAR", IconFactory.salvar());
-		panel.add(btnEditar, "cell 2 0,h 35!,w 140!");
+		panel.add(btnEditar, "cell 2 0 2 1,split 2,alignx right,w 120!, h 25!");
+		btnExcluir = ButtonFactory.createPrimaryButton("APAGAR", null);
+		panel.add(btnExcluir, "w 120!, h 25!");
 		return panel;
 	}
 
@@ -90,6 +93,10 @@ public class EmpresaConsultaView extends JInternalFrame {
 
 	public JButton getBtnEditar() {
 		return btnEditar;
+	}
+	
+	public JButton getBtnExcluir() {
+		return btnExcluir;
 	}
 
 	public JButton getBtnNovo() {

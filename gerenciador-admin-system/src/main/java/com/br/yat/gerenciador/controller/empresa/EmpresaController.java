@@ -8,13 +8,7 @@ import javax.swing.SwingUtilities;
 
 import com.br.yat.gerenciador.controller.BaseController;
 import com.br.yat.gerenciador.controller.RefreshCallback;
-import com.br.yat.gerenciador.model.Banco;
-import com.br.yat.gerenciador.model.Complementar;
-import com.br.yat.gerenciador.model.Contato;
-import com.br.yat.gerenciador.model.Documento;
 import com.br.yat.gerenciador.model.Empresa;
-import com.br.yat.gerenciador.model.Endereco;
-import com.br.yat.gerenciador.model.Representante;
 import com.br.yat.gerenciador.model.dto.EmpresaDTO;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.service.EmpresaService;
@@ -23,8 +17,13 @@ import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.view.EmpresaView;
 
 public class EmpresaController extends BaseController {
+
 	private final EmpresaView view;
 	private final EmpresaService service;
+	private final TipoCadastro tipoCadastro;
+
+	private RefreshCallback refreshCallback;
+
 	private final DadoPrincipalController ePrincipal;
 	private final DadoEnderecoController eEndereco;
 	private final DadoContatoController eContato;
@@ -32,11 +31,8 @@ public class EmpresaController extends BaseController {
 	private final DadoRepresentanteController eRepresentante;
 	private final DadoBancarioController eBancario;
 	private final DadoComplementarController eComplementar;
-	private RefreshCallback refreshCallback;
 
-	private final TipoCadastro tipoCadastro;
-
-	private static final Map<TipoCadastro, List<String>> abasPorTipo = Map.of(TipoCadastro.CLIENTE,
+	private static final Map<TipoCadastro, List<String>> ABAS = Map.of(TipoCadastro.CLIENTE,
 			List.of("DADOS PRINCIPAIS", "ENDEREÇO", "CONTATOS"), TipoCadastro.FORNECEDORA,
 			List.of("DADOS PRINCIPAIS", "ENDEREÇO", "CONTATOS", "DADOS FISCAIS", "REPRESENTANTE LEGAL",
 					"DADOS BANCÁRIOS", "INFORMAÇÕES COMPLEMENTARES"));
@@ -45,8 +41,10 @@ public class EmpresaController extends BaseController {
 			DadoEnderecoController eEndereco, DadoContatoController eContato, DadoFiscalController eFiscal,
 			DadoRepresentanteController eRepresentante, DadoBancarioController eBancario,
 			DadoComplementarController eComplementar, TipoCadastro tipoCadastro) {
+
 		this.view = view;
 		this.service = service;
+		this.tipoCadastro = tipoCadastro;
 		this.ePrincipal = ePrincipal;
 		this.eEndereco = eEndereco;
 		this.eContato = eContato;
@@ -55,72 +53,14 @@ public class EmpresaController extends BaseController {
 		this.eBancario = eBancario;
 		this.eComplementar = eComplementar;
 
-		this.tipoCadastro = tipoCadastro;
+		inicializar();
+	}
 
+	private void inicializar() {
 		configuracaoInicial();
 		registrarAcoes();
-		atualizarAbas(tipoCadastro);
-		inicializarPortipo();
-	}
-
-	private void inicializarPortipo() {
-		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
-			carregarDados();
-			setModoAlterar(true);
-		} else {
-			limparFormulario();
-			setModoAlterar(false);
-
-		}
-	}
-
-	public void setRefreshCallback(RefreshCallback callback) {
-		this.refreshCallback = callback;
-	}
-
-	private void carregarDados() {
-		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-			return service.carregarForncedoraCompleta();
-		}, dados -> {
-			if (dados != null)
-				preencherFormulario(dados);
-		});
-	}
-
-	public void carregarDadosCliente(int id) {
-		runAsync(SwingUtilities.getWindowAncestor(view), () -> service.carregarClienteCompleto(id), dados -> {
-			if (dados != null && dados.empresa() != null) {
-				preencherFormulario(dados);
-				setModoAlterar(true);
-			} else {
-				DialogFactory.erro(view, "ERRO: EMPRESA NÃO ENCONTRADA.");
-			}
-		});
-	}
-
-	private void preencherFormulario(EmpresaDTO dados) {
-		Empresa emp = dados.empresa();
-
-		ePrincipal.setDados(emp);
-
-		if (emp.getEndereco() != null) {
-			eEndereco.setDados(emp.getEndereco());
-		}
-
-		eContato.setDados(dados.contatos());
-		if (emp.getTipoEmpresa() == TipoCadastro.FORNECEDORA) {
-			eFiscal.setDadosComplementar(emp);
-			eRepresentante.setDados(dados.representantes());
-			eBancario.setDados(dados.bancos());
-			eComplementar.setDados(dados.complementar(), dados.documentos());
-		}
-		atualizarTextoSalvar();
-	}
-
-	public void prepararNovo() {
-		limparFormulario();
-		setModoAlterar(true);
-		view.getBtnNovo().setEnabled(false);
+		atualizarAbas();
+		inicializarPorTipo();
 	}
 
 	private void configuracaoInicial() {
@@ -132,168 +72,172 @@ public class EmpresaController extends BaseController {
 		}
 	}
 
-	private void registrarAcoes() {
-		view.getBtnSalvar().addActionListener(e -> aoClicarSalvar());
-		view.getBtnNovo().addActionListener(e -> aoClicarNovo());
-		view.getBtnCancelar().addActionListener(e -> view.doDefaultCloseAction());
+	public void setRefreshCallback(RefreshCallback callback) {
+		this.refreshCallback = callback;
 	}
 
-	private void aoClicarNovo() {
-		limparFormulario();
-		setModoAlterar(true);
-		view.getBtnNovo().setEnabled(false);
+	private void inicializarPorTipo() {
+		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
+			carregarDados(0); // ID 0 pois o service buscará o registro único de fornecedora
+			setModoEdicao(true);
+		} else {
+			limparFormulario();
+			setModoEdicao(false);
+		}
 	}
 
-	private void setModoAlterar(boolean ativa) {
-		ePrincipal.desativarAtivar(ativa);
-		eEndereco.desativarAtivar(ativa);
-		eContato.desativarAtivar(ativa);
+	public void carregarDados(int id) {
+		runAsync(SwingUtilities.getWindowAncestor(view), () -> service.carregarEmpresaCompleta(id, tipoCadastro),
+				dados -> {
+					if (dados == null) {
+						if (tipoCadastro == TipoCadastro.CLIENTE)
+							DialogFactory.erro(view, "ERRO: EMPRESA NÃO ENCONTRADA.");
+						return;
+					}
 
-		view.getBtnSalvar().setEnabled(ativa);
-		view.getBtnCancelar().setEnabled(true);
+					Empresa empresa = dados.empresa();
+					if (!empresa.isAtivo()) {
+						DialogFactory.aviso(view, "ESTE REGISTRO ESTÁ INATIVO E NÃO PODE SER ALTERADO.");
+						view.doDefaultCloseAction();
+						return;
+					}
+
+					preencherFormulario(dados);
+					setModoEdicao(true);
+				});
+	}
+
+	private void preencherFormulario(EmpresaDTO dto) {
+		Empresa emp = dto.empresa();
+
+		ePrincipal.setDados(emp);
+		if (emp.getEndereco() != null)
+			eEndereco.setDados(emp.getEndereco());
+
+		eContato.setDados(dto.contatos());
 
 		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
-
-			view.getBtnNovo().setEnabled(false);
+			eFiscal.setDadosComplementar(emp);
+			eRepresentante.setDados(dto.representantes());
+			eBancario.setDados(dto.bancos());
+			eComplementar.setDados(dto.complementar(), dto.documentos());
 		}
-
-		if (tipoCadastro == TipoCadastro.CLIENTE) {
-			boolean isAlterar = ePrincipal.getDados().getIdEmpresa() > 0;
-			view.getBtnNovo().setEnabled(isAlterar ? false : !ativa);
-		}
-	}
-
-	private void limparFormulario() {
-		ePrincipal.limpar();
-		eEndereco.limpar();
-		eContato.limpar();
-
-		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
-			eFiscal.limpar();
-			eRepresentante.limpar();
-			eBancario.limpar();
-			eComplementar.limpar();
-		}
-		view.getBtnSalvar().setText("SALVAR");
-		view.getTabbedPane().setSelectedIndex(0);
 		atualizarTextoSalvar();
 	}
 
-	private void atualizarAbas(TipoCadastro tipo) {
-		view.getTabbedPane().removeAll();
-		List<String> abas = abasPorTipo.getOrDefault(tipo, List.of());
-		for (String aba : abas) {
-			JPanel panel = view.getPanelByName(aba);
-			if (panel != null) {
-				view.getTabbedPane().addTab(aba, panel);
-			}
-		}
+	public void prepararNovo() {
+		limparFormulario();
+		setModoEdicao(true);
 	}
 
-	private void aoClicarSalvar() {
+	private void registrarAcoes() {
+		view.getBtnSalvar().addActionListener(e -> salvar());
+		view.getBtnNovo().addActionListener(e -> prepararNovo());
+		view.getBtnCancelar().addActionListener(e -> view.doDefaultCloseAction());
+	}
+
+	private void salvar() {
 		if (!validarFormulario())
 			return;
 
-		final Endereco endereco = eEndereco.getDados();
-		final Empresa empresa = ePrincipal.getDados();
-		final List<Contato> contatos = eContato.getDados();
-
-		List<Representante> representantes = null;
-		List<Banco> bancos = null;
-		Complementar complementar = null;
-		List<Documento> documentos = null;
+		Empresa empresa = ePrincipal.getDados();
 
 		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
 			eFiscal.getDadosComplementar(empresa);
-
-			representantes = eRepresentante.getDados();
-			bancos = eBancario.getDados();
-			complementar = eComplementar.getComplementar();
-			documentos = eComplementar.getDocumentos();
 		}
 
-		final List<Representante> finalReps = representantes;
-		final List<Banco> finalBancos = bancos;
-		final Complementar finalComp = complementar;
-		final List<Documento> finalDocs = documentos;
-
-		final boolean isAlterar = empresa.getIdEmpresa() > 0;
-		final String mensagem = isAlterar ? "ALTERADO COM SUCESSO." : "SALVO COM SUCESSO.";
+		boolean alterar = empresa.getIdEmpresa() > 0;
 
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-			service.salvarEmpresaCompleta(endereco, empresa, contatos, finalReps, finalBancos, finalComp, finalDocs);
+			service.salvarEmpresaCompleta(eEndereco.getDados(), empresa, eContato.getDados(),
+					tipoCadastro == TipoCadastro.FORNECEDORA ? eRepresentante.getDados() : null,
+					tipoCadastro == TipoCadastro.FORNECEDORA ? eBancario.getDados() : null,
+					tipoCadastro == TipoCadastro.FORNECEDORA ? eComplementar.getComplementar() : null,
+					tipoCadastro == TipoCadastro.FORNECEDORA ? eComplementar.getDocumentos() : null);
 			return true;
-		}, success -> {
-			DialogFactory.informacao(view, mensagem);
+		}, ok -> {
+			DialogFactory.informacao(view, alterar ? "ALTERADO COM SUCESSO." : "SALVO COM SUCESSO.");
 			if (tipoCadastro == TipoCadastro.CLIENTE) {
 				limparFormulario();
-				setModoAlterar(false);
+				setModoEdicao(false);
+				view.getBtnNovo().setEnabled(true);
 			}
 			if (refreshCallback != null)
 				refreshCallback.onSaveSuccess();
 		});
 	}
 
-	private void focar(String Aba) {
-		var panel = view.getPanelByName(Aba);
-		if (panel != null) {
-			view.getTabbedPane().setSelectedComponent(panel);
-		}
-	}
-
 	private boolean validarFormulario() {
-		if (!ePrincipal.isValido()) {
-			focar("DADOS PRINCIPAIS");
-			return false;
-		}
-		if (!eEndereco.isValido()) {
-			focar("ENDEREÇO");
-			return false;
-		}
-		if (!eContato.isValido()) {
-			focar("CONTATOS");
-			return false;
-		}
-		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
-			if (!eFiscal.isValido()) {
-				focar("DADOS FISCAIS");
-				return false;
-			}
-			if (!eRepresentante.isValido()) {
-				focar("REPRESENTANTE LEGAL");
-				return false;
-			}
-			if (!eBancario.isValido()) {
-				focar("DADOS BANCÁRIOS");
-				return false;
-			}
-			if (!eComplementar.isValido()) {
-				focar("INFORMAÇÕES COMPLEMENTARES");
-				return false;
-			}
+		if (!ePrincipal.isValido())
+			return focar("DADOS PRINCIPAIS");
+		if (!eEndereco.isValido())
+			return focar("ENDEREÇO");
+		if (!eContato.isValido())
+			return focar("CONTATOS");
 
+		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
+			if (!eFiscal.isValido())
+				return focar("DADOS FISCAIS");
+			if (!eRepresentante.isValido())
+				return focar("REPRESENTANTE LEGAL");
+			if (!eBancario.isValido())
+				return focar("DADOS BANCÁRIOS");
+			if (!eComplementar.isValido())
+				return focar("INFORMAÇÕES COMPLEMENTARES");
 		}
 		return true;
 	}
-	
+
+	private boolean focar(String aba) {
+		JPanel panel = view.getPanelByName(aba);
+		if (panel != null)
+			view.getTabbedPane().setSelectedComponent(panel);
+		return false;
+	}
+
+	private void limparFormulario() {
+		ePrincipal.limpar();
+		eEndereco.limpar();
+		eContato.limpar();
+		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
+			eFiscal.limpar();
+			eRepresentante.limpar();
+			eBancario.limpar();
+			eComplementar.limpar();
+		}
+		view.getTabbedPane().setSelectedIndex(0);
+		atualizarTextoSalvar();
+	}
+
+	private void setModoEdicao(boolean ativo) {
+		ePrincipal.desativarAtivar(ativo);
+		eEndereco.desativarAtivar(ativo);
+		eContato.desativarAtivar(ativo);
+		view.getBtnSalvar().setEnabled(ativo);
+		view.getBtnNovo().setEnabled(!ativo && tipoCadastro == TipoCadastro.CLIENTE);
+	}
+
+	private void atualizarAbas() {
+		view.getTabbedPane().removeAll();
+		ABAS.get(tipoCadastro).forEach(nome -> {
+			JPanel panel = view.getPanelByName(nome);
+			if (panel != null)
+				view.getTabbedPane().addTab(nome, panel);
+		});
+	}
+
 	private void atualizarTextoSalvar() {
-		boolean isAlterar = ePrincipal.getDados().getIdEmpresa()>0;
-		view.getBtnSalvar().setText(isAlterar?"ALTERAR":"SALVAR");
+		boolean alterar = ePrincipal.getDados().getIdEmpresa() > 0;
+		view.getBtnSalvar().setText(alterar ? "ALTERAR" : "SALVAR");
 	}
 
 	public boolean podeFechar() {
-		if (!view.getBtnSalvar().isEnabled()) {
+		if (!view.getBtnSalvar().isEnabled())
 			return true;
-		}
-		if (isFormularioVazio()) {
-			return true;
-		}
 
-		return DialogFactory.confirmacao(view, "EXISTEM ALTERAÇÕES NÃO SALVAS. DESEJA REALMENTE SAIR?");
+		String razao = ePrincipal.getDados().getRazaoSocialEmpresa();
+		return ValidationUtils.isEmpty(razao)
+				|| DialogFactory.confirmacao(view, "EXISTEM ALTERAÇÕES NÃO SALVAS. DESEJA REALMENTE SAIR?");
 	}
 
-	private boolean isFormularioVazio() {
-		var razao = ePrincipal.getDados().getRazaoSocialEmpresa();
-		return (ePrincipal.getDados().getIdEmpresa() <= 0) && (ValidationUtils.isEmpty(razao));
-	}
 }
