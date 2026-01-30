@@ -73,14 +73,36 @@ public class DadoBancarioPanel extends JPanel {
 		panel.add(btnRemover, "w 120!, h 25!");
 
 		tabela = TableFactory.createDefaultTable(
-				new String[] { "CÓD. DO BANCO", "BANCO", "AGÊNCIA", "NÚM. DA CONTA", "TIPO DE CONTA" });
-		for (int i = 0; i < tabela.getColumnCount(); i++) {
-			if (tabela.getColumnModel().getColumn(i).getPreferredWidth() == 75) {
-				tabela.getColumnModel().getColumn(i).setPreferredWidth(150);
-			}
-
-		}
+				new String[] {"ID", "CÓD. DO BANCO", "BANCO", "AGÊNCIA", "NÚM. DA CONTA", "TIPO DE CONTA" });
+		configurarColunas(tabela);
 		panel.add(TableFactory.createTableScrolling(tabela), "cell 0 4 4 1,growx,hmin 100,pushy");
+	}
+	
+	private void configurarColunas(JTable tabela) {
+		tabela.getColumnModel().getColumn(0).setPreferredWidth(0);
+		tabela.getColumnModel().getColumn(0).setMinWidth(0);
+		tabela.getColumnModel().getColumn(0).setMaxWidth(0);
+
+		tabela.getColumnModel().getColumn(1).setPreferredWidth(150);
+		tabela.getColumnModel().getColumn(1).setMinWidth(150);
+		tabela.getColumnModel().getColumn(1).setMaxWidth(150);
+
+		tabela.getColumnModel().getColumn(2).setPreferredWidth(370);
+		tabela.getColumnModel().getColumn(2).setMinWidth(370);
+		tabela.getColumnModel().getColumn(2).setMaxWidth(370);
+
+		tabela.getColumnModel().getColumn(3).setPreferredWidth(250);
+		tabela.getColumnModel().getColumn(3).setMinWidth(250);
+		tabela.getColumnModel().getColumn(3).setMaxWidth(250);
+
+		tabela.getColumnModel().getColumn(4).setPreferredWidth(250);
+		tabela.getColumnModel().getColumn(4).setMinWidth(250);
+		tabela.getColumnModel().getColumn(4).setMaxWidth(250);
+
+		tabela.getColumnModel().getColumn(5).setPreferredWidth(270);
+		tabela.getColumnModel().getColumn(5).setMinWidth(270);
+		tabela.getColumnModel().getColumn(5).setMaxWidth(270);
+
 	}
 
 	public String getCodigoBanco() {

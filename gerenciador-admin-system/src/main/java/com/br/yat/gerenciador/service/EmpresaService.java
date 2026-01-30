@@ -138,21 +138,16 @@ public class EmpresaService {
 			return;
 
 		RepresentanteDao repDao = new RepresentanteDao(conn);
-		repDao.deleteByEmpresa(id);
-		if (representantes != null)
-			representantes.forEach(r -> {
-				r.setEmpresa(empresa);
-				repDao.save(r);
-			});
+		if (representantes != null) {
+			representantes.forEach(r -> r.setEmpresa(empresa));
+			repDao.syncByEmpresa(id, representantes);
+		}
 
 		BancoDao banDao = new BancoDao(conn);
-		banDao.deleteByEmpresa(id);
-		if (bancos != null)
-			bancos.forEach(b -> {
-				b.setEmpresa(empresa);
-				banDao.save(b);
-			});
-
+		if (bancos != null) {
+			bancos.forEach(b -> b.setEmpresa(empresa));
+			banDao.syncByEmpresa(id, bancos);
+		}
 		if (complementar != null) {
 			complementar.setEmpresa(empresa);
 			ComplementarDao compDao = new ComplementarDao(conn);
@@ -163,12 +158,10 @@ public class EmpresaService {
 		}
 
 		DocumentoDao docDao = new DocumentoDao(conn);
-		docDao.deleteByEmpresa(id);
-		if (documentos != null)
-			documentos.forEach(d -> {
-				d.setEmpresa(empresa);
-				docDao.save(d);
-			});
+		if (documentos != null) {
+			documentos.forEach(d -> d.setEmpresa(empresa));
+			docDao.syncByEmpresa(id, documentos);
+		}
 	}
 
 	public void inativarEmpresa(int idEmpresa) {

@@ -6,5 +6,5 @@ public enum SituacaoEmpresa {
 	INAPTA,
 	SUSPENSA,
 	BAIXADA,
-	NUlA;
+	NULA;
 }

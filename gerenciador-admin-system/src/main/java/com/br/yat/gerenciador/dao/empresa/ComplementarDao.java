@@ -34,16 +34,12 @@ public class ComplementarDao extends GenericDao<Complementar> {
 		return com;
 	}
 
-	public void delete(int id) {
-		executeUpdate("DELETE FROM " + tableName + " WHERE " + pkName + " =?", id);
-	}
-
 	public List<Complementar> listAll() {
-		return executeQuery("SELECT * FROM " + tableName);
+		return executeQuery("SELECT * FROM " + tableName+" WHERE deletado_em IS NULL");
 	}
 
 	public Complementar buscarPorEmpresa(int idEmpresa) {
-		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ?";	
+		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ? AND deletado_em IS NULL";	
 		List<Complementar> lista = executeQuery(sql, idEmpresa);
 		return lista.isEmpty() ? null : lista.get(0);
 	}

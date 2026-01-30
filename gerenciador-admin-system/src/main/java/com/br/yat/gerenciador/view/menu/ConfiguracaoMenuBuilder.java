@@ -42,6 +42,10 @@ public final class ConfiguracaoMenuBuilder {
 
 		JMenu menuManutencao = MenuFactory.createMenu("MANUTENÇÃO", null);
 
+		JMenuItem itemConBan = MenuFactory.createMenuItem("CONEXÃO COM BANCO", null, null);
+		MenuRegistry.register(MenuChave.CONFIGURACAO_CONEXAO_BANCO_DADOS, itemConBan);
+		menuManutencao.add(itemConBan);
+		
 		JMenuItem itemBacDad = MenuFactory.createMenuItem("BACKUP DE DADOS", null, null);
 		MenuRegistry.register(MenuChave.CONFIGURACAO_BACKUP_DE_DADOS, itemBacDad);
 		menuManutencao.add(itemBacDad);

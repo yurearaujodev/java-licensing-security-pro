@@ -10,7 +10,7 @@ import com.br.yat.gerenciador.model.Representante;
 
 public class RepresentanteDao extends GenericDao<Representante> {
 
-	public RepresentanteDao(Connection conn){
+	public RepresentanteDao(Connection conn) {
 		super(conn, "representante_legal", "id_representante");
 	}
 
@@ -36,22 +36,13 @@ public class RepresentanteDao extends GenericDao<Representante> {
 		return rep;
 	}
 
-	public void delete(int id) {
-		executeUpdate("DELETE FROM " + tableName + " WHERE " + pkName + " = ?", id);
-	}
-
 	public List<Representante> listAll() {
-		return executeQuery("SELECT * FROM " + tableName);
+		return executeQuery("SELECT * FROM " + tableName + " WHERE deletado_em IS NULL");
 	}
 
 	public List<Representante> listarPorEmpresa(int idEmpresa) {
-		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ?";
+		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ? AND deletado_em IS NULL";
 		return executeQuery(sql, idEmpresa);
-	}
-
-	public void deleteByEmpresa(int idEmpresa) {
-		String sql = "DELETE FROM " + tableName + " WHERE id_empresa=?";
-		executeUpdate(sql, idEmpresa);
 	}
 
 	@Override
@@ -67,6 +58,13 @@ public class RepresentanteDao extends GenericDao<Representante> {
 		r.setTelefoneRepresentante(rs.getString("telefone"));
 		r.setEmailRepresentante(rs.getString("email"));
 		return r;
+	}
+
+	public void syncByEmpresa(int idEmpresa, List<Representante> novos) {
+		List<Representante> atuais = listarPorEmpresa(idEmpresa);
+
+		syncByParentId(novos, atuais, Representante::getIdRepresentante, this::save, this::update,
+				r -> softDeleteById(r.getIdRepresentante()));
 	}
 
 }

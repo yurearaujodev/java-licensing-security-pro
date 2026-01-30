@@ -32,7 +32,7 @@ public class ContatoDao extends GenericDao<Contato> {
 	}
 
 	public List<Contato> listAll() {
-		return executeQuery("SELECT * FROM " + tableName+" WHERE deletado_em IS NULL");
+		return executeQuery("SELECT * FROM " + tableName + " WHERE deletado_em IS NULL");
 	}
 
 	public List<Contato> listarPorEmpresa(int idEmpresa) {
@@ -53,7 +53,8 @@ public class ContatoDao extends GenericDao<Contato> {
 	public void syncByEmpresa(int idEmpresa, List<Contato> novos) {
 		List<Contato> atuais = listarPorEmpresa(idEmpresa);
 
-		syncByParentId(novos, atuais, Contato::getIdContato, this::save, this::update, c -> softDeleteById(c.getIdContato()));
+		syncByParentId(novos, atuais, Contato::getIdContato, this::save, this::update,
+				c -> softDeleteById(c.getIdContato()));
 
 	}
 

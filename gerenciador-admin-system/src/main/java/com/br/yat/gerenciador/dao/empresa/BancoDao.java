@@ -11,7 +11,7 @@ import com.br.yat.gerenciador.model.enums.TipoConta;
 
 public class BancoDao extends GenericDao<Banco> {
 
-	public BancoDao(Connection conn){
+	public BancoDao(Connection conn) {
 		super(conn, "dados_bancarios", "id_banco");
 	}
 
@@ -28,7 +28,7 @@ public class BancoDao extends GenericDao<Banco> {
 	}
 
 	public Banco update(Banco ban) {
-		var sql = "UPDATE " + tableName + " SET banco=?,codigo_banco=?,agencia=?,conta=?,tipo=?atualizado_em=NOW() "
+		var sql = "UPDATE " + tableName + " SET banco=?,codigo_banco=?,agencia=?,conta=?,tipo=?,atualizado_em=NOW() "
 				+ "WHERE " + pkName + " = ?";
 
 		executeUpdate(sql, ban.getNomeBanco(), ban.getCodBanco(), ban.getAgenciaBanco(), ban.getContaBanco(),
@@ -37,22 +37,13 @@ public class BancoDao extends GenericDao<Banco> {
 
 	}
 
-	public void delete(int id) {
-		executeUpdate("DELETE FROM " + tableName + " WHERE " + pkName + " = ?", id);
-	}
-
 	public List<Banco> listAll() {
-		return executeQuery("SELECT * FROM " + tableName);
+		return executeQuery("SELECT * FROM " + tableName + " WHERE deletado_em IS NULL");
 	}
 
 	public List<Banco> listarPorEmpresa(int idEmpresa) {
-		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ?";
+		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ? AND deletado_em IS NULL";
 		return executeQuery(sql, idEmpresa);
-	}
-
-	public void deleteByEmpresa(int idEmpresa) {
-		String sql = "DELETE FROM " + tableName + " WHERE id_empresa=?";
-		executeUpdate(sql, idEmpresa);
 	}
 
 	@Override
@@ -63,8 +54,14 @@ public class BancoDao extends GenericDao<Banco> {
 		b.setCodBanco(rs.getInt("codigo_banco"));
 		b.setAgenciaBanco(rs.getString("agencia"));
 		b.setContaBanco(rs.getString("conta"));
-		b.setTipoBanco(valueOf(TipoConta.class,rs.getString("tipo")));
+		b.setTipoBanco(valueOf(TipoConta.class, rs.getString("tipo")));
 		return b;
+	}
+
+	public void syncByEmpresa(int idEmpresa, List<Banco> novos) {
+		List<Banco> atuais = listarPorEmpresa(idEmpresa);
+
+		syncByParentId(novos, atuais, Banco::getIdBanco, this::save, this::update, b -> softDeleteById(b.getIdBanco()));
 	}
 
 }

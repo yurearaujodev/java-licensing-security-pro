@@ -1,8 +1,6 @@
 package com.br.yat.gerenciador.view;
 
-import java.awt.EventQueue;
-
-import javax.swing.JFrame;
+import javax.swing.JInternalFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
@@ -16,7 +14,7 @@ import java.awt.Font;
 import javax.swing.JPasswordField;
 import javax.swing.JButton;
 
-public class ConfiguracaoBancoView extends JFrame {
+public class ConfiguracaoBancoView extends JInternalFrame {
 
 	private static final long serialVersionUID = 1L;
 	private JPanel contentPane;
@@ -31,12 +29,12 @@ public class ConfiguracaoBancoView extends JFrame {
 	 * Create the frame.
 	 */
 	public ConfiguracaoBancoView() {
+		super("CONFIGURAÇÃO DE CONEXÃO COM O BANCO",false,true,false,false);
 		init();
 
 	}
 
 	private void init() {
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 450, 300);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
@@ -116,21 +114,5 @@ public class ConfiguracaoBancoView extends JFrame {
 		} finally {
 			SensitiveData.safeClear(password);
 		}
-	}
-
-	/**
-	 * Launch the application.
-	 */
-	public static void main(String[] args) {
-		EventQueue.invokeLater(new Runnable() {
-			public void run() {
-				try {
-					ConfiguracaoBancoView frame = new ConfiguracaoBancoView();
-					frame.setVisible(true);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
 	}
 }

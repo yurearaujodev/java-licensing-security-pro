@@ -21,11 +21,13 @@ import com.br.yat.gerenciador.util.FileStorageFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoComplementarPanel;
+import com.br.yat.gerenciador.view.factory.TableFactory;
 
 public class DadoComplementarController {
 	private final DadoComplementarPanel view;
 	private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 	private Complementar complementarAtual;
+	private Integer linhaEmAlteracao = null;
 
 	public DadoComplementarController(DadoComplementarPanel view) {
 		this.view = view;
@@ -36,8 +38,17 @@ public class DadoComplementarController {
 	private void registrarAcoes() {
 		view.getTxtRamo()
 				.addFocusListener(ValidationUtils.createValidationListener(view.getTxtRamo(), this::validarRamo));
-		view.getFuncionario().addFocusListener(
-				ValidationUtils.createValidationListener(view.getFuncionario(), this::validarFuncionario));
+		view.getSpinnerFuncionario().addFocusListener(
+				ValidationUtils.createValidationListener(view.getSpinnerFuncionario(), this::validarFuncionario));
+		view.getTabela().getSelectionModel().addListSelectionListener(e -> {
+			if (!e.getValueIsAdjusting()) {
+				preencherCamposLinhaSelecionada();
+			}
+		});
+		TableFactory.addEmptySpaceClickAction(view.getTabela(), () -> {
+			linhaEmAlteracao = null;
+			view.setTipo("SELECIONE UMA OPÇÃO");
+		});
 		view.getBtnLogoTipo().addActionListener(e -> uploadLogo());
 		view.getBtnAdicionar().addActionListener(e -> anexarDocumento());
 		view.getBtnRemover().addActionListener(e -> removerDocumento());
@@ -63,19 +74,32 @@ public class DadoComplementarController {
 		try {
 			EmpresaValidationUtils.validarNumeroFuncionarios(ValidationUtils.parseInt(view.getFuncionarios()));
 
-			ValidationUtils.removerDestaque(view.getFuncionario());
+			ValidationUtils.removerDestaque(view.getSpinnerFuncionario());
 		} catch (ValidationException e) {
-			ValidationUtils.exibirErro(view.getFuncionario(), e.getMessage());
+			e.printStackTrace();
+			ValidationUtils.exibirErro(view.getSpinnerFuncionario(), e.getMessage());
 		} catch (Exception e) {
-			ValidationUtils.exibirErro(view.getFuncionario(), "ERRO NA VALIDAÇÃO");
+			e.printStackTrace();
+			ValidationUtils.exibirErro(view.getSpinnerFuncionario(), "ERRO NA VALIDAÇÃO");
 		}
+	}
+
+	private void preencherCamposLinhaSelecionada() {
+		int selectedRow = view.getTabela().getSelectedRow();
+		if (selectedRow < 0)
+			return;
+
+		linhaEmAlteracao = selectedRow;
+
+		var tipo = (String) view.getTabela().getValueAt(selectedRow, 1);
+		view.setTipo(tipo);
 	}
 
 	private void uploadLogo() {
 		File arquivo = abrirSeletor("Imagens (PNG,JPG)", "jpg", "png", "jpeg");
 		if (arquivo != null) {
 			try {
-				String caminho = FileStorageFactory.salvarLogo(arquivo, "fornecedor");
+				String caminho = FileStorageFactory.salvarLogo(arquivo, "fornecedora");
 				view.setLogo(caminho);
 				ValidationUtils.removerDestaque(view.getTxtLogo());
 			} catch (IOException ex) {
@@ -85,18 +109,32 @@ public class DadoComplementarController {
 	}
 
 	private void anexarDocumento() {
+
+		if (view.getTipoDocumento().equals("SELECIONE UMA OPÇÃO")) {
+			DialogFactory.aviso(view, "POR FAVOR, SELECIONE O TIPO DO DOCUMENTO.");
+			return;
+		}
+
 		File arquivo = abrirSeletor("Documentos (PDF,Imagens)", "pdf", "jpg", "png", "docx");
 		if (arquivo != null) {
 			try {
 				String tipo = view.getTipoDocumento();
-
 				String caminhoRelativo = FileStorageFactory.salvarArquivo(arquivo, tipo);
 				String dataAgora = LocalDateTime.now().format(dtf);
 
 				DefaultTableModel model = (DefaultTableModel) view.getTabela().getModel();
-
-				Object[] linha = { tipo, caminhoRelativo, dataAgora };
-				model.addRow(linha);
+				
+				if (linhaEmAlteracao != null) {
+					model.setValueAt(tipo, linhaEmAlteracao, 1);
+					model.setValueAt(caminhoRelativo, linhaEmAlteracao, 2);
+					model.setValueAt(dataAgora, linhaEmAlteracao, 3);
+					linhaEmAlteracao = null;
+				} else {
+					Object[] linha = { 0, tipo, caminhoRelativo, dataAgora };
+					model.addRow(linha);
+				}
+				view.getTabela().clearSelection();
+				view.getCbTipo().setSelectedIndex(0);
 			} catch (IOException ex) {
 				DialogFactory.erro(view, "ERRO AO ANEXAR ARQUIVO: ", ex);
 			}
@@ -108,9 +146,10 @@ public class DadoComplementarController {
 		if (selectedRow != -1) {
 			var model = (DefaultTableModel) view.getTabela().getModel();
 			model.removeRow(selectedRow);
+			linhaEmAlteracao=null;
 			return;
 		}
-		DialogFactory.informacao(view, "SELECIONE UM DOCUMENTO NA TABELA PArA REMOVER.");
+		DialogFactory.informacao(view, "SELECIONE UM DOCUMENTO NA TABELA PARA REMOVER.");
 
 	}
 
@@ -122,7 +161,7 @@ public class DadoComplementarController {
 	}
 
 	public boolean isValido() {
-		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(view.getTxtRamo(), view.getFuncionario(),
+		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(view.getTxtRamo(), view.getSpinnerFuncionario(),
 				view.getCbTipo());
 
 		if (obrigatoriosVazios) {
@@ -139,7 +178,8 @@ public class DadoComplementarController {
 			return false;
 		}
 
-		JComponent erro = ValidationUtils.hasErroVisual(view.getTxtRamo(), view.getFuncionario(), view.getCbTipo());
+		JComponent erro = ValidationUtils.hasErroVisual(view.getTxtRamo(), view.getSpinnerFuncionario(),
+				view.getCbTipo());
 
 		if (erro != null) {
 			DialogFactory.aviso(view, "EXISTEM CAMPOS COM DADOS INVÁLIDOS.");
@@ -178,6 +218,7 @@ public class DadoComplementarController {
 	public void limpar() {
 		var model = (DefaultTableModel) view.getTabela().getModel();
 		model.setRowCount(0);
+		linhaEmAlteracao=null;
 		view.limpar();
 	}
 
@@ -197,10 +238,17 @@ public class DadoComplementarController {
 	public List<Documento> getDocumentos() {
 		List<Documento> documentos = new ArrayList<>();
 		var model = (DefaultTableModel) view.getTabela().getModel();
+
 		for (int i = 0; i < model.getRowCount(); i++) {
 			Documento d = new Documento();
-			d.setTipoDocumento((String) model.getValueAt(i, 0));
-			d.setArquivoDocumento((String) model.getValueAt(i, 1));
+
+			Object idObj = model.getValueAt(i, 0);
+			if (idObj != null) {
+				d.setIdDocumento((int) idObj);
+			}
+
+			d.setTipoDocumento((String) model.getValueAt(i, 1));
+			d.setArquivoDocumento((String) model.getValueAt(i, 2));
 			documentos.add(d);
 		}
 		return documentos;
@@ -222,7 +270,7 @@ public class DadoComplementarController {
 				var caminho = d.getArquivoDocumento();
 				var dataParaExibir = extrairDataCaminho(caminho);
 
-				model.addRow(new Object[] { d.getTipoDocumento(), caminho, dataParaExibir });
+				model.addRow(new Object[] { d.getIdDocumento(), d.getTipoDocumento(), caminho, dataParaExibir });
 			}
 
 		}

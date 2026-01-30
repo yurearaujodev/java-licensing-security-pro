@@ -23,28 +23,19 @@ public class DocumentoDao extends GenericDao<Documento> {
 	}
 
 	public Documento update(Documento doc) {
-		var sql = "UPDATE" + tableName + " SET tipo=?,arquivo=?,atualizado_em=NOW() " + "WHERE " + pkName + " = ?";
+		var sql = "UPDATE " + tableName + " SET tipo=?,arquivo=?,atualizado_em=NOW() " + "WHERE " + pkName + " = ?";
 
 		executeUpdate(sql, doc.getTipoDocumento(), doc.getArquivoDocumento(), doc.getIdDocumento());
 		return doc;
 	}
 
-	public void delete(int id) {
-		executeUpdate("DELETE FROM " + tableName + " WHERE " + pkName + " = ?", id);
-	}
-
 	public List<Documento> listAll() {
-		return executeQuery("SELECT * FROM " + tableName);
+		return executeQuery("SELECT * FROM " + tableName + " WHERE deletado_em IS NULL");
 	}
 
 	public List<Documento> listarPorEmpresa(int idEmpresa) {
-		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ?";
+		String sql = "SELECT * FROM " + tableName + " WHERE id_empresa = ? AND deletado_em IS NULL";
 		return executeQuery(sql, idEmpresa);
-	}
-
-	public void deleteByEmpresa(int idEmpresa) {
-		String sql = "DELETE FROM " + tableName + " WHERE id_empresa=?";
-		executeUpdate(sql, idEmpresa);
 	}
 
 	@Override
@@ -54,6 +45,13 @@ public class DocumentoDao extends GenericDao<Documento> {
 		d.setTipoDocumento(rs.getString("tipo"));
 		d.setArquivoDocumento(rs.getString("arquivo"));
 		return d;
+	}
+
+	public void syncByEmpresa(int idEmpresa, List<Documento> novos) {
+		List<Documento> atuais = listarPorEmpresa(idEmpresa);
+
+		syncByParentId(novos, atuais, Documento::getIdDocumento, this::save, this::update,
+				d -> softDeleteById(d.getIdDocumento()));
 	}
 
 }

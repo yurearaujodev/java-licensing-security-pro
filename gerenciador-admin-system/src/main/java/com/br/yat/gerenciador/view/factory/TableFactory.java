@@ -151,4 +151,15 @@ public final class TableFactory {
 		});
 	}
 
+	public static void addEmptySpaceClickAction(JTable table, Runnable emptyClickAction) {
+	    table.addMouseListener(new MouseAdapter() {
+	        @Override
+	        public void mousePressed(MouseEvent e) {
+	            if (table.rowAtPoint(e.getPoint()) == -1) {
+	                table.clearSelection();
+	                emptyClickAction.run();
+	            }
+	        }
+	    });
+	}
 }

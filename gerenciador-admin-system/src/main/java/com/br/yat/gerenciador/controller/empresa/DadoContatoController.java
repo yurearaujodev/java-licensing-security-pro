@@ -18,12 +18,14 @@ import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoContatoPanel;
 import com.br.yat.gerenciador.view.factory.FormatterUtils;
 import com.br.yat.gerenciador.view.factory.MaskFactory;
+import com.br.yat.gerenciador.view.factory.TableFactory;
 
 public class DadoContatoController {
 
 	private final DadoContatoPanel view;
 	private final Map<TipoContato, Runnable> estrategiasConfiguracao = new HashMap<>();
 	private final Map<String, String> mascaras = MaskFactory.createMask();
+	private Integer linhaEmAlteracao = null;
 
 	public DadoContatoController(DadoContatoPanel view) {
 		this.view = view;
@@ -41,6 +43,10 @@ public class DadoContatoController {
 			if (!e.getValueIsAdjusting()) {
 				preencherCamposLinhaSelecionada();
 			}
+		});
+		TableFactory.addEmptySpaceClickAction(view.getTabela(), () -> {
+			linhaEmAlteracao = null;
+			view.limpar();
 		});
 	}
 
@@ -121,24 +127,32 @@ public class DadoContatoController {
 			return;
 		}
 
-		if (contatoJaExiste(tipo, valor)) {
-			DialogFactory.aviso(view, "ESTE CONTATO JÁ FOI ADICIONADO.");
-			return;
-		}
-
 		var model = (DefaultTableModel) view.getTabela().getModel();
-		model.addRow(new Object[] { tipo, valor });
+
+		if (linhaEmAlteracao != null) {
+			model.setValueAt(tipo, linhaEmAlteracao, 1);
+			model.setValueAt(valor, linhaEmAlteracao, 2);
+			linhaEmAlteracao = null;
+		} else {
+
+			if (contatoJaExiste(tipo, valor)) {
+				DialogFactory.aviso(view, "ESTE CONTATO JÁ FOI ADICIONADO.");
+				return;
+			}
+			Object[] linha = { 0, tipo, valor };
+			model.addRow(linha);
+		}
 
 		view.limpar();
 		ValidationUtils.removerDestaque(view.getFtxtContato());
-
+		view.getTabela().clearSelection();
 	}
 
 	private boolean contatoJaExiste(TipoContato tipo, String valor) {
 		var model = (DefaultTableModel) view.getTabela().getModel();
 
 		for (int i = 0; i < model.getRowCount(); i++) {
-			if (Objects.equals(model.getValueAt(i, 0), tipo) && Objects.equals(model.getValueAt(i, 1), valor)) {
+			if (Objects.equals(model.getValueAt(i, 1), tipo) && Objects.equals(model.getValueAt(i, 2), valor)) {
 				return true;
 			}
 		}
@@ -153,6 +167,8 @@ public class DadoContatoController {
 		}
 		var model = (DefaultTableModel) view.getTabela().getModel();
 		model.removeRow(selectedRow);
+		linhaEmAlteracao = null;
+		view.limpar();
 	}
 
 	private void preencherCamposLinhaSelecionada() {
@@ -160,8 +176,10 @@ public class DadoContatoController {
 		if (selectedRow < 0)
 			return;
 
-		TipoContato tipo = (TipoContato) view.getTabela().getValueAt(selectedRow, 0);
-		String valor = (String)view.getTabela().getValueAt(selectedRow, 1);
+		linhaEmAlteracao = selectedRow;
+
+		TipoContato tipo = (TipoContato) view.getTabela().getValueAt(selectedRow, 1);
+		String valor = (String) view.getTabela().getValueAt(selectedRow, 2);
 
 		view.setTipoContato(tipo);
 		view.setContato(valor);
@@ -207,8 +225,13 @@ public class DadoContatoController {
 
 		for (int i = 0; i < model.getRowCount(); i++) {
 			Contato contato = new Contato();
-			TipoContato tipo = (TipoContato) model.getValueAt(i, 0);
-			var valor = model.getValueAt(i, 1).toString();
+			Object idObj = model.getValueAt(i, 0);
+			if (idObj != null) {
+				contato.setIdContato((int) idObj);
+			}
+
+			TipoContato tipo = (TipoContato) model.getValueAt(i, 1);
+			var valor = model.getValueAt(i, 2).toString();
 			contato.setTipoContato(tipo);
 			if (tipo == TipoContato.FIXO || tipo == TipoContato.CELULAR || tipo == TipoContato.WHATSAPP) {
 				contato.setValorContato(ValidationUtils.onlyNumbers(valor));
@@ -235,7 +258,7 @@ public class DadoContatoController {
 							mascaras.get(c.getTipoContato().name()));
 				}
 
-				model.addRow(new Object[] { c.getTipoContato(), valorFormatado });
+				model.addRow(new Object[] { c.getIdContato(), c.getTipoContato(), valorFormatado });
 			});
 		}
 	}

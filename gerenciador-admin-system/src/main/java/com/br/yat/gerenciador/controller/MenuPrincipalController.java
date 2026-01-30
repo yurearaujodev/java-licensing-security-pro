@@ -1,6 +1,9 @@
 package com.br.yat.gerenciador.controller;
 
 import java.awt.event.ActionListener;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -15,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.util.MenuRegistry;
+import com.br.yat.gerenciador.view.ConfiguracaoBancoView;
 import com.br.yat.gerenciador.view.EmpresaView;
 import com.br.yat.gerenciador.view.MenuPrincipal;
 import com.br.yat.gerenciador.view.empresa.EmpresaConsultaView;
@@ -31,12 +35,15 @@ public class MenuPrincipalController {
 		this.view = view;
 		registrarAcoes();
 		iniciarRelogio();
+		verificarPrimeiroAcesso();
 	}
 
 	private void registrarAcoes() {
 		configurarAcaoMenu(MenuChave.CADASTROS_EMPRESA_CLIENTE, e -> abrirEmpresaCliente());
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_EMPRESA_FORNECEDORA, e -> abrirEmpresaFornecedora());
 		configurarAcaoMenu(MenuChave.CONSULTAS_EMPRESAS_CLIENTES, e -> abrirEmpresaConsulta());
+	
+		configurarAcaoMenu(MenuChave.CONFIGURACAO_CONEXAO_BANCO_DADOS, e->abrirConfiguracaoBanco());
 	}
 
 	private void iniciarRelogio() {
@@ -54,6 +61,25 @@ public class MenuPrincipalController {
 		if (relogioTimer != null) {
 			relogioTimer.stop();
 		}
+	}
+	
+	private void verificarPrimeiroAcesso() {
+		Path path = Paths.get("config","database","db.properties");
+		
+		if (!Files.exists(path)) {
+			abrirConfiguracaoBanco();
+		}
+	}
+	
+	private void abrirConfiguracaoBanco() {
+		JDesktopPane desk = view.getDesktopPane();
+		
+		if (DesktopUtils.reuseIfOpen(desk, ConfiguracaoBancoView.class)) {
+			return;
+		}
+		
+		ConfiguracaoBancoView frame = ViewFactory.createConfiguracaoBancoView();
+		DesktopUtils.showFrame(desk, frame);
 	}
 
 	private void configurarAcaoMenu(MenuChave chave, ActionListener acao) {

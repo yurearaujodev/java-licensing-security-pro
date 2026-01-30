@@ -1,8 +1,6 @@
 package com.br.yat.gerenciador.model;
 
-import java.time.LocalDateTime;
-
-public class Endereco {
+public class Endereco extends BaseEntity {
 
 	private int idEndereco;
 	private String cepEndereco;
@@ -13,15 +11,13 @@ public class Endereco {
 	private String cidadeEndereco;
 	private String estadoEndereco;
 	private String paisEndereco;
-	private LocalDateTime criadoEmEndereco;
-	private LocalDateTime atualizadoEmEndereco;
 
 	public Endereco() {
-		
+
 	}
 
-	public Endereco(String cepEndereco, String logradouroEndereco,String complementoEndereco, String bairroEndereco, String cidadeEndereco,
-			String estadoEndereco) {
+	public Endereco(String cepEndereco, String logradouroEndereco, String complementoEndereco, String bairroEndereco,
+			String cidadeEndereco, String estadoEndereco) {
 		this();
 		this.cepEndereco = cepEndereco != null ? cepEndereco.replaceAll("\\D", "") : "";
 		this.logradouroEndereco = logradouroEndereco != null ? logradouroEndereco.trim() : "";
@@ -102,22 +98,6 @@ public class Endereco {
 
 	public void setPaisEndereco(String paisEndereco) {
 		this.paisEndereco = paisEndereco;
-	}
-
-	public LocalDateTime getCriadoEmEndereco() {
-		return criadoEmEndereco;
-	}
-
-	public void setCriadoEmEndereco(LocalDateTime criadoEmEndereco) {
-		this.criadoEmEndereco = criadoEmEndereco;
-	}
-
-	public LocalDateTime getAtualizadoEmEndereco() {
-		return atualizadoEmEndereco;
-	}
-
-	public void setAtualizadoEmEndereco(LocalDateTime atualizadoEmEndereco) {
-		this.atualizadoEmEndereco = atualizadoEmEndereco;
 	}
 
 }

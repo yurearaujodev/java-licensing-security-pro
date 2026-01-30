@@ -14,10 +14,12 @@ import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 import com.br.yat.gerenciador.view.empresa.DadoBancarioPanel;
+import com.br.yat.gerenciador.view.factory.TableFactory;
 
 public class DadoBancarioController {
 
 	private final DadoBancarioPanel view;
+	private Integer linhaEmAlteracao = null;
 
 	public DadoBancarioController(DadoBancarioPanel view) {
 		this.view = view;
@@ -41,6 +43,10 @@ public class DadoBancarioController {
 			if (!e.getValueIsAdjusting()) {
 				preencherCamposLinhaSelecionada();
 			}
+		});
+		TableFactory.addEmptySpaceClickAction(view.getTabela(), () -> {
+			linhaEmAlteracao = null;
+			view.limpar();
 		});
 	}
 
@@ -117,11 +123,14 @@ public class DadoBancarioController {
 		int selectedRow = view.getTabela().getSelectedRow();
 		if (selectedRow < 0)
 			return;
-		view.setCodigoBanco((String) view.getTabela().getValueAt(selectedRow, 0));
-		view.setBanco((String) view.getTabela().getValueAt(selectedRow, 1));
-		view.setAgencia((String) view.getTabela().getValueAt(selectedRow, 2));
-		view.setConta((String) view.getTabela().getValueAt(selectedRow, 3));
-		view.setTipoConta((TipoConta) view.getTabela().getValueAt(selectedRow, 4));
+
+		linhaEmAlteracao = selectedRow;
+
+		view.setCodigoBanco((String) view.getTabela().getValueAt(selectedRow, 1));
+		view.setBanco((String) view.getTabela().getValueAt(selectedRow, 2));
+		view.setAgencia((String) view.getTabela().getValueAt(selectedRow, 3));
+		view.setConta((String) view.getTabela().getValueAt(selectedRow, 4));
+		view.setTipoConta((TipoConta) view.getTabela().getValueAt(selectedRow, 5));
 	}
 
 	private void removerBanco() {
@@ -132,11 +141,11 @@ public class DadoBancarioController {
 		}
 		var model = (DefaultTableModel) view.getTabela().getModel();
 		model.removeRow(selectedRow);
+		linhaEmAlteracao = null;
+		view.limpar();
 	}
 
 	private void adicionarBanco() {
-		var agencia = view.getAgencia();
-		var conta = view.getConta();
 
 		if (ValidationUtils.temCamposVazios(view.getFtxtCodBanco(), view.getTxtBanco())) {
 			DialogFactory.aviso(view, "POR FAVOR, PREENCHA OS CAMPOS OBRIGATÓRIOS DESTACADOS EM VERMELHO.");
@@ -154,25 +163,40 @@ public class DadoBancarioController {
 			return;
 		}
 
-		if (BancoJaExiste(agencia, conta)) {
-			DialogFactory.aviso(view, "ESTE BANCO JÁ FOI ADICIONADO.");
-			return;
-		}
-
 		var model = (DefaultTableModel) view.getTabela().getModel();
 
-		var codigoLimpo = ValidationUtils.onlyNumbers(view.getCodigoBanco());
-		var codigoFormatado = String.format("%03d", Integer.parseInt(codigoLimpo));
+		if (linhaEmAlteracao != null) {
+			model.setValueAt(view.getCodigoBanco(), linhaEmAlteracao, 1);
+			model.setValueAt(view.getBanco(), linhaEmAlteracao, 2);
+			model.setValueAt(view.getAgencia(), linhaEmAlteracao, 3);
+			model.setValueAt(view.getConta(), linhaEmAlteracao, 4);
+			model.setValueAt(view.getTipoConta(), linhaEmAlteracao, 5);
 
-		Object[] linha = { codigoFormatado, view.getBanco(), view.getAgencia(), view.getConta(), view.getTipoConta() };
-		model.addRow(linha);
+			linhaEmAlteracao = null;
+		} else {
+			if (BancoJaExiste(view.getAgencia(), view.getConta())) {
+				DialogFactory.aviso(view, "ESTE BANCO JÁ FOI ADICIONADO.");
+				return;
+			}
+			var codigoLimpo = ValidationUtils.onlyNumbers(view.getCodigoBanco());
+			var codigoFormatado = String.format("%03d", Integer.parseInt(codigoLimpo));
+
+			Object[] linha = { 0, codigoFormatado, view.getBanco(), view.getAgencia(), view.getConta(),
+					view.getTipoConta() };
+			model.addRow(linha);
+		}
+		view.limpar();
+		ValidationUtils.removerDestaque(view.getFtxtCodBanco(), view.getTxtBanco(), view.getTxtAgencia(),
+				view.getTxtConta());
+		view.getTabela().clearSelection();
+
 	}
 
 	private boolean BancoJaExiste(String agencia, String conta) {
 		var model = (DefaultTableModel) view.getTabela().getModel();
 
 		for (int i = 0; i < model.getRowCount(); i++) {
-			if (Objects.equals(model.getValueAt(i, 2), agencia) && Objects.equals(model.getValueAt(i, 3), conta)) {
+			if (Objects.equals(model.getValueAt(i, 3), agencia) && Objects.equals(model.getValueAt(i, 4), conta)) {
 				return true;
 			}
 		}
@@ -217,12 +241,18 @@ public class DadoBancarioController {
 
 		for (int i = 0; i < model.getRowCount(); i++) {
 			Banco b = new Banco();
-			var codigo = ValidationUtils.onlyNumbers((String) model.getValueAt(i, 0));
+
+			Object idObj = model.getValueAt(i, 0);
+			if (idObj != null) {
+				b.setIdBanco((int) idObj);
+			}
+
+			var codigo = ValidationUtils.onlyNumbers((String) model.getValueAt(i, 1));
 			b.setCodBanco(Integer.parseInt(codigo));
-			b.setNomeBanco((String) model.getValueAt(i, 1));
-			b.setAgenciaBanco((String) model.getValueAt(i, 2));
-			b.setContaBanco((String) model.getValueAt(i, 3));
-			b.setTipoBanco((TipoConta) model.getValueAt(i, 4));
+			b.setNomeBanco((String) model.getValueAt(i, 2));
+			b.setAgenciaBanco((String) model.getValueAt(i, 3));
+			b.setContaBanco((String) model.getValueAt(i, 4));
+			b.setTipoBanco((TipoConta) model.getValueAt(i, 5));
 			bancos.add(b);
 		}
 		return bancos;
@@ -233,8 +263,8 @@ public class DadoBancarioController {
 		if (bancos != null) {
 			for (Banco b : bancos) {
 				String codFormatado = String.format("%03d", b.getCodBanco());
-				model.addRow(new Object[] { codFormatado, b.getNomeBanco(), b.getAgenciaBanco(), b.getContaBanco(),
-						b.getTipoBanco() });
+				model.addRow(new Object[] { b.getIdBanco(), codFormatado, b.getNomeBanco(), b.getAgenciaBanco(),
+						b.getContaBanco(), b.getTipoBanco() });
 			}
 
 		}

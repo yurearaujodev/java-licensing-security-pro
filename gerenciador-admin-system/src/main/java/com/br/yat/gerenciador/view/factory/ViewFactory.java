@@ -4,6 +4,7 @@ import javax.swing.WindowConstants;
 import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
 
+import com.br.yat.gerenciador.controller.ConfiguracaoBancoController;
 import com.br.yat.gerenciador.controller.MenuPrincipalController;
 import com.br.yat.gerenciador.controller.empresa.DadoBancarioController;
 import com.br.yat.gerenciador.controller.empresa.DadoComplementarController;
@@ -16,6 +17,7 @@ import com.br.yat.gerenciador.controller.empresa.EmpresaConsultaController;
 import com.br.yat.gerenciador.controller.empresa.EmpresaController;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.service.EmpresaService;
+import com.br.yat.gerenciador.view.ConfiguracaoBancoView;
 import com.br.yat.gerenciador.view.EmpresaView;
 import com.br.yat.gerenciador.view.MenuPrincipal;
 import com.br.yat.gerenciador.view.empresa.EmpresaConsultaView;
@@ -80,6 +82,12 @@ public final class ViewFactory {
 
 		EmpresaController controller = (EmpresaController) view.getClientProperty("controller");
 		controller.carregarDados(id);
+		return view;
+	}
+	
+	public static ConfiguracaoBancoView createConfiguracaoBancoView() {
+		ConfiguracaoBancoView view = new ConfiguracaoBancoView();
+		new ConfiguracaoBancoController();
 		return view;
 	}
 

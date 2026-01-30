@@ -92,15 +92,48 @@ public class DadoRepresentantePanel extends JPanel {
 		btnRemover = ButtonFactory.createPrimaryButton("REMOVER");
 		panel.add(btnRemover, "w 120!, h 25!");
 
-		tabela = TableFactory.createDefaultTable(
-				new String[] { "NOME", "CPF", "RG", "CARGO", "NACIONALIDADE", "ESTADO CIVIL", "TELEFONE", "E-MAIL" });
-		for (int i = 0; i < tabela.getColumnCount(); i++) {
-			if (tabela.getColumnModel().getColumn(i).getPreferredWidth() == 75) {
-				tabela.getColumnModel().getColumn(i).setPreferredWidth(150);
-			}
-
-		}
+		tabela = TableFactory.createDefaultTable(new String[] { "ID", "NOME", "CPF", "RG", "CARGO", "NACIONALIDADE",
+				"ESTADO CIVIL", "TELEFONE", "E-MAIL" });
+		configurarColunas(tabela);
 		panel.add(TableFactory.createTableScrolling(tabela), "cell 0 6 4 1,growx,hmin 100,pushy");
+	}
+
+	private void configurarColunas(JTable tabela) {
+		tabela.getColumnModel().getColumn(0).setPreferredWidth(0);
+		tabela.getColumnModel().getColumn(0).setMinWidth(0);
+		tabela.getColumnModel().getColumn(0).setMaxWidth(0);
+
+		tabela.getColumnModel().getColumn(1).setPreferredWidth(300);
+		tabela.getColumnModel().getColumn(1).setMinWidth(300);
+		tabela.getColumnModel().getColumn(1).setMaxWidth(300);
+
+		tabela.getColumnModel().getColumn(2).setPreferredWidth(120);
+		tabela.getColumnModel().getColumn(2).setMinWidth(120);
+		tabela.getColumnModel().getColumn(2).setMaxWidth(120);
+
+		tabela.getColumnModel().getColumn(3).setPreferredWidth(120);
+		tabela.getColumnModel().getColumn(3).setMinWidth(120);
+		tabela.getColumnModel().getColumn(3).setMaxWidth(120);
+
+		tabela.getColumnModel().getColumn(4).setPreferredWidth(160);
+		tabela.getColumnModel().getColumn(4).setMinWidth(160);
+		tabela.getColumnModel().getColumn(4).setMaxWidth(160);
+
+		tabela.getColumnModel().getColumn(5).setPreferredWidth(150);
+		tabela.getColumnModel().getColumn(5).setMinWidth(150);
+		tabela.getColumnModel().getColumn(5).setMaxWidth(150);
+
+		tabela.getColumnModel().getColumn(6).setPreferredWidth(160);
+		tabela.getColumnModel().getColumn(6).setMinWidth(160);
+		tabela.getColumnModel().getColumn(6).setMaxWidth(160);
+
+		tabela.getColumnModel().getColumn(7).setPreferredWidth(130);
+		tabela.getColumnModel().getColumn(7).setMinWidth(130);
+		tabela.getColumnModel().getColumn(7).setMaxWidth(130);
+
+		tabela.getColumnModel().getColumn(8).setPreferredWidth(230);
+		tabela.getColumnModel().getColumn(8).setMinWidth(230);
+		tabela.getColumnModel().getColumn(8).setMaxWidth(230);
 	}
 
 	public String getNome() {

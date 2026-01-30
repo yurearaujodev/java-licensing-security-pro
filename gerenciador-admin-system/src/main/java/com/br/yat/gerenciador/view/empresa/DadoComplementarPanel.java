@@ -78,16 +78,32 @@ public class DadoComplementarPanel extends JPanel {
 		panel.add(btnRemover, "w 120!, h 25!");
 
 		tabela = TableFactory.createDefaultTable(
-				new String[] { "TIPO", "NOME DO ARQUIVO", "DATA INCLUSÃO"});
-		for (int i = 0; i < tabela.getColumnCount(); i++) {
-			if (tabela.getColumnModel().getColumn(i).getPreferredWidth() == 75) {
-				tabela.getColumnModel().getColumn(i).setPreferredWidth(211);
-			}
-
-		}
+				new String[] {"ID", "TIPO", "NOME DO ARQUIVO", "DATA INCLUSÃO"});
+		configurarColunas(tabela);
 		panel.add(TableFactory.createTableScrolling(tabela), "cell 0 4 4 1,growx,hmin 80,pushy");
 		
 	}
+	
+	private void configurarColunas(JTable tabela) {
+		tabela.getColumnModel().getColumn(0).setPreferredWidth(0);
+		tabela.getColumnModel().getColumn(0).setMinWidth(0);
+		tabela.getColumnModel().getColumn(0).setMaxWidth(0);
+
+		tabela.getColumnModel().getColumn(1).setPreferredWidth(250);
+		tabela.getColumnModel().getColumn(1).setMinWidth(250);
+		tabela.getColumnModel().getColumn(1).setMaxWidth(250);
+
+		tabela.getColumnModel().getColumn(2).setPreferredWidth(680);
+		tabela.getColumnModel().getColumn(2).setMinWidth(680);
+		tabela.getColumnModel().getColumn(2).setMaxWidth(680);
+
+		tabela.getColumnModel().getColumn(3).setPreferredWidth(360);
+		tabela.getColumnModel().getColumn(3).setMinWidth(360);
+		tabela.getColumnModel().getColumn(3).setMaxWidth(360);
+
+	}
+	
+	
 	public JButton getBtnDocumento() {
 		return btnDoc;
 	}
@@ -119,7 +135,7 @@ public class DadoComplementarPanel extends JPanel {
 		spinnerNum.setValue(numero);
 	}
 	
-	public JSpinner getFuncionario() {
+	public JSpinner getSpinnerFuncionario() {
 		return spinnerNum;
 	}
 	
@@ -168,7 +184,7 @@ public class DadoComplementarPanel extends JPanel {
 		txtRamo.setText("");
 		jtaobs.setText("");
 		cbTipo.setSelectedIndex(0);
-		spinnerNum.setValue(null);
+		spinnerNum.setValue(0);
 	}
 	
 	public void desativarAtivar(boolean ativa) {

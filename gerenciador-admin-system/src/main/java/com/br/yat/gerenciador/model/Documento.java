@@ -1,13 +1,9 @@
 package com.br.yat.gerenciador.model;
 
-import java.time.LocalDateTime;
-
-public class Documento {
+public class Documento extends BaseEntity {
 	private int idDocumento;
 	private String tipoDocumento;
 	private String arquivoDocumento;
-	private LocalDateTime criadoEmDocumento;
-	private LocalDateTime atualizadoEmDocumento;
 	private Empresa empresa;
 
 	public Documento() {
@@ -35,22 +31,6 @@ public class Documento {
 
 	public void setArquivoDocumento(String arquivoDocumento) {
 		this.arquivoDocumento = arquivoDocumento;
-	}
-
-	public LocalDateTime getCriadoEmDocumento() {
-		return criadoEmDocumento;
-	}
-
-	public void setCriadoEmDocumento(LocalDateTime criadoEmDocumento) {
-		this.criadoEmDocumento = criadoEmDocumento;
-	}
-
-	public LocalDateTime getAtualizadoEmDocumento() {
-		return atualizadoEmDocumento;
-	}
-
-	public void setAtualizadoEmDocumento(LocalDateTime atualizadoEmDocumento) {
-		this.atualizadoEmDocumento = atualizadoEmDocumento;
 	}
 
 	public Empresa getEmpresa() {

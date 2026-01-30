@@ -1,8 +1,6 @@
 package com.br.yat.gerenciador.model;
 
-import java.time.LocalDateTime;
-
-public class Representante {
+public class Representante extends BaseEntity {
 	private int idRepresentante;
 	private String nomeRepresentante;
 	private String cpfRepresentante;
@@ -12,8 +10,6 @@ public class Representante {
 	private String estadoCivilRepresentante;
 	private String telefoneRepresentante;
 	private String emailRepresentante;
-	private LocalDateTime criadoEmRepresentante;
-	private LocalDateTime atualizadoEmRepresentante;
 	private Empresa empresa;
 
 	public Representante() {
@@ -91,22 +87,6 @@ public class Representante {
 		this.emailRepresentante = emailRepresentante;
 	}
 
-	public LocalDateTime getCriadoEmRepresentante() {
-		return criadoEmRepresentante;
-	}
-
-	public void setCriadoEmRepresentante(LocalDateTime criadoEmRepresentante) {
-		this.criadoEmRepresentante = criadoEmRepresentante;
-	}
-
-	public LocalDateTime getAtualizadoEmRepresentante() {
-		return atualizadoEmRepresentante;
-	}
-
-	public void setAtualizadoEmRepresentante(LocalDateTime atualizadoEmRepresentante) {
-		this.atualizadoEmRepresentante = atualizadoEmRepresentante;
-	}
-
 	public Empresa getEmpresa() {
 		return empresa;
 	}
@@ -114,7 +94,5 @@ public class Representante {
 	public void setEmpresa(Empresa empresa) {
 		this.empresa = empresa;
 	}
-	
-	
 
 }

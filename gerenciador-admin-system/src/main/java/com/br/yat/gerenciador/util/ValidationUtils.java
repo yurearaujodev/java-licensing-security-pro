@@ -17,6 +17,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFormattedTextField;
+import javax.swing.JSpinner;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
 import javax.swing.event.DocumentEvent;
@@ -85,6 +86,12 @@ public final class ValidationUtils {
 					yield "";
 				}
 				yield selected.toString().trim();
+			}
+			case JSpinner spinner -> {
+				if (spinner.getEditor() instanceof JSpinner.DefaultEditor def) {
+					yield def.getTextField().getText().trim();
+				}
+				yield "";
 			}
 			case null, default -> "";
 			};
@@ -259,7 +266,7 @@ public final class ValidationUtils {
 				if (string != null) {
 					String somenteNumeros = string.replaceAll("\\D", "");
 					if (!somenteNumeros.isBlank()) {
-						super.insertString(fb,offset, somenteNumeros, attr);	
+						super.insertString(fb, offset, somenteNumeros, attr);
 					}
 				}
 			}
@@ -270,7 +277,7 @@ public final class ValidationUtils {
 				if (text != null) {
 					String somenteNumeros = text.replaceAll("\\D", "");
 					if (!somenteNumeros.isBlank()) {
-						super.replace(fb,offset,length, somenteNumeros, attrs);	
+						super.replace(fb, offset, length, somenteNumeros, attrs);
 					}
 				}
 			}

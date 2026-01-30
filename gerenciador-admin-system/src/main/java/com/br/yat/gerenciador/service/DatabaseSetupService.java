@@ -4,7 +4,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
-import java.util.Objects;
 import java.util.Properties;
 
 import javax.crypto.SecretKey;
@@ -18,6 +17,7 @@ import com.br.yat.gerenciador.security.AESUtils;
 import com.br.yat.gerenciador.security.FileManager;
 import com.br.yat.gerenciador.security.KeyManager;
 import com.br.yat.gerenciador.security.SensitiveData;
+import com.br.yat.gerenciador.validation.DatabaseValidationUtils;
 
 public final class DatabaseSetupService {
 
@@ -34,10 +34,8 @@ public final class DatabaseSetupService {
 	}
 
 	public static void saveDatabaseConfigConfiguration(String url, String user, char[] password) {
-		Objects.requireNonNull(url, "db.url não pode ser nulo");
-		Objects.requireNonNull(user, "db.user não pode ser nulo");
-		Objects.requireNonNull(password, "db.password não pode ser nulo");
-
+		DatabaseValidationUtils.validarConfiguracaoCompleta(url, user, password);
+		
 		byte[] encrytedPassword = null;
 
 		try {
@@ -58,8 +56,8 @@ public final class DatabaseSetupService {
 			throw e;
 
 		} catch (Exception e) {
-			logger.error("Falha ao salvar configuração do banco", e);
-			throw new CryptoException("Erro ao salvar configuração do banco", e);
+			logger.error("FALHA AO SALVAR CONFIGURAÇÃO DO BANCO", e);
+			throw new CryptoException("ERRO TÉCNICO AO GRAVAR CONFIGURAÇÕES", e);
 		} finally {
 			SensitiveData.safeClear(encrytedPassword);
 			SensitiveData.safeClear(password);

@@ -51,19 +51,23 @@ public class DadoContatoPanel extends JPanel {
 		remover = ButtonFactory.createPrimaryButton("Remover", null);
 		panel.add(remover, "w 120!, h 25!");
 
-		tabela = TableFactory.createDefaultTable(new String[] { "TIPO", "VALOR" });
+		tabela = TableFactory.createDefaultTable(new String[] {"ID", "TIPO", "VALOR" });
 		configurarColunas(tabela);
 		panel.add(TableFactory.createTableScrolling(tabela), "cell 0 3 2 1,growx,hmin 150,pushy");
 	}
 
 	private void configurarColunas(JTable tabela) {
-		tabela.getColumnModel().getColumn(0).setPreferredWidth(180);
-		tabela.getColumnModel().getColumn(0).setMinWidth(180);
-		tabela.getColumnModel().getColumn(0).setMaxWidth(180);
+		tabela.getColumnModel().getColumn(0).setPreferredWidth(0);
+		tabela.getColumnModel().getColumn(0).setMinWidth(0);
+		tabela.getColumnModel().getColumn(0).setMaxWidth(0);
+	
+		tabela.getColumnModel().getColumn(1).setPreferredWidth(180);
+		tabela.getColumnModel().getColumn(1).setMinWidth(180);
+		tabela.getColumnModel().getColumn(1).setMaxWidth(180);
 
-		tabela.getColumnModel().getColumn(1).setPreferredWidth(462);
-		tabela.getColumnModel().getColumn(1).setMinWidth(462);
-		tabela.getColumnModel().getColumn(1).setMaxWidth(462);
+		tabela.getColumnModel().getColumn(2).setPreferredWidth(1110);
+		tabela.getColumnModel().getColumn(2).setMinWidth(1110);
+		tabela.getColumnModel().getColumn(2).setMaxWidth(1110);
 	}
 	
 	public TipoContato getTipoContato() {
