@@ -2,7 +2,7 @@ package com.br.yat.gerenciador.controller;
 
 import javax.swing.SwingUtilities;
 
-import com.br.yat.gerenciador.config.DatabaseStatus;
+import com.br.yat.gerenciador.configurations.DatabaseStatus;
 import com.br.yat.gerenciador.model.dto.DatabaseConfigDTO;
 import com.br.yat.gerenciador.security.SensitiveData;
 import com.br.yat.gerenciador.service.DatabaseConnectionService;

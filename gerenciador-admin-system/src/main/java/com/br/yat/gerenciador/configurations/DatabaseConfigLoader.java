@@ -1,4 +1,4 @@
-package com.br.yat.gerenciador.config;
+package com.br.yat.gerenciador.configurations;
 
 import java.io.InputStream;
 import java.nio.file.Files;

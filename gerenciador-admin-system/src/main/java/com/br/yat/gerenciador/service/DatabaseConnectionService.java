@@ -1,8 +1,8 @@
 package com.br.yat.gerenciador.service;
 
-import com.br.yat.gerenciador.config.ConnectionFactory;
+import com.br.yat.gerenciador.configurations.ConnectionFactory;
+import com.br.yat.gerenciador.configurations.DatabaseStatus;
 import com.br.yat.gerenciador.model.dto.DatabaseConfigDTO;
-import com.br.yat.gerenciador.config.DatabaseStatus;
 
 public class DatabaseConnectionService {
 

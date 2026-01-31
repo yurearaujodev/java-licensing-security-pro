@@ -1,4 +1,4 @@
-package com.br.yat.gerenciador.config;
+package com.br.yat.gerenciador.configurations;
 
 import java.sql.Connection;
 import java.sql.SQLException;

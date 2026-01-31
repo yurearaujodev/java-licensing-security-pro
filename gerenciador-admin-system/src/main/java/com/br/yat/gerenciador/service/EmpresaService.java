@@ -4,7 +4,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
-import com.br.yat.gerenciador.config.ConnectionFactory;
+import com.br.yat.gerenciador.configurations.ConnectionFactory;
 import com.br.yat.gerenciador.dao.empresa.BancoDao;
 import com.br.yat.gerenciador.dao.empresa.ComplementarDao;
 import com.br.yat.gerenciador.dao.empresa.ContatoDao;

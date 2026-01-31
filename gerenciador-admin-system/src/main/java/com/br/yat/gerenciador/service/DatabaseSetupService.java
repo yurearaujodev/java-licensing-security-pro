@@ -11,7 +11,7 @@ import javax.crypto.SecretKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.br.yat.gerenciador.config.DatabaseConfigLoader;
+import com.br.yat.gerenciador.configurations.DatabaseConfigLoader;
 import com.br.yat.gerenciador.exception.CryptoException;
 import com.br.yat.gerenciador.model.dto.DatabaseConfigDTO;
 import com.br.yat.gerenciador.security.AESUtils;
