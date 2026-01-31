@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
+
 /**
  * Classe utilitária para carregamento e fornecimento de ícones da aplicação.
  * <p>
@@ -18,7 +19,9 @@ import javax.swing.ImageIcon;
  * </ul>
  * </p>
  * 
- * <p>Não deve ser instanciada.</p>
+ * <p>
+ * Não deve ser instanciada.
+ * </p>
  */
 public final class IconFactory {
 
@@ -32,11 +35,12 @@ public final class IconFactory {
 	}
 
 	/**
-	 * Retorna um ícone carregado e redimensionado, utilizando cache para evitar recarregamento.
+	 * Retorna um ícone carregado e redimensionado, utilizando cache para evitar
+	 * recarregamento.
 	 * 
 	 * @param caminho caminho do recurso de imagem
 	 * @param largura largura desejada
-	 * @param altura altura desejada
+	 * @param altura  altura desejada
 	 * @return ícone carregado e redimensionado
 	 * @throws IllegalArgumentException se o recurso não for encontrado
 	 */
@@ -50,7 +54,7 @@ public final class IconFactory {
 	 * 
 	 * @param caminho caminho do recurso de imagem
 	 * @param largura largura desejada
-	 * @param altura altura desejada
+	 * @param altura  altura desejada
 	 * @return ícone carregado e redimensionado
 	 * @throws IllegalArgumentException se o recurso não for encontrado
 	 */
@@ -90,17 +94,29 @@ public final class IconFactory {
 	public static Icon logo() {
 		return icon("/image/logotipo.png", 150, 150);
 	}
-	
+
 	public static Icon salvar() {
-		return icon("/image/salvar_24.png", 25, 25);
+		return icon("/image/salvar_24.png", 24, 24);
 	}
-	
+
 	public static Icon cancelar() {
-		return icon("/image/cancelar_24.png", 25, 25);
+		return icon("/image/cancelar_24.png", 24, 24);
 	}
-	
+
 	public static Icon novo() {
-		return icon("/image/novo_24.png", 25, 25);
+		return icon("/image/novo_24.png", 24, 24);
+	}
+
+	public static Icon bancoOk() {
+		return icon("/image/dbok.png", 16, 16);
+	}
+
+	public static Icon bancoErro() {
+		return icon("/image/dberror.png", 16, 16);
+	}
+
+	public static Icon pesquisar() {
+		return icon("/image/pesquisar_24.png", 24, 24);
 	}
 
 }

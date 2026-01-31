@@ -11,19 +11,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.zaxxer.hikari.HikariDataSource;
+
 /**
- * Classe utilitária responsável por gerenciar o pool de conexões do banco de dados
- * utilizando <b>HikariCP</b>.
+ * Classe utilitária responsável por gerenciar o pool de conexões do banco de
+ * dados utilizando <b>HikariCP</b>.
  * <p>
  * Integra:
  * <ul>
- * <li><b>HikariCP</b> ({@link HikariDataSource}) para gerenciamento de conexões.</li>
- * <li>{@link DatabaseConfigLoader} e {@link HikariConfigBuilder} para carregar e aplicar configurações.</li>
+ * <li><b>HikariCP</b> ({@link HikariDataSource}) para gerenciamento de
+ * conexões.</li>
+ * <li>{@link DatabaseConfigLoader} e {@link HikariConfigBuilder} para carregar
+ * e aplicar configurações.</li>
  * <li><b>SLF4J</b> para logging.</li>
  * </ul>
  * </p>
  * 
- * <p>Não deve ser instanciada.</p>
+ * <p>
+ * Não deve ser instanciada.
+ * </p>
  */
 final class ConnectionPoolManager {
 
@@ -51,9 +56,11 @@ final class ConnectionPoolManager {
 	}
 
 	/**
-	 * Inicializa o pool de conexões, carregando configurações e testando conexões se configurado.
+	 * Inicializa o pool de conexões, carregando configurações e testando conexões
+	 * se configurado.
 	 * <p>
-	 * Caso ocorra falha crítica e o modo fail-fast esteja habilitado, lança {@link IllegalArgumentException}.
+	 * Caso ocorra falha crítica e o modo fail-fast esteja habilitado, lança
+	 * {@link IllegalArgumentException}.
 	 * </p>
 	 */
 	private static void initialize() {
@@ -78,7 +85,8 @@ final class ConnectionPoolManager {
 	/**
 	 * Verifica se o pool deve ser testado na inicialização.
 	 * 
-	 * @return {@code true} se o teste estiver habilitado, {@code false} caso contrário
+	 * @return {@code true} se o teste estiver habilitado, {@code false} caso
+	 *         contrário
 	 */
 	private static boolean shouldTestPoolOnStartup() {
 		try {
@@ -92,7 +100,8 @@ final class ConnectionPoolManager {
 	/**
 	 * Verifica se aplicação deve falhar rapidamente em caso de erro crítico.
 	 * 
-	 * @return {@code true} se o modo fail-fast estiver habilitado, {@code false} caso contrário
+	 * @return {@code true} se o modo fail-fast estiver habilitado, {@code false}
+	 *         caso contrário
 	 */
 	private static boolean isFailFast() {
 		try {
@@ -148,7 +157,8 @@ final class ConnectionPoolManager {
 	/**
 	 * Verifica o status atual do banco de dados.
 	 * 
-	 * @return instância de {@link DatabaseStatus} indicando disponibilidade e mensagem
+	 * @return instância de {@link DatabaseStatus} indicando disponibilidade e
+	 *         mensagem
 	 */
 	static DatabaseStatus checkStatus() {
 		try (Connection conn = getConnection()) {
@@ -235,7 +245,7 @@ final class ConnectionPoolManager {
 	 * Caso ocorra falha, mantém o pool anterior ativo
 	 * </p>
 	 */
-	private static void reloadDataSource() {
+	static void reloadDataSource() {
 		synchronized (RELOAD_LOCK) {
 			HikariDataSource newDs = null;
 			try {
@@ -274,54 +284,6 @@ final class ConnectionPoolManager {
 			if (!conn.isValid(2)) {
 				throw new SQLException("Falha na validação inicial da conexão");
 			}
-		}
-	}
-
-	/**
-	 * Classe interna que representa o status do banco de dados.
-	 * <p>
-	 * Contém informações sobre disponibilidade, mensafem amigavél e detalhes técnicos.
-	 * </p>
-	 */
-	public static final class DatabaseStatus {
-		/**
-		 * Indica se o banco está disponivel.
-		 */
-		public final boolean available;
-		
-		/**
-		 * Mensagem amigável sobre o status.
-		 */
-		public final String message;
-		
-		/**
-		 * Detalhes técnicos ou mensagem padrão.
-		 */
-		public final String details;
-
-		private DatabaseStatus(boolean available, String message, String details) {
-			this.available = available;
-			this.message = message;
-			this.details = details != null ? details : (available ? "OK" : "INDISPONÍVEL");
-		}
-
-		/**
-		 * Retorna status OK.
-		 * 
-		 * @return instância de {@link DatabaseStatus} indicando banco conectado
-		 */
-		public static DatabaseStatus ok() {
-			return new DatabaseStatus(true, "Banco de dados conectado!", "Pool ativo e saudável");
-		}
-
-		/**
-		 * Retorna status de erro.
-		 * 
-		 * @param userMessage mensagem de erro amigável
-		 * @return instância de {@link DatabaseStatus} indicando falha
-		 */
-		public static DatabaseStatus error(String userMessage) {
-			return new DatabaseStatus(false, userMessage, null);
 		}
 	}
 

@@ -45,7 +45,8 @@ public final class ConnectionFactory {
 	 * 
 	 * @return instância de {@link ConnectionPoolManager.DatabaseStatus} indicando disponibilidade e mensagem
 	 */
-	public static ConnectionPoolManager.DatabaseStatus checkStatus() {
+	public static DatabaseStatus reloadAndCheck() {
+		ConnectionPoolManager.reloadDataSource();
 		return ConnectionPoolManager.checkStatus();
 	}
 

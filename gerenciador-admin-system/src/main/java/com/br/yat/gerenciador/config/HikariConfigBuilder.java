@@ -10,19 +10,26 @@ import com.br.yat.gerenciador.exception.CryptoException;
 import com.br.yat.gerenciador.model.enums.CryptoErrorType;
 import com.br.yat.gerenciador.security.SensitiveData;
 import com.zaxxer.hikari.HikariConfig;
+
 /**
- * Classe utilitária para construção de configurações do pool de conexões HikariCP.
+ * Classe utilitária para construção de configurações do pool de conexões
+ * HikariCP.
  * <p>
- * Esta classe utiliza a biblioteca <b>HikariCP</b> ({@code com.zaxxer.hikari.HikariConfig})
- * para gerenciamento de conexões, integrando com:
+ * Esta classe utiliza a biblioteca <b>HikariCP</b>
+ * ({@code com.zaxxer.hikari.HikariConfig}) para gerenciamento de conexões,
+ * integrando com:
  * <ul>
- * <li>{@link DatabasePasswordDecryptor} para descriptografar a senha do banco.</li>
- * <li>{@link SensitiveData} para limpeza segura da senha em memória.<li>
+ * <li>{@link DatabasePasswordDecryptor} para descriptografar a senha do
+ * banco.</li>
+ * <li>{@link SensitiveData} para limpeza segura da senha em memória.
+ * <li>
  * <li><b>SLF4J</b> para logging</li>
  * </ul>
  * </p>
  * 
- * <p>Não deve ser instanciada.</p>
+ * <p>
+ * Não deve ser instanciada.
+ * </p>
  */
 public final class HikariConfigBuilder {
 	private static final Logger logger = LoggerFactory.getLogger(HikariConfigBuilder.class);
@@ -37,13 +44,14 @@ public final class HikariConfigBuilder {
 	/**
 	 * Constrói uma configuração HikariCP a partir das propriedades fornecidas.
 	 * <p>
-	 * Valida propriedades obrigatórias, carrega o driver JDBC, descriptografa a senha
-	 * e aplica otimizações específicas para MYSQL/MariaDB.
+	 * Valida propriedades obrigatórias, carrega o driver JDBC, descriptografa a
+	 * senha e aplica otimizações específicas para MYSQL/MariaDB.
 	 * </p>
 	 * 
 	 * @param props propriedades de configuração do banco
 	 * @return instância de {@link HikariConfig} configurada
-	 * @throws CryptoException se alguma propriedade obrigatória estiver ausente ou inválida
+	 * @throws CryptoException se alguma propriedade obrigatória estiver ausente ou
+	 *                         inválida
 	 */
 	public static HikariConfig buildConfig(Properties props) {
 		Objects.requireNonNull(props, "Properties não pode ser nulo");
@@ -52,11 +60,13 @@ public final class HikariConfigBuilder {
 
 		HikariConfig config = new HikariConfig();
 
-		String jdbcUrl = props.getProperty("db.url");
+		String user = DatabaseFieldDecryptor.decryptToString(props.getProperty("db.user"),"User");
+
+		String jdbcUrl = DatabaseFieldDecryptor.decryptToString(props.getProperty("db.url"),"URL");
 		String driverClass = props.getProperty("db.driver");
 
 		config.setJdbcUrl(jdbcUrl);
-		config.setUsername(props.getProperty("db.user"));
+		config.setUsername(user);
 		config.setDriverClassName(driverClass);
 
 		loadJdbcDriver(driverClass);
@@ -87,11 +97,11 @@ public final class HikariConfigBuilder {
 	}
 
 	/**
-	 * Configura parâmetros do pool de conexões como tamanho máximo, mínimo de de conexões
-	 * e timeouts
+	 * Configura parâmetros do pool de conexões como tamanho máximo, mínimo de de
+	 * conexões e timeouts
 	 * 
 	 * @param config instância de {@link HikariConfig} a ser configurada
-	 * @param props propriedades de configuração
+	 * @param props  propriedades de configuração
 	 */
 	private static void configurePool(HikariConfig config, Properties props) {
 		config.setMaximumPoolSize(DatabaseConfigLoader.getIntProperty(props, "db.poolSize", 5));
@@ -105,7 +115,8 @@ public final class HikariConfigBuilder {
 	}
 
 	/**
-	 * Configura otimizações específicas para MySQL/MariaDB, como cache de prepared statements.
+	 * Configura otimizações específicas para MySQL/MariaDB, como cache de prepared
+	 * statements.
 	 * 
 	 * @param config instância de {@link HikariConfig} a ser configurada
 	 */
@@ -126,7 +137,7 @@ public final class HikariConfigBuilder {
 	 * Configura propriedades de localização e SSL.
 	 * 
 	 * @param config instância de {@link HikariConfig} a ser configurada
-	 * @param props propriedades de configuração
+	 * @param props  propriedades de configuração
 	 */
 	private static void configureLocalizationAndSsl(HikariConfig config, Properties props) {
 		config.addDataSourceProperty("serverTimezone", props.getProperty("db.serverTimezone", "America/Sao_Paulo"));

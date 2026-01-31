@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.ResolverStyle;
+import java.util.Base64;
 import java.util.Locale;
 
 import javax.swing.BorderFactory;
@@ -326,6 +327,18 @@ public final class ValidationUtils {
 
 	public static String formatDate(LocalDate data) {
 		return (data != null) ? data.format(DATE_FORMATTER) : "";
+	}
+	
+	public static boolean isBase64(String value) {
+	    if (isEmpty(value)) {
+	        return false;
+	    }
+	    try {
+	        Base64.getDecoder().decode(value.trim());
+	        return true;
+	    } catch (IllegalArgumentException e) {
+	        return false;
+	    }
 	}
 
 }

@@ -16,6 +16,8 @@ import com.br.yat.gerenciador.controller.empresa.DadoRepresentanteController;
 import com.br.yat.gerenciador.controller.empresa.EmpresaConsultaController;
 import com.br.yat.gerenciador.controller.empresa.EmpresaController;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
+import com.br.yat.gerenciador.service.DatabaseConnectionService;
+import com.br.yat.gerenciador.service.DatabaseSetupService;
 import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.view.ConfiguracaoBancoView;
 import com.br.yat.gerenciador.view.EmpresaView;
@@ -84,10 +86,19 @@ public final class ViewFactory {
 		controller.carregarDados(id);
 		return view;
 	}
-	
+
 	public static ConfiguracaoBancoView createConfiguracaoBancoView() {
 		ConfiguracaoBancoView view = new ConfiguracaoBancoView();
-		new ConfiguracaoBancoController();
+		DatabaseSetupService service = new DatabaseSetupService();
+		DatabaseConnectionService connectionService = new DatabaseConnectionService(service);
+		ConfiguracaoBancoController controller = new ConfiguracaoBancoController(view, service,connectionService);
+
+		view.addInternalFrameListener(new InternalFrameAdapter() {
+			@Override
+			public void internalFrameClosed(InternalFrameEvent e) {
+				controller.dispose();
+			}
+		});
 		return view;
 	}
 

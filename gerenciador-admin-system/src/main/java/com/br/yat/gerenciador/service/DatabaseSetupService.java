@@ -13,13 +13,15 @@ import org.slf4j.LoggerFactory;
 
 import com.br.yat.gerenciador.config.DatabaseConfigLoader;
 import com.br.yat.gerenciador.exception.CryptoException;
+import com.br.yat.gerenciador.model.dto.DatabaseConfigDTO;
 import com.br.yat.gerenciador.security.AESUtils;
 import com.br.yat.gerenciador.security.FileManager;
 import com.br.yat.gerenciador.security.KeyManager;
 import com.br.yat.gerenciador.security.SensitiveData;
+import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.validation.DatabaseValidationUtils;
 
-public final class DatabaseSetupService {
+public class DatabaseSetupService {
 
 	private static final Logger logger = LoggerFactory.getLogger(DatabaseSetupService.class);
 
@@ -29,40 +31,71 @@ public final class DatabaseSetupService {
 
 	private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
 
-	private DatabaseSetupService() {
-		throw new AssertionError("Classe Utilitária não deve ser instanciada");
-	}
-
-	public static void saveDatabaseConfigConfiguration(String url, String user, char[] password) {
-		DatabaseValidationUtils.validarConfiguracaoCompleta(url, user, password);
+	public void saveDatabaseConfigConfiguration(DatabaseConfigDTO dto) {
+		DatabaseValidationUtils.validarConfiguracaoCompleta(dto.url(), dto.user(), dto.password());
 		
-		byte[] encrytedPassword = null;
+		byte[] encryptedPassword = null;
+		byte[] encryptedUser = null;
+		byte[] encryptedUrl = null;
 
 		try {
 			ensureConfigDirectory();
 
 			SecretKey masterKey = loadOrCreateMasterKey();
-			encrytedPassword = AESUtils.encrypt(password, masterKey);
-			String encodedPassword = Base64.getEncoder().encodeToString(encrytedPassword);
+			
+			encryptedPassword = AESUtils.encrypt(dto.password(), masterKey);
+			encryptedUrl = AESUtils.encrypt(dto.url(), masterKey);
+			encryptedUser = AESUtils.encrypt(dto.user(), masterKey);
+			
+			String encodedPassword = Base64.getEncoder().encodeToString(encryptedPassword);
+			String encodedUrl = Base64.getEncoder().encodeToString(encryptedUrl);
+			String encodedUser = Base64.getEncoder().encodeToString(encryptedUser);
 
-			Properties props = buildProperties(url, user, encodedPassword);
+			Properties props = buildProperties(encodedUrl, encodedUser, encodedPassword);
 
 			DatabaseConfigLoader.validateRequiredProperties(props);
 
 			FileManager.saveText(DB_CONFIG_FILE, toPropertiesString(props));
 			logger.info("Configuração de banco salva com sucesso em {}", DB_CONFIG_FILE);
 
-		} catch (CryptoException e) {
-			throw e;
-
 		} catch (Exception e) {
 			logger.error("FALHA AO SALVAR CONFIGURAÇÃO DO BANCO", e);
 			throw new CryptoException("ERRO TÉCNICO AO GRAVAR CONFIGURAÇÕES", e);
 		} finally {
-			SensitiveData.safeClear(encrytedPassword);
-			SensitiveData.safeClear(password);
+			SensitiveData.safeClear(encryptedPassword);
+			SensitiveData.safeClear(encryptedUrl);
+			SensitiveData.safeClear(encryptedUser);
+			SensitiveData.safeClear(dto.password());
 		}
+	}
+	
+	public DatabaseConfigDTO carregarConfiguracao() {
+	    if (!Files.exists(DB_CONFIG_FILE)) {
+	        return null;
+	    }
 
+	    try {
+	        Properties props = new Properties();
+	        props.load(Files.newBufferedReader(DB_CONFIG_FILE));
+
+	        SecretKey masterKey = loadOrCreateMasterKey();
+
+	        String rawUrl = props.getProperty("db.url");
+	        String rawUser = props.getProperty("db.user");
+
+	        String url = ValidationUtils.isBase64(rawUrl)
+	            ? AESUtils.decryptToString(Base64.getDecoder().decode(rawUrl), masterKey)
+	            : rawUrl;
+
+	        String user = ValidationUtils.isBase64(rawUser)
+	            ? AESUtils.decryptToString(Base64.getDecoder().decode(rawUser), masterKey)
+	            : rawUser;
+	        return new DatabaseConfigDTO(url, user, null);
+
+	    } catch (Exception e) {
+	        logger.error("Falha ao carregar configuração do banco", e);
+	        throw new CryptoException("Erro técnico ao ler configurações", e);
+	    }
 	}
 
 	private static void ensureConfigDirectory() {
@@ -82,11 +115,11 @@ public final class DatabaseSetupService {
 		return KeyManager.generateAndSaveAES(GLOBAL_MASTER_KEY_FILE);
 	}
 
-	private static Properties buildProperties(String url, String user, String encodedPassword) {
+	private static Properties buildProperties(String encodedUrl, String encodedUser, String encodedPassword) {
 		Properties props = new Properties();
 
-		props.setProperty("db.url", url.trim());
-		props.setProperty("db.user", user.trim());
+		props.setProperty("db.url", encodedUrl.trim());
+		props.setProperty("db.user", encodedUser.trim());
 		props.setProperty("db.password", encodedPassword.trim());
 		props.setProperty("db.driver", JDBC_DRIVER);
 
@@ -113,7 +146,7 @@ public final class DatabaseSetupService {
 
 	private static String toPropertiesString(Properties props) {
 		StringBuilder sb = new StringBuilder();
-		sb.append("# Configuração gerada na primeira execução\n");
+		sb.append("# GERADO AUTOMATICAMENTE NO PRIMEIRO ACESSO\n");
 		props.stringPropertyNames().stream().sorted()
 				.forEach(key -> sb.append(key).append('=').append(props.getProperty(key)).append('\n'));
 		return sb.toString();
