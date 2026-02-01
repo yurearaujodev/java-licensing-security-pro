@@ -65,7 +65,7 @@ public class EmpresaController extends BaseController {
 
 	private void configuracaoInicial() {
 		view.getDadoPrincipal().setTipoCadastro(tipoCadastro);
-		view.getDadoPrincipal().getCbTipoCadatro().setEnabled(false);
+		view.getDadoPrincipal().getCbTipoCadastro().setEnabled(false);
 		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
 			view.getBtnNovo().setEnabled(false);
 			view.getBtnNovo().setToolTipText("CADASTRO ÚNICO DE FORNECEDORA NÃO PERMITE NOVOS REGISTROS.");

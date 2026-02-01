@@ -194,7 +194,7 @@ public class DadoPrincipalPanel extends JPanel {
 		return cbTipoDocumento;
 	}
 
-	public JComboBox<TipoCadastro> getCbTipoCadatro() {
+	public JComboBox<TipoCadastro> getCbTipoCadastro() {
 		return cbCadastro;
 	}
 

@@ -7,8 +7,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -85,6 +87,21 @@ public abstract class GenericDao<T> {
 		}
 		return lista;
 	}
+	
+	protected <R> R executeQuerySingle(String sql, Function<ResultSet, R> mapper, Object... params) {
+	    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+	        bindParameters(stmt, params);
+	        try (ResultSet rs = stmt.executeQuery()) {
+	            if (rs.next()) {
+	                return mapper.apply(rs);
+	            }
+	        }
+	    } catch (SQLException e) {
+	        throw new DataAccessException(DataAccessErrorType.QUERY_FAILED,
+	                "ERRO AO EXECUTAR QUERY SINGLE EM [" + tableName + "]: " + e.getMessage(), e);
+	    }
+	    return null;
+	}
 
 	public T searchById(int id) {
 		String sql = "SELECT * FROM " + tableName + " WHERE " + pkName + " = ? AND deletado_em IS NULL";
@@ -109,6 +126,7 @@ public abstract class GenericDao<T> {
 			case Integer iVal -> stmt.setInt(idx, iVal);
 			case BigDecimal db -> stmt.setBigDecimal(idx, db);
 			case LocalDate ld -> stmt.setDate(idx, Date.valueOf(ld));
+			case LocalDateTime ldt -> stmt.setTimestamp(idx, Timestamp.valueOf(ldt));
 			case Enum<?> e -> stmt.setString(idx, e.name());
 			case Boolean b -> stmt.setBoolean(idx, b);
 
@@ -142,6 +160,10 @@ public abstract class GenericDao<T> {
 			}
 		}
 		mapaAtuais.values().forEach(softDelete);
+	}
+	
+	public Connection getConnection() {
+	    return this.conn;
 	}
 
 }

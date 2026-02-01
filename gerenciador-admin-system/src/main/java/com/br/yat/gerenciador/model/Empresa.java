@@ -12,7 +12,7 @@ import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.model.enums.TipoDocumento;
 
 public class Empresa extends BaseEntity{
-	private int idEmpresa;
+	private Integer idEmpresa;
 	private TipoCadastro tipoEmpresa;
 	private String fantasiaEmpresa;
 	private String razaoSocialEmpresa;
@@ -34,11 +34,11 @@ public class Empresa extends BaseEntity{
 	public Empresa() {
 	}
 
-	public int getIdEmpresa() {
+	public Integer getIdEmpresa() {
 		return idEmpresa;
 	}
 
-	public void setIdEmpresa(int idEmpresa) {
+	public void setIdEmpresa(Integer idEmpresa) {
 		this.idEmpresa = idEmpresa;
 	}
 

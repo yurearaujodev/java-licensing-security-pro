@@ -28,6 +28,7 @@ public class MenuPrincipal extends JFrame {
 	private static final long serialVersionUID = 1L;
 	private JPanel painelPrincipal;
 	private JLabel lblHora;
+	private JLabel lblUsuarioLogado;
 	private JDesktopPane desktopPane;
 
 	public MenuPrincipal() {
@@ -53,7 +54,7 @@ public class MenuPrincipal extends JFrame {
 		setExtendedState(JFrame.MAXIMIZED_BOTH);
 		getRootPane().setWindowDecorationStyle(JRootPane.FRAME);
 		setVisible(true);
-		
+
 	}
 
 	private JPanel criarPainelMenu() {
@@ -82,7 +83,8 @@ public class MenuPrincipal extends JFrame {
 	private JPanel criarPainelLateral() {
 		JPanel painel = PanelFactory.createPanel("fill, insets 0", "[grow]", "[]10[]10[]30[]");
 		lblHora = LabelFactory.createImageLabel("", IconFactory.data());
-		painel.add(LabelFactory.createImageLabel("ADMINISTRADOR", IconFactory.usuario()), "cell 0 0, alignx center");
+		lblUsuarioLogado = LabelFactory.createImageLabel("CONECTANDO...", IconFactory.usuario());
+		painel.add(lblUsuarioLogado, "cell 0 0, alignx center");
 		painel.add(lblHora, "cell 0 1, alignx center");
 		painel.add(LabelFactory.createImageLabel("", IconFactory.logo()), "cell 0 2, alignx center");
 		return painel;
@@ -98,6 +100,10 @@ public class MenuPrincipal extends JFrame {
 
 	public JLabel getHora() {
 		return lblHora;
+	}
+
+	public void setNomeUsuario(String nome) {
+		lblUsuarioLogado.setText(nome.toUpperCase());
 	}
 
 	public JDesktopPane getDesktopPane() {

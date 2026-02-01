@@ -41,7 +41,7 @@ public final class MenuRegistry {
 	 * @param item item de menu a ser registrado
 	 */
 	public static void register(MenuChave key, JMenuItem item) {
-		item.setEnabled(true);
+		item.setEnabled(false);
 		REGISTRY.put(key, item);
 	}
 

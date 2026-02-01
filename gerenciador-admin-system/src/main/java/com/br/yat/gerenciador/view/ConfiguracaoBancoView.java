@@ -39,10 +39,10 @@ public class ConfiguracaoBancoView extends JInternalFrame {
 		JPanel panel = PanelFactory.createPanel("insets 5", "[grow]", "[]");
 
 		btnTestar = ButtonFactory.createPrimaryButton("TESTAR CONEXÃO", IconFactory.pesquisar());
-		panel.add(btnTestar, "cell 2 0 2 1,split 2,alignx center,w 195!, h 30!");
+		panel.add(btnTestar, "cell 2 0 2 1,split 2,alignx center,w 195!, h 35!");
 
 		btnSalvar = ButtonFactory.createPrimaryButton("SALVAR E CONTINUAR", IconFactory.salvar());
-		panel.add(btnSalvar, "w 195!, h 30!");
+		panel.add(btnSalvar, "w 195!, h 35!, alignx center");
 		return panel;
 	}
 
@@ -121,7 +121,7 @@ public class ConfiguracaoBancoView extends JInternalFrame {
 	}
 
 	public void setPassword(char[] password) {
-		txtPassword.setText(new String(password));
+		txtPassword.setText("");
 	}
 
 	public JButton getBtnSalvar() {

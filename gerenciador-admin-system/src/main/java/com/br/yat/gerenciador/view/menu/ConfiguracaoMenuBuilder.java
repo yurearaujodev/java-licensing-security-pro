@@ -25,7 +25,7 @@ public final class ConfiguracaoMenuBuilder {
 		menuConfiguracao.add(itemParSis);
 
 		JMenuItem itemParLic = MenuFactory.createMenuItem("PARÂMETRO DE LICENÇA", null, null);
-		MenuRegistry.register(MenuChave.CONFIGURACAO_PARAMETRO_SISTEMA, itemParLic);
+		MenuRegistry.register(MenuChave.CONFIGURACAO_PARAMETRO_LICENCA, itemParLic);
 		menuConfiguracao.add(itemParLic);
 
 		JMenu menuSeguranca = MenuFactory.createMenu("SEGURANÇA", null);
