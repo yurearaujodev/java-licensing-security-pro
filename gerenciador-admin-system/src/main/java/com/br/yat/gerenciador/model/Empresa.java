@@ -177,5 +177,22 @@ public class Empresa extends BaseEntity{
 	public void setEndereco(Endereco endereco) {
 		this.endereco = endereco;
 	}
+	
+	@Override
+	public boolean equals(Object obj) {
+	    if (this == obj) return true;
+	    if (obj == null || getClass() != obj.getClass()) return false;
+	    Empresa other = (Empresa) obj;
+	    return java.util.Objects.equals(idEmpresa, other.idEmpresa) &&
+	           java.util.Objects.equals(documentoEmpresa, other.documentoEmpresa) &&
+	           java.util.Objects.equals(razaoSocialEmpresa, other.razaoSocialEmpresa) &&
+	           java.util.Objects.equals(inscEst, other.inscEst) &&
+	           java.util.Objects.equals(inscMun, other.inscMun);
+	}
+
+	@Override
+	public int hashCode() {
+	    return java.util.Objects.hash(idEmpresa, documentoEmpresa);
+	}
 
 }

@@ -94,5 +94,22 @@ public class Representante extends BaseEntity {
 	public void setEmpresa(Empresa empresa) {
 		this.empresa = empresa;
 	}
+	
+	@Override
+	public boolean equals(Object obj) {
+	    if (this == obj) return true;
+	    if (obj == null || getClass() != obj.getClass()) return false;
+	    Representante other = (Representante) obj;
+	    return idRepresentante == other.idRepresentante &&
+	           java.util.Objects.equals(cpfRepresentante, other.cpfRepresentante) &&
+	           java.util.Objects.equals(nomeRepresentante, other.nomeRepresentante) &&
+	           java.util.Objects.equals(emailRepresentante, other.emailRepresentante) &&
+	           java.util.Objects.equals(telefoneRepresentante, other.telefoneRepresentante);
+	}
+
+	@Override
+	public int hashCode() {
+	    return java.util.Objects.hash(idRepresentante, cpfRepresentante);
+	}
 
 }

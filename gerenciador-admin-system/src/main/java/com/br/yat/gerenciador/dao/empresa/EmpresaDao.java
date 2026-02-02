@@ -20,8 +20,7 @@ import com.br.yat.gerenciador.model.enums.TipoDocumento;
 public class EmpresaDao extends GenericDao<Empresa> {
 
 	private final String SELECT_COMPLETO = "SELECT emp.*,end.* FROM " + tableName + " emp "
-			+ "INNER JOIN endereco end ON emp.id_endereco = end.id_endereco "
-			+ "WHERE emp.deletado_em IS NULL";
+			+ "INNER JOIN endereco end ON emp.id_endereco = end.id_endereco " + "WHERE emp.deletado_em IS NULL";
 
 	public EmpresaDao(Connection conn) {
 		super(conn, "empresa", "id_empresa");
@@ -69,18 +68,43 @@ public class EmpresaDao extends GenericDao<Empresa> {
 	public Empresa buscarPorFornecedora() {
 		var sql = SELECT_COMPLETO + " AND emp.tipo = 'FORNECEDORA' LIMIT 1";
 		List<Empresa> resultados = executeQuery(sql);
+		if (resultados.isEmpty()) {
+			System.out.println("DEBUG: Nenhuma empresa do tipo FORNECEDORA encontrada no banco.");
+		}
 		return resultados.isEmpty() ? null : resultados.get(0);
 	}
 
-	public List<Empresa> filtrarClientes(String termo) {
-		var sql = SELECT_COMPLETO + " AND emp.tipo = 'CLIENTE' AND (emp.razao_social LIKE ? OR emp.documento LIKE ?)";
-		var busca = "%" + termo + "%";
-		return executeQuery(sql, busca, busca);
+	public void restaurar(int id) {
+		String sql = "UPDATE " + tableName + " SET deletado_em = NULL WHERE " + pkName + " = ?";
+		executeUpdate(sql, id);
 	}
 
-	public List<Empresa> listarTodosClientes() {
-		var sql = SELECT_COMPLETO + " AND emp.tipo = 'CLIENTE'";
+	public Empresa buscarPorCnpjCpf(String documento) {
+		String sql = SELECT_COMPLETO + " AND emp.documento = ? LIMIT 1";
+		List<Empresa> resultados = executeQuery(sql, documento);
+		return resultados.isEmpty() ? null : resultados.get(0);
+	}
+
+	public List<Empresa> listarTodosClientes(boolean inativos) {
+		String sql = inativos
+				? "SELECT emp.*, end.* FROM " + tableName + " emp "
+						+ "INNER JOIN endereco end ON emp.id_endereco = end.id_endereco "
+						+ "WHERE emp.deletado_em IS NOT NULL AND emp.tipo = 'CLIENTE'"
+				: SELECT_COMPLETO + " AND emp.tipo = 'CLIENTE'";
+
 		return executeQuery(sql);
+	}
+
+	public List<Empresa> filtrarClientes(String termo, boolean inativos) {
+		String base = inativos
+				? "SELECT emp.*, end.* FROM " + tableName + " emp "
+						+ "INNER JOIN endereco end ON emp.id_endereco = end.id_endereco "
+						+ "WHERE emp.deletado_em IS NOT NULL AND emp.tipo = 'CLIENTE'"
+				: SELECT_COMPLETO + " AND emp.tipo = 'CLIENTE'";
+
+		String sql = base + " AND (emp.razao_social LIKE ? OR emp.documento LIKE ?)";
+		String busca = "%" + termo + "%";
+		return executeQuery(sql, busca, busca);
 	}
 
 	@Override

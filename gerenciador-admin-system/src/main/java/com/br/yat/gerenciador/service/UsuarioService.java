@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import com.br.yat.gerenciador.configurations.ConnectionFactory;
+import com.br.yat.gerenciador.dao.LogSistemaDao;
 import com.br.yat.gerenciador.dao.empresa.EmpresaDao;
 import com.br.yat.gerenciador.dao.usuario.MenuSistemaDao;
 import com.br.yat.gerenciador.dao.usuario.PermissaoDao;
@@ -22,62 +23,194 @@ import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.security.PasswordUtils;
 import com.br.yat.gerenciador.security.SensitiveData;
+import com.br.yat.gerenciador.util.AuditLogHelper;
 import com.br.yat.gerenciador.validation.UsuarioValidationUtils;
 
 public class UsuarioService {
 
-	public void salvarUsuarioCompleto(Usuario usuario, List<MenuChave> chavesSelecionadas, Usuario executor) {
+	private static final MenuChave CHAVE_SALVAR = MenuChave.CADASTROS_USUARIO;
 
-		// 1. PRIMEIRA VALIDAÇÃO (Estatística/Campos - Antes de abrir conexão)
+	public void salvarUsuarioCompleto(Usuario usuario, List<MenuChave> chavesSelecionadas, Usuario executor) {
+		validarAcesso(executor, CHAVE_SALVAR);
 		validarDados(usuario, chavesSelecionadas);
+		validarRestricoesMaster(usuario);
 
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			ConnectionFactory.beginTransaction(conn);
-
 			try {
 				UsuarioDao usuarioDao = new UsuarioDao(conn);
 				UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
 				PermissaoDao permissaoDao = new PermissaoDao(conn);
 
-				// 2. SEGUNDA VALIDAÇÃO (Regras de Negócio - Depende do Banco)
-				validarDuplicidadeEmail(usuarioDao, usuario);
+				validarRegrasNegocioBanco(usuarioDao, usuario);
 
-				// Processamento de Senha (BCrypt)
-				if (usuario.getSenhaHash() != null && usuario.getSenhaHash().length > 0) {
-					String hash = PasswordUtils.hashPassword(usuario.getSenhaHash());
-					usuario.setSenhaHashString(hash); // Corrigido para o novo método da Model
+				Usuario estadoAnterior = null;
+				boolean isNovo = (usuario.getIdUsuario() == null || usuario.getIdUsuario() == 0);
+				if (!isNovo) {
+					estadoAnterior = usuarioDao.searchById(usuario.getIdUsuario());
 				}
 
-				// Salva ou Atualiza o Usuário
-				if (usuario.getIdUsuario() != null && usuario.getIdUsuario() > 0) {
-					usuarioDao.update(usuario);
-				} else {
-					int idGerado = usuarioDao.save(usuario);
-					usuario.setIdUsuario(idGerado);
-				}
-
-				// Sincroniza Permissões
+				processarSenhaUsuario(usuario, isNovo);
+				salvarOuAtualizar(usuarioDao, usuario, estadoAnterior, isNovo, conn);
 				sincronizarPermissoes(upDao, permissaoDao, usuario, chavesSelecionadas, executor);
 
 				ConnectionFactory.commitTransaction(conn);
 			} catch (Exception e) {
 				ConnectionFactory.rollbackTransaction(conn);
+				registrarLogErro("SALVAR_USUARIO", e);
 				throw e;
+			} finally {
+				SensitiveData.safeClear(usuario.getSenhaHash());
 			}
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
 		}
 	}
 
-	/**
-	 * Autentica o usuário para o Login
-	 */
+	private void validarRestricoesMaster(Usuario usuario) {
+		if (usuario.isMaster() && !"ATIVO".equals(usuario.getStatus())) {
+			throw new ValidationException(ValidationErrorType.INVALID_FIELD,
+					"O STATUS DO MASTER NÃO PODE SER ALTERADO.");
+		}
+		if (usuario.getIdEmpresa() == null || usuario.getIdEmpresa().getIdEmpresa() == null) {
+			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "A EMPRESA É OBRIGATÓRIA.");
+		}
+	}
+
+	private void validarRegrasNegocioBanco(UsuarioDao dao, Usuario usuario) throws SQLException {
+		if (usuario.isMaster()) {
+			Usuario masterExistente = dao.buscarMasterUnico();
+			if (masterExistente != null && !masterExistente.getIdUsuario().equals(usuario.getIdUsuario())) {
+				throw new ValidationException(ValidationErrorType.DUPLICATE_ENTRY,
+						"JÁ EXISTE UM USUÁRIO MASTER CADASTRADO.");
+			}
+		}
+		validarDuplicidadeEmail(dao, usuario);
+		if (usuario.getIdUsuario() != null && usuario.getIdUsuario() > 0) {
+			Usuario base = dao.searchById(usuario.getIdUsuario());
+			if (base != null && base.isMaster())
+				usuario.setMaster(true);
+		}
+	}
+
+	private void processarSenhaUsuario(Usuario usuario, boolean isNovo) {
+		char[] senhaPura = usuario.getSenhaHash();
+		if (senhaPura != null && senhaPura.length > 0) {
+			if (senhaPura.length < 4) {
+				throw new ValidationException(ValidationErrorType.INVALID_FIELD,
+						"A SENHA DEVE TER NO MÍNIMO 4 CARACTERES.");
+			}
+			usuario.setSenhaHashString(PasswordUtils.hashPassword(senhaPura));
+		} else if (isNovo) {
+			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "A SENHA É OBRIGATÓRIA.");
+		}
+	}
+
+	private void salvarOuAtualizar(UsuarioDao dao, Usuario usuario, Usuario anterior, boolean isNovo, Connection conn)
+			throws SQLException {
+		LogSistemaDao logDao = new LogSistemaDao(conn);
+		if (isNovo) {
+			int id = dao.save(usuario);
+			usuario.setIdUsuario(id);
+			logDao.save(AuditLogHelper.gerarLogSucesso("CADASTRO", "INSERIR_USUARIO", "usuario", id, null, usuario));
+		} else {
+			dao.update(usuario);
+			logDao.save(AuditLogHelper.gerarLogSucesso("CADASTRO", "ALTERAR_USUARIO", "usuario", usuario.getIdUsuario(),
+					anterior, usuario));
+			if (usuario.getSenhaHash() != null && usuario.getSenhaHash().length > 0) {
+				dao.atualizarUltimoLogin(usuario.getIdUsuario());
+			}
+		}
+	}
+
+	private void registrarLogErro(String operacao, Exception e) {
+		try (Connection connLog = ConnectionFactory.getConnection()) {
+			new LogSistemaDao(connLog).save(AuditLogHelper.gerarLogErro("ERRO", operacao, "usuario", e.getMessage()));
+		} catch (Exception ex) {
+		}
+	}
+
+	public void excluirUsuario(int idUsuario, Usuario executor) {
+		if (idUsuario <= 0) {
+			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "ID DE USUÁRIO INVÁLIDO.");
+		}
+
+		if (executor != null && executor.getIdUsuario().equals(idUsuario)) {
+			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+					"SEGURANÇA: VOCÊ NÃO PODE EXCLUIR SUA PRÓPRIA CONTA.");
+		}
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			UsuarioDao dao = new UsuarioDao(conn);
+			LogSistemaDao logDao = new LogSistemaDao(conn);
+			Usuario anterior = dao.searchById(idUsuario);
+			if (anterior == null) {
+				throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND,
+						"O USUÁRIO QUE VOCÊ ESTÁ TENTANDO EXCLUIR NÃO EXISTE OU JÁ FOI REMOVIDO.");
+			}
+			if (anterior.isMaster()) {
+				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+						"O USUÁRIO MASTER NÃO PODE SER EXCLUÍDO.");
+			}
+			dao.softDeleteById(idUsuario);
+			logDao.save(AuditLogHelper.gerarLogSucesso("CADASTRO", "EXCLUIR_USUARIO", "usuario", idUsuario, anterior,
+					null));
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO ACESSAR BANCO", e);
+		}
+	}
+
+	private void validarAcesso(Usuario executor, MenuChave chaveNecessaria) {
+		if (executor == null)
+			return;
+		if (executor.isMaster())
+			return;
+
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
+			List<MenuChave> permissoesAtivas = upDao.buscarChavesAtivasPorUsuario(executor.getIdUsuario());
+
+			if (!permissoesAtivas.contains(chaveNecessaria)) {
+				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+						"ACESSO NEGADO: O SEU UTILIZADOR NÃO TEM PERMISSÃO PARA ESTA OPERAÇÃO.");
+			}
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO VALIDAR PERMISSÕES", e);
+		}
+	}
+
+	public List<Usuario> listarExcluidos(Usuario executor) {
+		validarAcesso(executor, MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES);
+
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			return new UsuarioDao(conn).listarExcluidos();
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO LISTAR EXCLUÍDOS", e);
+		}
+	}
+
+	public void restaurarUsuario(int idUsuario, Usuario executor) {
+		validarAcesso(executor, MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES);
+
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			UsuarioDao dao = new UsuarioDao(conn);
+			dao.restaurar(idUsuario);
+
+			new LogSistemaDao(conn).save(AuditLogHelper.gerarLogSucesso("CADASTRO", "RESTAURAR_USUARIO", "usuario",
+					idUsuario, "Status: EXCLUIDO", "Status: ATIVO"));
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO RESTAURAR", e);
+		}
+	}
+
 	public Usuario autenticar(String email, char[] senhaPura) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			UsuarioDao dao = new UsuarioDao(conn);
+			LogSistemaDao logDao = new LogSistemaDao(conn);
 			Usuario user = dao.buscarPorEmail(email);
 
 			if (user == null) {
+				logDao.save(AuditLogHelper.gerarLogErro("SEGURANCA", "LOGIN_FALHA", "usuario",
+						"Usuário não existe: " + email));
 				throw new ValidationException(ValidationErrorType.INVALID_FIELD, "USUÁRIO NÃO ENCONTRADO.");
 			}
 			if ("BLOQUEADO".equals(user.getStatus())) {
@@ -90,17 +223,24 @@ public class UsuarioService {
 
 			boolean senhaValida = PasswordUtils.verifyPassword(senhaPura, user.getSenhaHashString());
 			if (!senhaValida) {
-				dao.incrementarTentativasFalhas(email);
-				if (user.getTentativasFalhas() + 1 >= 5) {
-					dao.bloquearUsuario(user.getIdUsuario());
-					throw new ValidationException(ValidationErrorType.INVALID_FIELD,
-							"LIMITE ATINGIDO. SUA CONTA FOI BLOQUEADA POR SEGURANÇA.");
+				logDao.save(AuditLogHelper.gerarLogErro("SEGURANCA", "LOGIN_FALHA", "usuario",
+						"Senha incorreta para: " + email));
+				if (!user.isMaster()) {
+					dao.incrementarTentativasFalhas(email);
+					if (user.getTentativasFalhas() + 1 >= 5) {
+						dao.bloquearUsuario(user.getIdUsuario());
+						logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "BLOQUEIO_AUTOMATICO", "usuario",
+								user.getIdUsuario(), "Status: ATIVO", "Status: BLOQUEADO"));
+						throw new ValidationException(ValidationErrorType.INVALID_FIELD,
+								"LIMITE ATINGIDO. SUA CONTA FOI BLOQUEADA POR SEGURANÇA.");
+					}
 				}
 				throw new ValidationException(ValidationErrorType.INVALID_FIELD,
 						"SENHA INCORRETA. TENTATIVA " + (user.getTentativasFalhas() + 1) + " DE 5.");
 			}
-			// Se chegou aqui, login deu certo
-			dao.atualizarUltimoLogin(user.getIdUsuario()); // Reseta falhas e marca hora
+			dao.atualizarUltimoLogin(user.getIdUsuario());
+			logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "LOGIN_SUCESSO", "usuario", user.getIdUsuario(),
+					null, "Sessão Iniciada"));
 			return user;
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
@@ -108,24 +248,24 @@ public class UsuarioService {
 			SensitiveData.safeClear(senhaPura);
 		}
 	}
-	
+
 	public List<Usuario> listarUsuarios(String termo) {
-	    try (Connection conn = ConnectionFactory.getConnection()) {
-	        UsuarioDao dao = new UsuarioDao(conn);
-	        // Se o termo estiver vazio, listamos todos, caso contrário, filtramos
-	        if (termo == null || termo.trim().isEmpty()) {
-	            return dao.listAll();
-	        } else {
-	            return dao.listarPorNomeOuEmail(termo);
-	        }
-	    } catch (SQLException e) {
-	        throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO LISTAR USUÁRIOS", e);
-	    }
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			UsuarioDao dao = new UsuarioDao(conn);
+			return (termo == null || termo.trim().isEmpty()) ? dao.listAll() : dao.listarPorNomeOuEmail(termo);
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO LISTAR USUÁRIOS", e);
+		}
 	}
 
-	/**
-	 * Carrega as permissões para a Sessão
-	 */
+	public List<Usuario> listarUsuariosPorPermissao(MenuChave chave) {
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			return new UsuarioDao(conn).listarPorPermissao(chave.name());
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO FILTRAR PERMISSÃO", e);
+		}
+	}
+
 	public List<MenuChave> carregarPermissoesAtivas(int idUsuario) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			return new UsuarioPermissaoDao(conn).buscarChavesAtivasPorUsuario(idUsuario);
@@ -151,58 +291,87 @@ public class UsuarioService {
 	}
 
 	private void sincronizarPermissoes(UsuarioPermissaoDao upDao, PermissaoDao pDao, Usuario usuario,
-			List<MenuChave> chaves, Usuario executor) {
+			List<MenuChave> chaves, Usuario executor) throws SQLException {
 
+		List<MenuChave> chavesAnteriores = upDao.buscarChavesAtivasPorUsuario(usuario.getIdUsuario());
+
+		if (usuario.isMaster())
+			chaves = List.of(MenuChave.values());
 		validarDados(usuario, chaves);
+		validarHierarquiaPermissao(chaves, executor); // Extraído
+
 		upDao.disableAllFromUser(usuario.getIdUsuario());
 
 		for (MenuChave chave : chaves) {
-			var permissaoBanco = pDao.findByChave(chave.name());
+			// Agora o loop só faz uma coisa: VINCULAR
+			int idPermissao = garantirInfraestruturaMenu(upDao.getConnection(), chave);
 
-// Se a permissão não existe, criamos o ecossistema completo para ela
-			if (permissaoBanco == null) {
-// 1. Criar na tabela 'permissoes'
-				permissaoBanco = new Permissao();
-				permissaoBanco.setChave(chave.name());
-				permissaoBanco.setTipo("MENU");
-				String categoria = extrairCategoria(chave.name());
-				permissaoBanco.setCategoria(categoria);
-
-				int idPermissao = pDao.save(permissaoBanco);
-				permissaoBanco.setIdPermissoes(idPermissao);
-
-// 2. Criar na tabela 'menu_sistema'
-				MenuSistemaDao menuDao = new MenuSistemaDao(upDao.getConnection());
-				int idMenu = menuDao.save(chave.name(), categoria);
-
-// 3. Criar o vínculo na 'permissao_menu'
-				PermissaoMenuDao pmDao = new PermissaoMenuDao(upDao.getConnection());
-				pmDao.vincular(idPermissao, idMenu);
-			}
-
-// 4. Finalmente, vincula ao usuário (Tabela usuario_permissoes)
 			UsuarioPermissao up = new UsuarioPermissao();
 			up.setIdUsuario(usuario.getIdUsuario());
-			up.setIdPermissoes(permissaoBanco.getIdPermissoes());
+			up.setIdPermissoes(idPermissao);
 			up.setAtiva(true);
 			up.setUsuarioConcedeu(executor != null ? executor : usuario);
 
 			upDao.saveOrUpdate(up);
 		}
+
+		registrarLogPermissoes(upDao.getConnection(), usuario, chavesAnteriores, chaves);
 	}
 
-//Método auxiliar para não deixar a categoria vazia no banco
-	private String extrairCategoria(String nomeEnum) {
-		if (nomeEnum.contains("_")) {
-			return nomeEnum.split("_")[0]; // Pega ex: "CADASTROS", "DASHBOARD"
+	private void registrarLogPermissoes(Connection conn, Usuario usuario, List<MenuChave> anteriores,
+			List<MenuChave> novas) throws SQLException {
+
+		LogSistemaDao logDao = new LogSistemaDao(conn);
+		String antes = anteriores != null ? anteriores.toString() : "NENHUMA";
+		String depois = usuario.isMaster() ? "PACOTE_MASTER_COMPLETO" : (novas != null ? novas.toString() : "NENHUMA");
+
+		logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "SINCRONIZAR_PERMISSOES", "usuario_permissao",
+				usuario.getIdUsuario(), antes, depois));
+	}
+
+	private int garantirInfraestruturaMenu(Connection conn, MenuChave chave) throws SQLException {
+		PermissaoDao pDao = new PermissaoDao(conn);
+		var permissaoBanco = pDao.findByChave(chave.name());
+
+		if (permissaoBanco != null)
+			return permissaoBanco.getIdPermissoes();
+
+		permissaoBanco = new Permissao();
+		permissaoBanco.setChave(chave.name());
+		permissaoBanco.setTipo("MENU");
+		String categoria = extrairCategoria(chave.name());
+		permissaoBanco.setCategoria(categoria);
+
+		int idPerm = pDao.save(permissaoBanco);
+
+		MenuSistemaDao menuDao = new MenuSistemaDao(conn);
+		int idMenu = menuDao.save(chave.name(), categoria);
+
+		new PermissaoMenuDao(conn).vincular(idPerm, idMenu);
+
+		return idPerm;
+	}
+
+	private void validarHierarquiaPermissao(List<MenuChave> chavesAlvo, Usuario executor) {
+		if (executor == null || executor.isMaster())
+			return;
+
+		List<MenuChave> permissoesDoExecutor = carregarPermissoesAtivas(executor.getIdUsuario());
+		for (MenuChave chave : chavesAlvo) {
+			if (!permissoesDoExecutor.contains(chave)) {
+				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+						"SEGURANÇA: VOCÊ NÃO PODE CONCEDER A PERMISSÃO [" + chave + "] POIS NÃO A POSSUI.");
+			}
 		}
-		return "GERAL";
+	}
+
+	private String extrairCategoria(String nomeEnum) {
+		return nomeEnum.contains("_") ? nomeEnum.split("_")[0] : "GERAL";
 	}
 
 	public Empresa buscarEmpresaFornecedora() {
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			EmpresaDao dao = new EmpresaDao(conn);
-			return dao.buscarPorFornecedora();
+			return new EmpresaDao(conn).buscarPorFornecedora();
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR,
 					"ERRO AO BUSCAR EMPRESA: " + e.getMessage(), e);

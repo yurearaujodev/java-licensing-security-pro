@@ -99,5 +99,21 @@ public class Endereco extends BaseEntity {
 	public void setPaisEndereco(String paisEndereco) {
 		this.paisEndereco = paisEndereco;
 	}
+	
+	@Override
+	public boolean equals(Object obj) {
+	    if (this == obj) return true;
+	    if (obj == null || getClass() != obj.getClass()) return false;
+	    Endereco other = (Endereco) obj;
+	    return idEndereco == other.idEndereco &&
+	           java.util.Objects.equals(cepEndereco, other.cepEndereco) &&
+	           java.util.Objects.equals(logradouroEndereco, other.logradouroEndereco) &&
+	           java.util.Objects.equals(numeroEndereco, other.numeroEndereco);
+	}
+
+	@Override
+	public int hashCode() {
+	    return java.util.Objects.hash(idEndereco, cepEndereco);
+	}
 
 }

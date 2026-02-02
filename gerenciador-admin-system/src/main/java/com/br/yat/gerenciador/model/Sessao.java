@@ -13,18 +13,27 @@ public class Sessao {
 	} // Evita instanciação
 
 	public static void login(Usuario usuario, List<MenuChave> permissoes) {
-		usuarioLogado = usuario;
-		permissoesAtivas = permissoes;
-		System.out.println("Usuário logado: " + usuario.getNome());
-	    System.out.println("Permissões recebidas: " + permissoes); // VEJA SE APARECE ALGO AQUI
-		// Aplica as permissões nos menus físicos
-		MenuRegistry.disableAll();
-		if (permissoes != null) {
-			for (MenuChave p : permissoes) {
-				System.out.println("Habilitando menu: " + p.name());
-				MenuRegistry.enable(p);
-			}
-		}
+	    usuarioLogado = usuario;
+	    permissoesAtivas = permissoes;
+
+	    // 1. Limpa o estado visual anterior (Segurança: ninguém herda menu de ninguém)
+	    MenuRegistry.disableAll();
+
+	    // 2. Lógica Master (Bypass)
+	    if (usuario.isMaster()) {
+	        // Habilita absolutamente tudo que estiver registrado no Enum
+	        for (MenuChave total : MenuChave.values()) {
+	            MenuRegistry.enable(total);
+	        }
+	        return; 
+	    }
+
+	    // 3. Lógica Usuário Comum
+	    if (permissoes != null) {
+	        for (MenuChave p : permissoes) {
+	            MenuRegistry.enable(p);
+	        }
+	    }
 	}
 
 	public static void logout() {

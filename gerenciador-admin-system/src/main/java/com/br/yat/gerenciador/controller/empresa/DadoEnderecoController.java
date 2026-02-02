@@ -31,27 +31,32 @@ public class DadoEnderecoController {
 
 	private void registrarAcoes() {
 		view.getFtxtCep().addActionListener(e -> preencherEnderecoPorCep());
-		view.getFtxtCep().addFocusListener(	ValidationUtils.createValidationListener(view.getFtxtCep(), this::preencherEnderecoPorCep));
-		view.getTxtLogradouro().addFocusListener(ValidationUtils.createValidationListener(view.getTxtLogradouro(), this::validarLogradouro));
-		view.getTxtBairro().addFocusListener(ValidationUtils.createValidationListener(view.getTxtBairro(), this::validarBairro));
-		view.getTxtCidade().addFocusListener(ValidationUtils.createValidationListener(view.getTxtCidade(), this::validarCidade));
-		view.getTxtEstado().addFocusListener(ValidationUtils.createValidationListener(view.getTxtEstado(), this::validarEstado));
-		view.getTxtPais().addFocusListener(ValidationUtils.createValidationListener(view.getTxtPais(), this::validarPais));
+		view.getFtxtCep().addFocusListener(
+				ValidationUtils.createValidationListener(view.getFtxtCep(), this::preencherEnderecoPorCep));
+		view.getTxtLogradouro().addFocusListener(
+				ValidationUtils.createValidationListener(view.getTxtLogradouro(), this::validarLogradouro));
+		view.getTxtBairro()
+				.addFocusListener(ValidationUtils.createValidationListener(view.getTxtBairro(), this::validarBairro));
+		view.getTxtCidade()
+				.addFocusListener(ValidationUtils.createValidationListener(view.getTxtCidade(), this::validarCidade));
+		view.getTxtEstado()
+				.addFocusListener(ValidationUtils.createValidationListener(view.getTxtEstado(), this::validarEstado));
+		view.getTxtPais()
+				.addFocusListener(ValidationUtils.createValidationListener(view.getTxtPais(), this::validarPais));
 	}
 
 	private void preencherEnderecoPorCep() {
 		String cep = ValidationUtils.onlyNumbers(view.getCep());
 
+		if (ValidationUtils.isEmpty(cep) || cep.equals(ultimoCepBuscado)) {
+			return;
+		}
+
 		try {
 			EmpresaValidationUtils.validarCep(cep);
-			
 			ValidationUtils.removerDestaque(view.getFtxtCep());
 		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getFtxtCep(), e.getMessage());
-			return;
-		} catch (Exception e) {
-			e.printStackTrace();
-			ValidationUtils.exibirErro(view.getFtxtCep(), "ERRO NA VALIDAÇÃO ");
 			return;
 		}
 
@@ -78,7 +83,7 @@ public class DadoEnderecoController {
 			});
 		});
 	}
-	
+
 	private void buscandoCep() {
 		view.setLogradouro("BUSCANDO...");
 		view.setBairro("BUSCANDO...");
@@ -90,7 +95,7 @@ public class DadoEnderecoController {
 	private void validarLogradouro() {
 		try {
 			EmpresaValidationUtils.validarLogradouro(view.getLogradouro());
-			
+
 			ValidationUtils.removerDestaque(view.getTxtLogradouro());
 		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getTxtLogradouro(), e.getMessage());
@@ -98,11 +103,11 @@ public class DadoEnderecoController {
 			ValidationUtils.exibirErro(view.getTxtLogradouro(), "ERRO NA VALIDAÇÃO");
 		}
 	}
-	
+
 	private void validarBairro() {
 		try {
 			EmpresaValidationUtils.validarBairro(view.getBairro());
-			
+
 			ValidationUtils.removerDestaque(view.getTxtBairro());
 		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getTxtBairro(), e.getMessage());
@@ -126,7 +131,7 @@ public class DadoEnderecoController {
 	private void validarEstado() {
 		try {
 			EmpresaValidationUtils.validarEstado(view.getEstado());
-			
+
 			ValidationUtils.removerDestaque(view.getTxtEstado());
 		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getTxtEstado(), e.getMessage());
@@ -138,7 +143,7 @@ public class DadoEnderecoController {
 	private void validarPais() {
 		try {
 			EmpresaValidationUtils.validarPais(view.getPais());
-			
+
 			ValidationUtils.removerDestaque(view.getTxtPais());
 		} catch (ValidationException e) {
 			ValidationUtils.exibirErro(view.getTxtPais(), e.getMessage());
@@ -157,8 +162,8 @@ public class DadoEnderecoController {
 	}
 
 	public boolean isValido() {
-		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(view.getFtxtCep(), view.getTxtLogradouro(),view.getTxtBairro(),
-				view.getTxtCidade(), view.getTxtEstado(), view.getTxtPais());
+		boolean obrigatoriosVazios = ValidationUtils.temCamposVazios(view.getFtxtCep(), view.getTxtLogradouro(),
+				view.getTxtBairro(), view.getTxtCidade(), view.getTxtEstado(), view.getTxtPais());
 
 		if (obrigatoriosVazios) {
 			DialogFactory.aviso(view, "POR FAVOR, PREENCHA OS CAMPOS OBRIGATÓRIOS DESTACADOS EM VERMELHO.");
@@ -171,8 +176,8 @@ public class DadoEnderecoController {
 		validarEstado();
 		validarPais();
 
-		JComponent erro = ValidationUtils.hasErroVisual(view.getFtxtCep(), view.getTxtLogradouro(),view.getTxtBairro(), view.getTxtCidade(),
-				view.getTxtEstado(), view.getTxtPais());
+		JComponent erro = ValidationUtils.hasErroVisual(view.getFtxtCep(), view.getTxtLogradouro(), view.getTxtBairro(),
+				view.getTxtCidade(), view.getTxtEstado(), view.getTxtPais());
 
 		if (erro != null) {
 			DialogFactory.aviso(view, "EXISTEM CAMPOS COM DADOS INVÁLIDOS.");
@@ -201,6 +206,9 @@ public class DadoEnderecoController {
 		if (endereco == null)
 			return;
 		this.enderecoAtual = endereco;
+
+		this.ultimoCepBuscado = ValidationUtils.onlyNumbers(endereco.getCepEndereco());
+
 		view.setCep(endereco.getCepEndereco());
 		view.setLogradouro(endereco.getLogradouroEndereco());
 		view.setComplemento(endereco.getComplementoEndereco());

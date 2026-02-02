@@ -15,6 +15,7 @@ public class UsuarioViewLogin extends JInternalFrame {
 	private JTextField txtEmail;
 	private JPasswordField txtSenha;
 	private JButton btnEntrar;
+	private JButton btnEsqueciSenha;
 
 	public UsuarioViewLogin() {
 		super("Acesso ao Sistema", false, false, false, false);
@@ -31,6 +32,9 @@ public class UsuarioViewLogin extends JInternalFrame {
 		btnEntrar = ButtonFactory.createPrimaryButton("ENTRAR", null);
 		add(btnEntrar, "span 2, center, h 40!, w 150!");
 
+		// Botão secundário para recuperação
+        btnEsqueciSenha = ButtonFactory.createPrimaryButton("ESQUECI MINHA SENHA", null);
+        add(btnEsqueciSenha, "span 2, center, gapy 5");
 		pack();
 	}
 
@@ -45,5 +49,13 @@ public class UsuarioViewLogin extends JInternalFrame {
 
 	public JButton getBtnEntrar() {
 		return btnEntrar;
+	}
+	
+	public JButton getBtnEsqueciSenha() {
+        return btnEsqueciSenha;
+    }
+	
+	public void limpar() {
+		txtSenha.setText("");
 	}
 }

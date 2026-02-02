@@ -1,6 +1,7 @@
 package com.br.yat.gerenciador.controller.empresa;
 
 import java.awt.Window;
+import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -9,6 +10,8 @@ import javax.swing.SwingUtilities;
 
 import com.br.yat.gerenciador.controller.BaseController;
 import com.br.yat.gerenciador.model.Empresa;
+import com.br.yat.gerenciador.model.Sessao;
+import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.util.DialogFactory;
@@ -35,7 +38,24 @@ public class EmpresaConsultaController extends BaseController {
 		configurarFiltros();
 		registrarAcoes();
 		carregarDados();
+
+		boolean usuarioPodeAlterar = podeAlterar();
+
+		view.getBtnNovo().setVisible(usuarioPodeAlterar);
+
+		view.getChkInativos().setEnabled(usuarioPodeAlterar);
+
+		if (!usuarioPodeAlterar) {
+			view.getChkInativos().setSelected(false);
+		}
+
+		view.getBtnEditar().setEnabled(false);
 		view.getBtnExcluir().setEnabled(false);
+	}
+
+	private boolean temPermissao(MenuChave chave) {
+		List<MenuChave> ativas = Sessao.getPermissoes();
+		return ativas != null && ativas.contains(chave);
 	}
 
 	private void configurarFiltros() {
@@ -47,14 +67,78 @@ public class EmpresaConsultaController extends BaseController {
 	private void registrarAcoes() {
 		view.getBtnEditar().addActionListener(e -> editarSelecionado());
 		view.getBtnNovo().addActionListener(e -> abrirFormulario(null));
-		 view.getBtnExcluir().addActionListener(e -> excluirSelecionado());
 
-		TableFactory.addDoubleClickAction(view.getTabela(), this::editarSelecionado);
-		view.getTabela().getSelectionModel().addListSelectionListener(e->{
-			boolean selecionado = view.getTabela().getSelectedRow()>=0;
-			view.getBtnEditar().setEnabled(selecionado);
-			view.getBtnExcluir().setEnabled(selecionado);
+		view.getBtnExcluir().addActionListener(e -> {
+			if (view.getChkInativos().isSelected()) {
+				restaurarSelecionada();
+			} else {
+				excluirSelecionado();
+			}
 		});
+
+		view.getChkInativos().addActionListener(e -> {
+			configurarBotoesPorEstado();
+
+			if (debounceTask != null)
+				debounceTask.cancel(false);
+
+			debounceTask = scheduler.schedule(() -> {
+				SwingUtilities.invokeLater(() -> carregarDados());
+			}, 300, TimeUnit.MILLISECONDS);
+		});
+
+		TableFactory.addDoubleClickAction(view.getTabela(), () -> {
+			if (podeAlterar()) {
+				editarSelecionado();
+			} else {
+				DialogFactory.aviso(view, "ACESSO NEGADO: VOCÊ NÃO TEM PERMISSÃO DE EDIÇÃO.");
+			}
+		});
+		view.getTabela().getSelectionModel().addListSelectionListener(e -> {
+			if (e.getValueIsAdjusting())
+				return;
+			atualizarEstadoBotoes();
+		});
+	}
+
+	private boolean podeAlterar() {
+		return Sessao.getUsuario().isMaster() || temPermissao(MenuChave.CADASTROS_EMPRESA_CLIENTE);
+	}
+
+	private void atualizarEstadoBotoes() {
+		boolean linhaSelecionada = view.getTabela().getSelectedRow() >= 0;
+		boolean temPermissao = podeAlterar();
+		boolean vendoInativos = view.getChkInativos().isSelected();
+
+		view.getBtnEditar().setEnabled(linhaSelecionada && temPermissao);
+		view.getBtnExcluir().setEnabled(linhaSelecionada && temPermissao);
+
+		view.getBtnNovo().setEnabled(!vendoInativos && temPermissao);
+	}
+
+	private void configurarBotoesPorEstado() {
+		boolean mostrarInativos = view.getChkInativos().isSelected();
+		view.getBtnExcluir().setText(mostrarInativos ? "RESTAURAR" : "APAGAR");
+		atualizarEstadoBotoes();
+	}
+
+	private void restaurarSelecionada() {
+		int linha = view.getTabela().getSelectedRow();
+		if (linha < 0)
+			return;
+
+		int modelIndex = view.getTabela().convertRowIndexToModel(linha);
+		Empresa empresa = view.getTableModel().getAt(modelIndex);
+
+		if (DialogFactory.confirmacao(view, "DESEJA RESTAURAR: " + empresa.getRazaoSocialEmpresa() + "?")) {
+			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+				service.restaurarEmpresa(empresa.getIdEmpresa(), Sessao.getUsuario());
+				return true;
+			}, ok -> {
+				DialogFactory.informacao(view, "EMPRESA RESTAURADA!");
+				carregarDados();
+			});
+		}
 	}
 
 	private void editarSelecionado() {
@@ -96,13 +180,13 @@ public class EmpresaConsultaController extends BaseController {
 			controller.prepararNovo();
 		} else {
 			view.setTitle("EDITANDO: " + empresa.getRazaoSocialEmpresa());
-
 			controller.carregarDados(empresa.getIdEmpresa());
 		}
 	}
 
 	private void filtrar() {
 		String termo = view.getTxtBusca().getText();
+		boolean mostrarInativos = view.getChkInativos().isSelected(); // Pega o estado do checkbox
 
 		if (debounceTask != null)
 			debounceTask.cancel(false);
@@ -112,13 +196,18 @@ public class EmpresaConsultaController extends BaseController {
 
 		Window parent = SwingUtilities.getWindowAncestor(view);
 
-		debounceTask = scheduler.schedule(() -> runAsyncSilent(parent, () -> service.filtrarClientes(termo),
-				lista -> view.getTableModel().setDados(lista)), 800, TimeUnit.MILLISECONDS);
+		debounceTask = scheduler.schedule(
+				() -> runAsyncSilent(parent, () -> service.filtrarClientes(termo, mostrarInativos, Sessao.getUsuario()),
+						lista -> view.getTableModel().setDados(lista)),
+				800, TimeUnit.MILLISECONDS);
 	}
 
 	private void carregarDados() {
+		boolean mostrarInativos = view.getChkInativos().isSelected();
 		Window parent = SwingUtilities.getWindowAncestor(view);
-		runAsync(parent, service::listarClientesParaTabela, lista -> view.getTableModel().setDados(lista));
+
+		runAsyncSilent(parent, () -> service.listarClientesParaTabela(mostrarInativos, Sessao.getUsuario()),
+				lista -> view.getTableModel().setDados(lista));
 	}
 
 	private void excluirSelecionado() {
@@ -140,7 +229,7 @@ public class EmpresaConsultaController extends BaseController {
 
 		Window parent = SwingUtilities.getWindowAncestor(view);
 		runAsync(parent, () -> {
-			service.inativarEmpresa(empresa.getIdEmpresa());
+			service.ExcluirEmpresa(empresa.getIdEmpresa(), Sessao.getUsuario());
 			return true;
 		}, ok -> {
 			DialogFactory.informacao(view, "EMPRESA INATIVADA COM SUCESSO.");

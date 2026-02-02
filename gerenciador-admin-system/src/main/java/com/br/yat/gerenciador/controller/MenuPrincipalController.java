@@ -7,24 +7,33 @@ import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
+import javax.swing.Icon;
 import javax.swing.JDesktopPane;
+import javax.swing.JInternalFrame;
 import javax.swing.JMenuItem;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.br.yat.gerenciador.configurations.ConnectionFactory;
+import com.br.yat.gerenciador.dao.empresa.ComplementarDao;
 import com.br.yat.gerenciador.dao.empresa.EmpresaDao;
 import com.br.yat.gerenciador.dao.usuario.UsuarioDao;
 import com.br.yat.gerenciador.model.Sessao;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
+import com.br.yat.gerenciador.util.AppEventManager;
+import com.br.yat.gerenciador.util.DialogFactory;
+import com.br.yat.gerenciador.util.IconFactory;
 import com.br.yat.gerenciador.util.MenuRegistry;
 import com.br.yat.gerenciador.view.ConfiguracaoBancoView;
 import com.br.yat.gerenciador.view.EmpresaView;
 import com.br.yat.gerenciador.view.MenuPrincipal;
+import com.br.yat.gerenciador.view.PermissaoConsultaView;
 import com.br.yat.gerenciador.view.UsuarioConsultaView;
 import com.br.yat.gerenciador.view.UsuarioView;
 import com.br.yat.gerenciador.view.UsuarioViewLogin;
@@ -32,16 +41,23 @@ import com.br.yat.gerenciador.view.empresa.EmpresaConsultaView;
 import com.br.yat.gerenciador.view.factory.DesktopUtils;
 import com.br.yat.gerenciador.view.factory.ViewFactory;
 
-public class MenuPrincipalController extends BaseController{
+public class MenuPrincipalController extends BaseController {
 
 	private static final Logger logger = LoggerFactory.getLogger(MenuPrincipalController.class);
 	private final MenuPrincipal view;
 	private Timer relogioTimer;
+	private boolean processandoLogout = false;
 
 	public MenuPrincipalController(MenuPrincipal view) {
 		this.view = view;
 		registrarAcoes();
 		iniciarRelogio();
+		iniciarMonitorDeConexao();
+		AppEventManager.subscribeLogoChange(() -> {
+			IconFactory.limparCacheLogo();
+			carregarLogoSistema();
+		});
+
 		verificarSequenciaDeAcesso();
 	}
 
@@ -50,8 +66,92 @@ public class MenuPrincipalController extends BaseController{
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_EMPRESA_FORNECEDORA, e -> abrirEmpresaFornecedora());
 		configurarAcaoMenu(MenuChave.CONSULTAS_EMPRESAS_CLIENTES, e -> abrirEmpresaConsulta());
 		configurarAcaoMenu(MenuChave.CADASTROS_USUARIO, e -> abrirUsuario());
-		configurarAcaoMenu(MenuChave.CONSULTAS_USUARIOS, e->abrirConsultaUsuario());
+		configurarAcaoMenu(MenuChave.CONSULTAS_USUARIOS, e -> abrirConsultaUsuario());
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_CONEXAO_BANCO_DADOS, e -> abrirConfiguracaoBanco());
+		configurarAcaoMenu(MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES, e -> abrirConsultaUsuario());
+		configurarAcaoMenu(MenuChave.CONFIGURACAO_PERMISSAO, e -> abrirConsultaPermissoes());
+		configurarAcaoMenu(MenuChave.AUDITORIA_LOG_DO_SISTEMA, e -> abrirConsultaLogs());
+		for (var al : view.getBtnLogout().getActionListeners()) {
+			view.getBtnLogout().removeActionListener(al);
+		}
+		view.getBtnLogout().addActionListener(e -> processarLogout());
+	}
+
+	private void processarLogout() {
+		if (processandoLogout)
+			return;
+		processandoLogout = true;
+		try {
+			if (DialogFactory.confirmacao(view, "DESEJA REALMENTE SAIR E VOLTAR PARA A TELA DE LOGIN?")) {
+
+				Sessao.logout();
+
+				view.setNomeUsuario("CONECTANDO...");
+
+				for (JInternalFrame frame : view.getDesktopPane().getAllFrames()) {
+					frame.dispose();
+				}
+
+				exibirLogin();
+
+				logger.info("USUÁRIO REALIZOU LOGOUT COM SUCESSO.");
+			}
+		} finally {
+			processandoLogout = false;
+		}
+
+	}
+
+	private void carregarLogoSistema() {
+	    runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
+	       try (Connection conn = ConnectionFactory.getConnection()) {
+	            EmpresaDao empDao = new EmpresaDao(conn);
+	            var fornecedora = empDao.buscarPorFornecedora();
+	            
+	            if (fornecedora != null) {
+	                var compDao = new ComplementarDao(conn);
+	                var complementar = compDao.buscarPorEmpresa(fornecedora.getIdEmpresa());
+	                return (complementar != null) ? complementar.getLogoTipoComplementar() : null;
+	            }
+	        } catch (Exception e) {
+	            logger.error("ERRO AO BUSCAR LOGO: ", e);
+	        }
+	        return null;
+	        
+	    }, (String caminhoLogo) -> {
+	       if (caminhoLogo != null && !caminhoLogo.isBlank()) {
+	            Icon iconePersonalizado = IconFactory.externalIcon(caminhoLogo, 160, 160);
+	            view.getLblLogo().setIcon(iconePersonalizado);
+	        } else {
+	            view.getLblLogo().setIcon(IconFactory.logo());
+	        }
+
+	        if (view.getLblLogo().getParent() != null) {
+	            view.getLblLogo().getParent().repaint();
+	        }
+	    });
+	}
+
+	private void iniciarMonitorDeConexao() {
+		scheduler.scheduleAtFixedRate(() -> {
+			boolean estaValida = false;
+			try (Connection conn = ConnectionFactory.getConnection()) {
+				estaValida = (conn != null && conn.isValid(5));
+			} catch (Exception e) {
+				estaValida = false;
+			}
+
+			final boolean status = estaValida;
+			SwingUtilities.invokeLater(() -> view.atualizarStatusBanco(status));
+
+			if (!status) {
+				dispararAlertaConexao();
+			}
+		}, 10, 30, TimeUnit.SECONDS);
+	}
+
+	private void dispararAlertaConexao() {
+		logger.error("CONEXÃO COM O BANCO DE DADOS PERDIDA!");
 	}
 
 	private void iniciarRelogio() {
@@ -71,44 +171,43 @@ public class MenuPrincipalController extends BaseController{
 		}
 	}
 
-//	private void verificarPrimeiroAcesso() {
-//		Path path = Paths.get("config", "database", "db.properties");
-//
-//		if (!Files.exists(path)) {
-//			abrirConfiguracaoBanco();
-//			return;
-//		}
-//	}
-
 	private void verificarSequenciaDeAcesso() {
-	    if (!Files.exists(Paths.get("config", "database", "db.properties"))) {
-	        ConfiguracaoBancoView frame = ViewFactory.createConfiguracaoBancoView();
-	        ViewFactory.showFrameWithCallback(view.getDesktopPane(), frame, this::verificarSequenciaDeAcesso);
-	        return;
-	    }
+		if (!Files.exists(Paths.get("config", "database", "db.properties"))) {
+			ConfiguracaoBancoView frame = ViewFactory.createConfiguracaoBancoView();
+			ViewFactory.showFrameWithCallback(view.getDesktopPane(), frame, this::verificarSequenciaDeAcesso);
+			return;
+		}
 
-	    // runAsyncSilent geralmente não precisa de Window (null)
-	    runAsyncSilent(null, () -> {
-	        try (Connection conn = ConnectionFactory.getConnection()) {
-	            EmpresaDao empDao = new EmpresaDao(conn);
-	            UsuarioDao userDao = new UsuarioDao(conn);
-	            
-	            if (empDao.buscarPorFornecedora() == null) return Integer.valueOf(1);
-	            if (userDao.listAll().isEmpty()) return Integer.valueOf(2);
-	            return Integer.valueOf(3);
-	        }
-	    }, (Integer degrau) -> { // Tipagem explícita no Consumer
-	        switch (degrau.intValue()) {
-	            case 1 -> {
-	                EmpresaView f = ViewFactory.createEmpresaView(TipoCadastro.FORNECEDORA);
-	                ViewFactory.showFrameWithCallback(view.getDesktopPane(), f, this::verificarSequenciaDeAcesso);
-	            }
-	            case 2 -> ViewFactory.abrirUsuarioComCallback(view.getDesktopPane(), this::verificarSequenciaDeAcesso);
-	            case 3 -> exibirLogin();
-	        }
-	    });
+		runAsyncSilent(null, () -> {
+			try (Connection conn = ConnectionFactory.getConnection()) {
+				EmpresaDao empDao = new EmpresaDao(conn);
+				UsuarioDao userDao = new UsuarioDao(conn);
+
+				if (empDao.buscarPorFornecedora() == null)
+					return 1;
+				if (userDao.listAll().isEmpty())
+					return 2;
+				return 3;
+			}
+		}, (Integer degrau) -> {
+			switch (degrau) {
+			case 1 -> {
+				EmpresaView f = ViewFactory.createEmpresaView(TipoCadastro.FORNECEDORA);
+				f.setTitle("CADASTRO DA EMPRESA DETENTORA DO SISTEMA");
+				ViewFactory.showFrameWithCallback(view.getDesktopPane(), f, this::verificarSequenciaDeAcesso);
+			}
+			case 2 -> {
+				UsuarioView fUser = ViewFactory.createPrimeiroMasterView();
+				ViewFactory.showFrameWithCallback(view.getDesktopPane(), fUser, this::verificarSequenciaDeAcesso);
+			}
+			case 3 -> {
+				carregarLogoSistema();
+				exibirLogin();
+			}
+			}
+		});
 	}
-	
+
 	private void abrirConfiguracaoBanco() {
 		JDesktopPane desk = view.getDesktopPane();
 
@@ -170,35 +269,56 @@ public class MenuPrincipalController extends BaseController{
 
 	private void abrirUsuario() {
 		JDesktopPane desk = view.getDesktopPane();
-		if (DesktopUtils.reuseIfOpen(desk, EmpresaConsultaView.class)) {
+		if (DesktopUtils.reuseIfOpen(desk, "NOVO_USUARIO")) {
 			return;
 		}
 		UsuarioView frame = ViewFactory.createUsuarioView();
+		frame.setName("NOVO_USUARIO");
 		DesktopUtils.showFrame(desk, frame);
 	}
-	
+
 	private void exibirLogin() {
-        MenuRegistry.disableAll();
-        UsuarioViewLogin login = ViewFactory.createLoginView();
-        DesktopUtils.showFrame(view.getDesktopPane(), login);
-    }
-	
-	public void atualizarDadosUsuario() {
-	    if (Sessao.getUsuario() != null) {
-	        String nome = Sessao.getUsuario().getNome();
-	        view.setNomeUsuario(nome);
-	    }
+		MenuRegistry.disableAll();
+		UsuarioViewLogin login = ViewFactory.createLoginView();
+		DesktopUtils.showFrame(view.getDesktopPane(), login);
 	}
-	
-	// Exemplo de como abrir a consulta de usuários
+
+	public void atualizarDadosUsuario() {
+		if (Sessao.getUsuario() != null) {
+			String nome = Sessao.getUsuario().getNome();
+			view.setNomeUsuario(nome);
+		}
+	}
+
 	public void abrirConsultaUsuario() {
-	    UsuarioConsultaView consultaView = ViewFactory.createUsuarioConsultaView();
-	    
-	    // Precisamos de um controller para a consulta ou vincular as ações
-	    // Se você seguiu o código anterior, a lógica de "Editar" da ConsultaView 
-	    // vai chamar a ViewFactory para abrir a UsuarioView.
-	    
-	    DesktopUtils.showFrame(view.getDesktopPane(), consultaView);
+		JDesktopPane desk = view.getDesktopPane();
+
+		if (DesktopUtils.reuseIfOpen(desk, UsuarioConsultaView.class)) {
+			return;
+		}
+
+		UsuarioConsultaView consultaView = ViewFactory.createUsuarioConsultaView();
+		DesktopUtils.showFrame(desk, consultaView);
+	}
+
+	private void abrirConsultaLogs() {
+		JDesktopPane desk = view.getDesktopPane();
+
+		if (DesktopUtils.reuseIfOpen(desk, com.br.yat.gerenciador.view.LogSistemaView.class)) {
+			return;
+		}
+
+		var frame = ViewFactory.createLogSistemaView();
+		DesktopUtils.showFrame(desk, frame);
+	}
+
+	private void abrirConsultaPermissoes() {
+		JDesktopPane desk = view.getDesktopPane();
+		if (DesktopUtils.reuseIfOpen(desk, PermissaoConsultaView.class))
+			return;
+
+		PermissaoConsultaView frame = ViewFactory.createPermissaoConsultaView();
+		DesktopUtils.showFrame(desk, frame);
 	}
 
 }

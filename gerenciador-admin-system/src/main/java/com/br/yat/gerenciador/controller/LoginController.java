@@ -1,11 +1,13 @@
 package com.br.yat.gerenciador.controller;
 
 import java.util.List;
+
 import javax.swing.SwingUtilities;
 import com.br.yat.gerenciador.model.Sessao;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.service.UsuarioService;
+import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.view.UsuarioViewLogin;
 import com.br.yat.gerenciador.view.factory.ViewFactory;
 
@@ -24,6 +26,8 @@ public class LoginController extends BaseController {
             String email = view.getEmail();
             char[] senha = view.getSenha();
 
+            view.limpar();
+            
             // Roda o processo pesado (BCrypt/Banco) na Virtual Thread da BaseController
             runAsync(SwingUtilities.getWindowAncestor(view), () -> {
                 Usuario user = service.autenticar(email, senha);
@@ -36,7 +40,10 @@ public class LoginController extends BaseController {
                 view.dispose();
             });
         });
-    }
+        view.getBtnEsqueciSenha().addActionListener(e -> {
+            DialogFactory.informacao(view, "POR FAVOR, ENTRE EM CONTATO COM O ADMINISTRADOR DO SISTEMA PARA SOLICITAR O RESET DE SUA SENHA.");
+        });
+        }
 
     private record LoginData(Usuario user, List<MenuChave> permissoes) {}
 }

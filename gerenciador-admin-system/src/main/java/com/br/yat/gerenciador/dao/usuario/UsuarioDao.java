@@ -7,8 +7,10 @@ import java.sql.Timestamp;
 import java.util.List;
 
 import com.br.yat.gerenciador.dao.GenericDao;
+import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.model.Empresa;
 import com.br.yat.gerenciador.model.Usuario;
+import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 
 public class UsuarioDao extends GenericDao<Usuario> {
 
@@ -18,13 +20,13 @@ public class UsuarioDao extends GenericDao<Usuario> {
 
 	public int save(Usuario u) {
 		String sql = "INSERT INTO " + tableName
-				+ " (nome, email, senha_hash, status, tentativas_falhas, id_empresa, criado_em, atualizado_em) "
-				+ "VALUES (?, ?, ?, ?, 0, ?, NOW(), NOW())";
+				+ " (nome, email, senha_hash, status, tentativas_falhas, id_empresa, is_master, criado_em, atualizado_em) "
+				+ "VALUES (?, ?, ?, ?, 0, ?, ?, NOW(), NOW())";
 
-		// Extraímos o ID da empresa de forma segura
 		Integer idEmpresa = (u.getIdEmpresa() != null) ? u.getIdEmpresa().getIdEmpresa() : null;
 
-		int id = executeInsert(sql, u.getNome(), u.getEmail(), u.getSenhaHashString(), u.getStatus(), idEmpresa);
+		int id = executeInsert(sql, u.getNome(), u.getEmail(), u.getSenhaHashString(), u.getStatus(), idEmpresa,
+				u.isMaster());
 
 		u.setIdUsuario(id);
 		u.setTentativasFalhas(0);
@@ -32,15 +34,44 @@ public class UsuarioDao extends GenericDao<Usuario> {
 	}
 
 	public void update(Usuario u) {
-		String sql = "UPDATE " + tableName
-				+ " SET nome = ?, email = ?, status = ?, id_empresa = ?, atualizado_em = NOW() WHERE id_usuario = ?";
-		executeUpdate(sql, u.getNome(), u.getEmail(), u.getStatus(),
-				u.getIdEmpresa() != null ? u.getIdEmpresa().getIdEmpresa() : null, u.getIdUsuario());
+		String sql;
+		Object[] params;
+
+		Integer idEmpresa = (u.getIdEmpresa() != null) ? u.getIdEmpresa().getIdEmpresa() : null;
+
+		if (u.getSenhaHashString() != null && !u.getSenhaHashString().isEmpty()) {
+			sql = "UPDATE " + tableName
+					+ " SET nome = ?, email = ?, status = ?, id_empresa = ?, senha_hash = ?, is_master = ?, atualizado_em = NOW() WHERE id_usuario = ?";
+			params = new Object[] { u.getNome(), u.getEmail(), u.getStatus(), idEmpresa, u.getSenhaHashString(),
+					u.isMaster(), u.getIdUsuario() };
+		} else {
+			sql = "UPDATE " + tableName
+					+ " SET nome = ?, email = ?, status = ?, id_empresa = ?, is_master = ?, atualizado_em = NOW() WHERE id_usuario = ?";
+			params = new Object[] { u.getNome(), u.getEmail(), u.getStatus(), idEmpresa, u.isMaster(),
+					u.getIdUsuario() };
+		}
+		executeUpdate(sql, params);
+	}
+
+	public List<Usuario> listarPorPermissao(String chavePermissao) {
+		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa " + "FROM " + tableName + " u "
+				+ "INNER JOIN usuario_permissoes up ON u.id_usuario = up.id_usuario "
+				+ "INNER JOIN permissoes p ON up.id_permissoes = p.id_permissoes "
+				+ "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa "
+				+ "WHERE p.chave = ? AND up.ativa = 1 AND u.deletado_em IS NULL";
+
+		return executeQuery(sql, chavePermissao);
 	}
 
 	public Usuario buscarPorEmail(String email) {
 		String sql = "SELECT * FROM " + tableName + " WHERE email = ? AND deletado_em IS NULL";
 		var lista = executeQuery(sql, email);
+		return lista.isEmpty() ? null : lista.get(0);
+	}
+
+	public Usuario buscarMasterUnico() {
+		String sql = "SELECT * FROM " + tableName + " WHERE is_master = 1 AND deletado_em IS NULL LIMIT 1";
+		var lista = executeQuery(sql);
 		return lista.isEmpty() ? null : lista.get(0);
 	}
 
@@ -59,8 +90,38 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		executeUpdate(sql, idUsuario);
 	}
 
+	public List<Usuario> listarExcluidos() {
+		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa " + "FROM " + tableName + " u "
+				+ "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa " + "WHERE u.deletado_em IS NOT NULL";
+
+		return executeQuery(sql);
+	}
+
+	public void restaurar(int id) {
+		String sql = "UPDATE " + tableName + " SET deletado_em = NULL, status = 'ATIVO' WHERE " + pkName + " = ?";
+		executeUpdate(sql, id);
+	}
+
+	@Override
+	public void softDeleteById(int id) {
+		softDeleteMasterProtected(id);
+	}
+
+	private void softDeleteMasterProtected(int idUsuario) {
+		Usuario usuario = searchById(idUsuario);
+
+		if (usuario != null && usuario.isMaster()) {
+			throw new DataAccessException(DataAccessErrorType.QUERY_FAILED,
+					"ERRO: O USUÁRIO MASTER NÃO PODE SER EXCLUÍDO DO SISTEMA.", null);
+		}
+
+		super.softDeleteById(idUsuario);
+
+		String sqlStatus = "UPDATE " + tableName + " SET status = 'INATIVO' WHERE " + pkName + " = ?";
+		executeUpdate(sqlStatus, idUsuario);
+	}
+
 	public List<Usuario> listAll() {
-		// Note que mudamos e.razao_social para e.razao_social AS razao_social_empresa
 		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa " + "FROM " + tableName + " u "
 				+ "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa " + "WHERE u.deletado_em IS NULL";
 		return executeQuery(sql);
@@ -84,15 +145,12 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		u.setSenhaHashString(rs.getString("senha_hash"));
 		u.setStatus(rs.getString("status"));
 
-		// IMPORTANTE: Criar o objeto Empresa para evitar NullPointerException
 		Empresa emp = new Empresa();
 		emp.setIdEmpresa(rs.getInt("id_empresa"));
 
-		// Tenta pegar a razão social se ela existir no SELECT (devido ao JOIN)
 		try {
 			emp.setRazaoSocialEmpresa(rs.getString("razao_social_empresa"));
 		} catch (SQLException e) {
-			// Se não houver join, o objeto empresa terá apenas o ID
 		}
 
 		u.setIdEmpresa(emp);
@@ -101,6 +159,7 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		Timestamp ts = rs.getTimestamp("ultimo_login");
 		if (ts != null)
 			u.setUltimoLogin(ts.toLocalDateTime());
+		u.setMaster(rs.getBoolean("is_master"));
 
 		return u;
 	}

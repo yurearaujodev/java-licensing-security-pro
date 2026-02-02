@@ -42,5 +42,20 @@ public class Contato {
 	public void setEmpresa(Empresa empresa) {
 		this.empresa = empresa;
 	}
+	
+	@Override
+	public boolean equals(Object obj) {
+	    if (this == obj) return true;
+	    if (obj == null || getClass() != obj.getClass()) return false;
+	    Contato other = (Contato) obj;
+	    return idContato == other.idContato &&
+	           tipoContato == other.tipoContato &&
+	           java.util.Objects.equals(valorContato, other.valorContato);
+	}
+
+	@Override
+	public int hashCode() {
+	    return java.util.Objects.hash(idContato, tipoContato, valorContato);
+	}
 
 }

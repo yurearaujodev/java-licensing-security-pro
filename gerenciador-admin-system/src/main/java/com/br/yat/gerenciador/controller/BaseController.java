@@ -37,21 +37,27 @@ public abstract class BaseController {
 		SwingUtilities.invokeLater(() -> {
 			switch (e) {
 			case ValidationException ve -> DialogFactory.aviso(view, ve.getMessage());
+
 			case ServiceOperationException se -> {
 				if (se.getErrorType().isCritical()) {
+					logger.error("ERRO CRÍTICO NA SERVICE: {}", se.getMessage(), se);
 					DialogFactory.erro(view, se.getMessage());
 				} else {
 					DialogFactory.aviso(view, se.getMessage());
 				}
 			}
+
 			case DataAccessException de -> {
-				String msg = "FALHA NO BANCO DE DADOS\nCÓDIGO: %s\nERRO: %s".formatted(de.getErrorCode(),
-						de.getMessage());
-				DialogFactory.erro(view, msg);
+				logger.error("FALHA DE INFRAESTRUTURA [CÓDIGO: {}]: {}", de.getErrorCode(), de.getMessage(), de);
+
+				String msgUsuario = "NÃO FOI POSSÍVEL SE COMUNICAR COM O BANCO DE DADOS NO MOMENTO.\n"
+						+ "POR FAVOR, TENTE NOVAMENTE MAIS TARDE OU CONTATE O SUPORTE.";
+				DialogFactory.erro(view, msgUsuario);
 			}
+
 			default -> {
-				DialogFactory.erro(view, "ERRO INESPERADO: " + e.getMessage());
 				logger.error("ERRO NÃO TRATADO NO SISTEMA", e);
+				DialogFactory.erro(view, "OCORREU UM ERRO INESPERADO. DETALHES FORAM REGISTRADOS NO LOG.");
 			}
 			}
 		});

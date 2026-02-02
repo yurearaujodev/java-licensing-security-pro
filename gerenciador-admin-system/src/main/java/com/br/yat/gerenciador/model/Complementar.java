@@ -58,4 +58,21 @@ public class Complementar extends BaseEntity {
 	public void setEmpresa(Empresa empresa) {
 		this.empresa = empresa;
 	}
+	
+	@Override
+	public boolean equals(Object obj) {
+	    if (this == obj) return true;
+	    if (obj == null || getClass() != obj.getClass()) return false;
+	    Complementar other = (Complementar) obj;
+	    return idComplementar == other.idComplementar &&
+	           numFuncionariosComplementar == other.numFuncionariosComplementar &&
+	           java.util.Objects.equals(ramoAtividadeComplementar, other.ramoAtividadeComplementar) &&
+	           java.util.Objects.equals(logoTipoComplementar, other.logoTipoComplementar) &&
+	           java.util.Objects.equals(obsComplementar, other.obsComplementar);
+	}
+
+	@Override
+	public int hashCode() {
+	    return java.util.Objects.hash(idComplementar, ramoAtividadeComplementar);
+	}
 }

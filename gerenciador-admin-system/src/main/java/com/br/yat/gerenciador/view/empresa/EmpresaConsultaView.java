@@ -1,6 +1,7 @@
 package com.br.yat.gerenciador.view.empresa;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JInternalFrame;
 import javax.swing.JPanel;
 import javax.swing.JTable;
@@ -24,6 +25,7 @@ public class EmpresaConsultaView extends JInternalFrame {
 	private JButton btnEditar;
 	private JButton btnExcluir;
 	private JButton btnNovo;
+	private JCheckBox chkInativos;
 	private EmpresaTableModel tablemodel;
 
 	public EmpresaConsultaView() {
@@ -43,7 +45,10 @@ public class EmpresaConsultaView extends JInternalFrame {
 	private void montarCampos(JPanel panel) {
 		panel.add(LabelFactory.createLabel("BUSCAR (NOME/DOC): "), "cell 0 0,alignx trailing");
 		txtBusca = FieldFactory.createTextField(20);
-		panel.add(txtBusca, "cell 1 0 2 1,growx,h 25!");
+		panel.add(txtBusca, "cell 1 0, growx, h 25!, split 2");
+
+		chkInativos = ButtonFactory.createCheckBox("MOSTRAR INATIVOS");
+		panel.add(chkInativos, "gapleft 15");
 
 		tablemodel = new EmpresaTableModel();
 		tabela = TableFactory.createAbstractTable(tablemodel);
@@ -60,6 +65,7 @@ public class EmpresaConsultaView extends JInternalFrame {
 
 		btnEditar = ButtonFactory.createPrimaryButton("ALTERAR", IconFactory.salvar());
 		panel.add(btnEditar, "cell 2 0 2 1,split 2,alignx right,w 120!, h 25!");
+
 		btnExcluir = ButtonFactory.createPrimaryButton("APAGAR", null);
 		panel.add(btnExcluir, "w 120!, h 25!");
 		return panel;
@@ -94,7 +100,7 @@ public class EmpresaConsultaView extends JInternalFrame {
 	public JButton getBtnEditar() {
 		return btnEditar;
 	}
-	
+
 	public JButton getBtnExcluir() {
 		return btnExcluir;
 	}
@@ -105,5 +111,9 @@ public class EmpresaConsultaView extends JInternalFrame {
 
 	public EmpresaTableModel getTableModel() {
 		return tablemodel;
+	}
+
+	public JCheckBox getChkInativos() {
+		return chkInativos;
 	}
 }

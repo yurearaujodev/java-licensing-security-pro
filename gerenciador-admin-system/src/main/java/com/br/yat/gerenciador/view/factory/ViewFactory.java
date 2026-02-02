@@ -9,6 +9,8 @@ import javax.swing.event.InternalFrameEvent;
 import com.br.yat.gerenciador.controller.ConfiguracaoBancoController;
 import com.br.yat.gerenciador.controller.LoginController;
 import com.br.yat.gerenciador.controller.MenuPrincipalController;
+import com.br.yat.gerenciador.controller.PermissaoConsultaController;
+import com.br.yat.gerenciador.controller.UsuarioConsultaController;
 import com.br.yat.gerenciador.controller.UsuarioController;
 import com.br.yat.gerenciador.controller.empresa.DadoBancarioController;
 import com.br.yat.gerenciador.controller.empresa.DadoComplementarController;
@@ -19,14 +21,16 @@ import com.br.yat.gerenciador.controller.empresa.DadoPrincipalController;
 import com.br.yat.gerenciador.controller.empresa.DadoRepresentanteController;
 import com.br.yat.gerenciador.controller.empresa.EmpresaConsultaController;
 import com.br.yat.gerenciador.controller.empresa.EmpresaController;
-import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.service.DatabaseConnectionService;
 import com.br.yat.gerenciador.service.DatabaseSetupService;
 import com.br.yat.gerenciador.service.EmpresaService;
+import com.br.yat.gerenciador.service.UsuarioService;
 import com.br.yat.gerenciador.view.ConfiguracaoBancoView;
 import com.br.yat.gerenciador.view.EmpresaView;
+import com.br.yat.gerenciador.view.LogSistemaView;
 import com.br.yat.gerenciador.view.MenuPrincipal;
+import com.br.yat.gerenciador.view.PermissaoConsultaView;
 import com.br.yat.gerenciador.view.UsuarioConsultaView;
 import com.br.yat.gerenciador.view.UsuarioView;
 import com.br.yat.gerenciador.view.UsuarioViewLogin;
@@ -119,10 +123,37 @@ public final class ViewFactory {
 		return view;
 	}
 
+	public static UsuarioConsultaView createUsuarioConsultaView() {
+	    UsuarioConsultaView view = new UsuarioConsultaView();
+	    UsuarioService service = new UsuarioService();
+	    UsuarioConsultaController controller = new UsuarioConsultaController(view, service);
+
+	    // Garante que o scheduler e recursos do controller sejam liberados
+	    view.addInternalFrameListener(new InternalFrameAdapter() {
+	        @Override
+	        public void internalFrameClosed(InternalFrameEvent e) {
+	            controller.dispose();
+	        }
+	    });
+	    return view;
+	}
 	public static UsuarioView createUsuarioView() {
-		UsuarioView view = new UsuarioView();
-		new UsuarioController(view);
-		return view;
+	    UsuarioView view = new UsuarioView();
+	    UsuarioService service = new UsuarioService();
+	    UsuarioController controller = new UsuarioController(view, service);
+	    view.putClientProperty("controller", controller);
+
+	    // Evita que a janela feche sem validar se há dados pendentes
+	    view.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+	    view.addInternalFrameListener(new InternalFrameAdapter() {
+	        @Override
+	        public void internalFrameClosing(InternalFrameEvent e) {
+	            // Se você quiser implementar o 'podeFechar' no UsuarioController depois
+	            view.dispose(); 
+	            controller.dispose();
+	        }
+	    });
+	    return view;
 	}
 
 	public static UsuarioViewLogin createLoginView() {
@@ -149,48 +180,51 @@ public final class ViewFactory {
 		});
 		DesktopUtils.showFrame(desk, frame);
 	}
+
+	public static UsuarioView createPrimeiroMasterView() {
+	    UsuarioView view = createUsuarioView();
+	    view.setTitle("CONFIGURAÇÃO INICIAL: CADASTRAR ADMINISTRADOR MASTER");
+	    
+	    // Força ser Master e impede desmarcar
+	    view.setMaster(true);
+	    view.getChkMaster().setEnabled(false);
+	    
+	    // No primeiro acesso, o status deve ser ATIVO obrigatoriamente
+	    view.setStatus("ATIVO");
+	    view.bloquearStatus(false);
+	    
+	    view.getPermissoes().values().forEach(chk -> chk.setSelected(true));
+	    view.bloquearGradePermissoes(false); // Master não mexe nas próprias permissões
+	    
+	    return view;
+	}
 	
-	// Use este método no seu MenuPrincipalController para a sequência de telas
-    public static void abrirUsuarioComCallback(JDesktopPane desk, Runnable callback) {
-        UsuarioView view = new UsuarioView();
-        new UsuarioController(view);
-        
-        view.addInternalFrameListener(new javax.swing.event.InternalFrameAdapter() {
-            @Override
-            public void internalFrameClosed(javax.swing.event.InternalFrameEvent e) {
-                if (callback != null) callback.run();
-            }
-        });
-        
-        com.br.yat.gerenciador.view.factory.DesktopUtils.showFrame(desk, view);
-    }
-    
-    public static UsuarioConsultaView createUsuarioConsultaView() {
-        // 1. Criamos as duas Views
-        UsuarioConsultaView consultaView = new UsuarioConsultaView();
-        UsuarioView cadastroView = new UsuarioView(); 
+	// Adicione este método na sua ViewFactory
+	public static LogSistemaView createLogSistemaView() {
+	    LogSistemaView view = new LogSistemaView();
+	    
+	    // O Controller assume o controle da View aqui
+	    new com.br.yat.gerenciador.controller.LogSistemaController(view);
+	    
+	    view.addInternalFrameListener(new InternalFrameAdapter() {
+	        @Override
+	        public void internalFrameClosed(InternalFrameEvent e) {
+	            // Se o controller tivesse recursos para liberar (como um scheduler),
+	            // chamaríamos o dispose aqui.
+	        }
+	    });
+	    
+	    return view;
+	}
 
-        // 2. O Controller assume o comando de ambas
-        UsuarioController controller = new UsuarioController(cadastroView);
-        
-        // 3. Chamamos o método que você já criou no Controller para vincular os eventos da consulta
-        controller.vincularAcoesConsulta(consultaView); 
-
-        // Guardamos o cadastroView dentro da consulta para fácil acesso se necessário
-        consultaView.putClientProperty("cadastroView", cadastroView);
-
-        return consultaView;
-    }
-
-    // Abre a tela de cadastro carregando um usuário específico
-    public static UsuarioView createUsuarioEdicaoView(Usuario usuario) {
-        UsuarioView view = new UsuarioView();
-        UsuarioController controller = new UsuarioController(view);
-        
-        // Carrega os dados no controller
-        controller.carregarUsuarioParaEdicao(usuario);
-        
-        return view;
-    }
-
+	public static PermissaoConsultaView createPermissaoConsultaView() {
+	    var view = new PermissaoConsultaView();
+	    UsuarioService service = new UsuarioService();
+	    
+	    // Instancia o controller que criamos anteriormente
+	    new PermissaoConsultaController(view, service);
+	    
+	    return view;
+	}
+	
 }

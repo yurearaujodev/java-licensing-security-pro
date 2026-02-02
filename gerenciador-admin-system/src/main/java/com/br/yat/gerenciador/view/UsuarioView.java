@@ -37,6 +37,7 @@ public class UsuarioView extends JInternalFrame {
 	private JButton btnSalvar;
 	private JButton btnNovo;
 	private JButton btnCancelar;
+	private JCheckBox chkMaster;
 
 	private final Map<MenuChave, JCheckBox> permissoes = new LinkedHashMap<>();
 
@@ -83,6 +84,10 @@ public class UsuarioView extends JInternalFrame {
 		txtEmpresa = FieldFactory.createTextField(20);
 		txtEmpresa.setEditable(false);
 		panel.add(txtEmpresa, "cell 1 3 3 1,growx,h 25!");
+		
+		panel.add(LabelFactory.createLabel("MASTER: "), "cell 0 2, alignx trailing");
+		chkMaster = ButtonFactory.createCheckBox("ESTE USUÁRIO É ADMINISTRADOR MASTER");
+		panel.add(chkMaster, "cell 1 2 3 1, growx");
 	}
 
 	private JScrollPane criarPermissoes() {
@@ -230,6 +235,18 @@ public class UsuarioView extends JInternalFrame {
 	public JButton getBtnCancelar() {
 		return btnCancelar;
 	}
+	
+	public boolean isMaster() {
+	    return chkMaster.isSelected();
+	}
+
+	public void setMaster(boolean master) {
+	    chkMaster.setSelected(master);
+	}
+
+	public JCheckBox getChkMaster() {
+	    return chkMaster;
+	}
 
 	public void limpar() {
 		idEmpresa = null;
@@ -238,6 +255,9 @@ public class UsuarioView extends JInternalFrame {
 		txtSenha.setText("");
 		cbStatus.setSelectedIndex(0);
 		txtEmpresa.setText("");
+		
+		chkMaster.setSelected(false);
+	    chkMaster.setEnabled(false);
 		permissoes.values().forEach(cb -> cb.setSelected(false));
 		chkTodosPorCategoria.values().forEach(cb -> cb.setSelected(false));
 	}
@@ -280,5 +300,16 @@ public class UsuarioView extends JInternalFrame {
 	            setPermissaoSelecionada(chave, selecionado);
 	        }
 	    }
+	}
+	
+	public void bloquearStatus(boolean editavel) {
+	    // Substitua 'comboStatus' pelo nome real do seu componente de status
+	    this.cbStatus.setEnabled(editavel);
+	}
+
+	// Método para bloquear todos os checkboxes de permissões
+	public void bloquearGradePermissoes(boolean editavel) {
+	    getPermissoes().values().forEach(chk -> chk.setEnabled(editavel));
+	    getChkTodosPorCategoria().values().forEach(chk -> chk.setEnabled(editavel));
 	}
 }

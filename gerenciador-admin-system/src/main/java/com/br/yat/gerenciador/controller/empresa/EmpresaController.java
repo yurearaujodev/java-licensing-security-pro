@@ -9,9 +9,13 @@ import javax.swing.SwingUtilities;
 import com.br.yat.gerenciador.controller.BaseController;
 import com.br.yat.gerenciador.controller.RefreshCallback;
 import com.br.yat.gerenciador.model.Empresa;
+import com.br.yat.gerenciador.model.Sessao;
+import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.dto.EmpresaDTO;
+import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.service.EmpresaService;
+import com.br.yat.gerenciador.util.AppEventManager;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.view.EmpresaView;
@@ -78,7 +82,7 @@ public class EmpresaController extends BaseController {
 
 	private void inicializarPorTipo() {
 		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
-			carregarDados(0); // ID 0 pois o service buscará o registro único de fornecedora
+			carregarDados(0);
 			setModoEdicao(true);
 		} else {
 			limparFormulario();
@@ -87,8 +91,8 @@ public class EmpresaController extends BaseController {
 	}
 
 	public void carregarDados(int id) {
-		runAsync(SwingUtilities.getWindowAncestor(view), () -> service.carregarEmpresaCompleta(id, tipoCadastro),
-				dados -> {
+		runAsync(SwingUtilities.getWindowAncestor(view),
+				() -> service.carregarEmpresaCompleta(id, tipoCadastro, Sessao.getUsuario()), dados -> {
 					if (dados == null) {
 						if (tipoCadastro == TipoCadastro.CLIENTE)
 							DialogFactory.erro(view, "ERRO: EMPRESA NÃO ENCONTRADA.");
@@ -147,16 +151,21 @@ public class EmpresaController extends BaseController {
 		}
 
 		boolean alterar = empresa.getIdEmpresa() > 0;
+		Usuario executor = Sessao.getUsuario();
 
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
 			service.salvarEmpresaCompleta(eEndereco.getDados(), empresa, eContato.getDados(),
 					tipoCadastro == TipoCadastro.FORNECEDORA ? eRepresentante.getDados() : null,
 					tipoCadastro == TipoCadastro.FORNECEDORA ? eBancario.getDados() : null,
 					tipoCadastro == TipoCadastro.FORNECEDORA ? eComplementar.getComplementar() : null,
-					tipoCadastro == TipoCadastro.FORNECEDORA ? eComplementar.getDocumentos() : null);
+					tipoCadastro == TipoCadastro.FORNECEDORA ? eComplementar.getDocumentos() : null, executor);
 			return true;
 		}, ok -> {
 			DialogFactory.informacao(view, alterar ? "ALTERADO COM SUCESSO." : "SALVO COM SUCESSO.");
+			if (tipoCadastro == TipoCadastro.FORNECEDORA) {
+		        AppEventManager.notifyLogoChange();
+		    }
+			
 			if (tipoCadastro == TipoCadastro.CLIENTE) {
 				limparFormulario();
 				setModoEdicao(false);
@@ -210,11 +219,15 @@ public class EmpresaController extends BaseController {
 	}
 
 	private void setModoEdicao(boolean ativo) {
+		boolean temPermissaoSalvar = Sessao.getUsuario().isMaster()
+				|| Sessao.getPermissoes().contains(MenuChave.CADASTROS_EMPRESA_CLIENTE);
+
 		ePrincipal.desativarAtivar(ativo);
 		eEndereco.desativarAtivar(ativo);
 		eContato.desativarAtivar(ativo);
-		view.getBtnSalvar().setEnabled(ativo);
-		view.getBtnNovo().setEnabled(!ativo && tipoCadastro == TipoCadastro.CLIENTE);
+
+		view.getBtnSalvar().setEnabled(ativo && temPermissaoSalvar);
+		view.getBtnNovo().setEnabled(!ativo && tipoCadastro == TipoCadastro.CLIENTE && temPermissaoSalvar);
 	}
 
 	private void atualizarAbas() {

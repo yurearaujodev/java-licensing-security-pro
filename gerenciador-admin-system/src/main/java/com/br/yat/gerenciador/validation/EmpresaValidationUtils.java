@@ -145,14 +145,15 @@ public final class EmpresaValidationUtils {
 		};
 
 		if (!valido) {
-			throw new ValidationException(ValidationErrorType.INVALID_FIELD, tipo + " INVÁLIDO.");
+			String nomeTipo = tipo.toString().replace("_", " ");
+			throw new ValidationException(ValidationErrorType.INVALID_FIELD, nomeTipo + " ESTÁ COM FORMATO INVÁLIDO.");
 		}
 	}
 
 	public static void validarContatos(List<Contato> contatos) {
 		if (contatos == null || contatos.isEmpty()) {
 			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING,
-					"AO MENOS UM CONTATO É OBRIGATÓRIO.");
+					"AO MENOS UM CONTATO (E-MAIL OU TELEFONE) É OBRIGATÓRIO.");
 		}
 
 		for (Contato c : contatos) {

@@ -41,4 +41,18 @@ public class Documento extends BaseEntity {
 		this.empresa = empresa;
 	}
 
+	@Override
+	public boolean equals(Object obj) {
+	    if (this == obj) return true;
+	    if (obj == null || getClass() != obj.getClass()) return false;
+	    Documento other = (Documento) obj;
+	    return idDocumento == other.idDocumento &&
+	           java.util.Objects.equals(tipoDocumento, other.tipoDocumento) &&
+	           java.util.Objects.equals(arquivoDocumento, other.arquivoDocumento);
+	}
+
+	@Override
+	public int hashCode() {
+	    return java.util.Objects.hash(idDocumento, tipoDocumento, arquivoDocumento);
+	}
 }

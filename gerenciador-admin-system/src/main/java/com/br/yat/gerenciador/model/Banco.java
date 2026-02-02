@@ -69,4 +69,22 @@ public class Banco extends BaseEntity {
 	public void setEmpresa(Empresa empresa) {
 		this.empresa = empresa;
 	}
+	
+	@Override
+	public boolean equals(Object obj) {
+	    if (this == obj) return true;
+	    if (obj == null || getClass() != obj.getClass()) return false;
+	    Banco other = (Banco) obj;
+	    return idBanco == other.idBanco &&
+	           codBanco == other.codBanco &&
+	           tipoBanco == other.tipoBanco &&
+	           java.util.Objects.equals(nomeBanco, other.nomeBanco) &&
+	           java.util.Objects.equals(agenciaBanco, other.agenciaBanco) &&
+	           java.util.Objects.equals(contaBanco, other.contaBanco);
+	}
+
+	@Override
+	public int hashCode() {
+	    return java.util.Objects.hash(idBanco, codBanco, contaBanco);
+	}
 }

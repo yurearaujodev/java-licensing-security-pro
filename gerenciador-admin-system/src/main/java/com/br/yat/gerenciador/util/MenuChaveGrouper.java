@@ -16,6 +16,11 @@ public final class MenuChaveGrouper {
 		return Arrays.stream(MenuChave.values()).collect(
 				Collectors.groupingBy(MenuChaveGrouper::extrairCategoria, LinkedHashMap::new, Collectors.toList()));
 	}
+	
+	public static Map<String, List<MenuChave>> groupByCategoriaFiltrado(List<MenuChave> permitidas) {
+        return permitidas.stream().collect(
+                Collectors.groupingBy(MenuChaveGrouper::extrairCategoria, LinkedHashMap::new, Collectors.toList()));
+    }
 
 	private static String extrairCategoria(MenuChave chave) {
 		String nome = chave.name();
