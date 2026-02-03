@@ -2,6 +2,7 @@ package com.br.yat.gerenciador.dao.usuario;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.List;
@@ -11,6 +12,7 @@ import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.model.Empresa;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
+import com.br.yat.gerenciador.model.enums.StatusUsuario;
 
 public class UsuarioDao extends GenericDao<Usuario> {
 
@@ -23,7 +25,7 @@ public class UsuarioDao extends GenericDao<Usuario> {
 				+ " (nome, email, senha_hash, status, tentativas_falhas, id_empresa, is_master, criado_em, atualizado_em) "
 				+ "VALUES (?, ?, ?, ?, 0, ?, ?, NOW(), NOW())";
 
-		Integer idEmpresa = (u.getIdEmpresa() != null) ? u.getIdEmpresa().getIdEmpresa() : null;
+		Integer idEmpresa = (u.getEmpresa() != null) ? u.getEmpresa().getIdEmpresa() : null;
 
 		int id = executeInsert(sql, u.getNome(), u.getEmail(), u.getSenhaHashString(), u.getStatus(), idEmpresa,
 				u.isMaster());
@@ -37,7 +39,7 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		String sql;
 		Object[] params;
 
-		Integer idEmpresa = (u.getIdEmpresa() != null) ? u.getIdEmpresa().getIdEmpresa() : null;
+		Integer idEmpresa = (u.getEmpresa() != null) ? u.getEmpresa().getIdEmpresa() : null;
 
 		if (u.getSenhaHashString() != null && !u.getSenhaHashString().isEmpty()) {
 			sql = "UPDATE " + tableName
@@ -143,17 +145,15 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		u.setNome(rs.getString("nome"));
 		u.setEmail(rs.getString("email"));
 		u.setSenhaHashString(rs.getString("senha_hash"));
-		u.setStatus(rs.getString("status"));
+		u.setStatus(valueOf(StatusUsuario.class, rs.getString("status")));
 
 		Empresa emp = new Empresa();
 		emp.setIdEmpresa(rs.getInt("id_empresa"));
 
-		try {
-			emp.setRazaoSocialEmpresa(rs.getString("razao_social_empresa"));
-		} catch (SQLException e) {
-		}
-
-		u.setIdEmpresa(emp);
+		if (colunaExiste(rs, "razao_social_empresa")) {
+            emp.setRazaoSocialEmpresa(rs.getString("razao_social_empresa"));
+        }
+		u.setEmpresa(emp);
 
 		u.setTentativasFalhas(rs.getInt("tentativas_falhas"));
 		Timestamp ts = rs.getTimestamp("ultimo_login");
@@ -163,4 +163,14 @@ public class UsuarioDao extends GenericDao<Usuario> {
 
 		return u;
 	}
+	
+	private boolean colunaExiste(ResultSet rs, String coluna) throws SQLException {
+        ResultSetMetaData meta = rs.getMetaData();
+        for (int i = 1; i <= meta.getColumnCount(); i++) {
+            if (coluna.equalsIgnoreCase(meta.getColumnLabel(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

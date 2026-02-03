@@ -20,7 +20,9 @@ import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.UsuarioPermissao;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 import com.br.yat.gerenciador.model.enums.MenuChave;
+import com.br.yat.gerenciador.model.enums.StatusUsuario;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
+//import com.br.yat.gerenciador.policy.UsuarioPolicy;
 import com.br.yat.gerenciador.security.PasswordUtils;
 import com.br.yat.gerenciador.security.SensitiveData;
 import com.br.yat.gerenciador.util.AuditLogHelper;
@@ -29,8 +31,9 @@ import com.br.yat.gerenciador.validation.UsuarioValidationUtils;
 public class UsuarioService {
 
 	private static final MenuChave CHAVE_SALVAR = MenuChave.CADASTROS_USUARIO;
+	//private final UsuarioPolicy usuarioPolicy = new UsuarioPolicy();
 
-	public void salvarUsuarioCompleto(Usuario usuario, List<MenuChave> chavesSelecionadas, Usuario executor) {
+	public void salvarUsuario(Usuario usuario, List<MenuChave> chavesSelecionadas, Usuario executor) {
 		validarAcesso(executor, CHAVE_SALVAR);
 		validarDados(usuario, chavesSelecionadas);
 		validarRestricoesMaster(usuario);
@@ -42,7 +45,7 @@ public class UsuarioService {
 				UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
 				PermissaoDao permissaoDao = new PermissaoDao(conn);
 
-				validarRegrasNegocioBanco(usuarioDao, usuario);
+				validarRegrasPersistencia(usuarioDao, usuario);
 
 				Usuario estadoAnterior = null;
 				boolean isNovo = (usuario.getIdUsuario() == null || usuario.getIdUsuario() == 0);
@@ -50,7 +53,7 @@ public class UsuarioService {
 					estadoAnterior = usuarioDao.searchById(usuario.getIdUsuario());
 				}
 
-				processarSenhaUsuario(usuario, isNovo);
+				processarSenha(usuario, isNovo);
 				salvarOuAtualizar(usuarioDao, usuario, estadoAnterior, isNovo, conn);
 				sincronizarPermissoes(upDao, permissaoDao, usuario, chavesSelecionadas, executor);
 
@@ -68,16 +71,16 @@ public class UsuarioService {
 	}
 
 	private void validarRestricoesMaster(Usuario usuario) {
-		if (usuario.isMaster() && !"ATIVO".equals(usuario.getStatus())) {
+		if (usuario.isMaster() && usuario.getStatus() != StatusUsuario.ATIVO) {
 			throw new ValidationException(ValidationErrorType.INVALID_FIELD,
 					"O STATUS DO MASTER NÃO PODE SER ALTERADO.");
 		}
-		if (usuario.getIdEmpresa() == null || usuario.getIdEmpresa().getIdEmpresa() == null) {
+		if (usuario.getEmpresa() == null || usuario.getEmpresa().getIdEmpresa() == null) {
 			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "A EMPRESA É OBRIGATÓRIA.");
 		}
 	}
 
-	private void validarRegrasNegocioBanco(UsuarioDao dao, Usuario usuario) throws SQLException {
+	private void validarRegrasPersistencia(UsuarioDao dao, Usuario usuario) throws SQLException {
 		if (usuario.isMaster()) {
 			Usuario masterExistente = dao.buscarMasterUnico();
 			if (masterExistente != null && !masterExistente.getIdUsuario().equals(usuario.getIdUsuario())) {
@@ -93,7 +96,7 @@ public class UsuarioService {
 		}
 	}
 
-	private void processarSenhaUsuario(Usuario usuario, boolean isNovo) {
+	private void processarSenha(Usuario usuario, boolean isNovo) {
 		char[] senhaPura = usuario.getSenhaHash();
 		if (senhaPura != null && senhaPura.length > 0) {
 			if (senhaPura.length < 4) {
@@ -213,11 +216,13 @@ public class UsuarioService {
 						"Usuário não existe: " + email));
 				throw new ValidationException(ValidationErrorType.INVALID_FIELD, "USUÁRIO NÃO ENCONTRADO.");
 			}
-			if ("BLOQUEADO".equals(user.getStatus())) {
+			if (StatusUsuario.BLOQUEADO == user.getStatus()) {
 				throw new ValidationException(ValidationErrorType.INVALID_FIELD,
 						"CONTA BLOQUEADA POR EXCESSO DE TENTATIVAS. CONTATE O ADMIN.");
+
 			}
-			if ("INATIVO".equals(user.getStatus())) {
+
+			if (StatusUsuario.INATIVO == user.getStatus()) {
 				throw new ValidationException(ValidationErrorType.INVALID_FIELD, "ESTE USUÁRIO ESTÁ INATIVO.");
 			}
 
@@ -298,12 +303,11 @@ public class UsuarioService {
 		if (usuario.isMaster())
 			chaves = List.of(MenuChave.values());
 		validarDados(usuario, chaves);
-		validarHierarquiaPermissao(chaves, executor); // Extraído
+		validarHierarquiaPermissao(chaves, executor);
 
 		upDao.disableAllFromUser(usuario.getIdUsuario());
 
 		for (MenuChave chave : chaves) {
-			// Agora o loop só faz uma coisa: VINCULAR
 			int idPermissao = garantirInfraestruturaMenu(upDao.getConnection(), chave);
 
 			UsuarioPermissao up = new UsuarioPermissao();

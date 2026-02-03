@@ -7,8 +7,10 @@ import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
 
 import com.br.yat.gerenciador.controller.ConfiguracaoBancoController;
+import com.br.yat.gerenciador.controller.LogSistemaController;
 import com.br.yat.gerenciador.controller.LoginController;
 import com.br.yat.gerenciador.controller.MenuPrincipalController;
+import com.br.yat.gerenciador.controller.ParametroSistemaController;
 import com.br.yat.gerenciador.controller.PermissaoConsultaController;
 import com.br.yat.gerenciador.controller.UsuarioConsultaController;
 import com.br.yat.gerenciador.controller.UsuarioController;
@@ -21,15 +23,18 @@ import com.br.yat.gerenciador.controller.empresa.DadoPrincipalController;
 import com.br.yat.gerenciador.controller.empresa.DadoRepresentanteController;
 import com.br.yat.gerenciador.controller.empresa.EmpresaConsultaController;
 import com.br.yat.gerenciador.controller.empresa.EmpresaController;
+import com.br.yat.gerenciador.model.enums.StatusUsuario;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.service.DatabaseConnectionService;
 import com.br.yat.gerenciador.service.DatabaseSetupService;
 import com.br.yat.gerenciador.service.EmpresaService;
+import com.br.yat.gerenciador.service.ParametroSistemaService;
 import com.br.yat.gerenciador.service.UsuarioService;
 import com.br.yat.gerenciador.view.ConfiguracaoBancoView;
 import com.br.yat.gerenciador.view.EmpresaView;
 import com.br.yat.gerenciador.view.LogSistemaView;
 import com.br.yat.gerenciador.view.MenuPrincipal;
+import com.br.yat.gerenciador.view.ParametroSistemaView;
 import com.br.yat.gerenciador.view.PermissaoConsultaView;
 import com.br.yat.gerenciador.view.UsuarioConsultaView;
 import com.br.yat.gerenciador.view.UsuarioView;
@@ -190,7 +195,7 @@ public final class ViewFactory {
 	    view.getChkMaster().setEnabled(false);
 	    
 	    // No primeiro acesso, o status deve ser ATIVO obrigatoriamente
-	    view.setStatus("ATIVO");
+	    view.setStatus(StatusUsuario.ATIVO);
 	    view.bloquearStatus(false);
 	    
 	    view.getPermissoes().values().forEach(chk -> chk.setSelected(true));
@@ -204,7 +209,7 @@ public final class ViewFactory {
 	    LogSistemaView view = new LogSistemaView();
 	    
 	    // O Controller assume o controle da View aqui
-	    new com.br.yat.gerenciador.controller.LogSistemaController(view);
+	    new LogSistemaController(view);
 	    
 	    view.addInternalFrameListener(new InternalFrameAdapter() {
 	        @Override
@@ -225,6 +230,13 @@ public final class ViewFactory {
 	    new PermissaoConsultaController(view, service);
 	    
 	    return view;
+	}
+	
+	public static ParametroSistemaView createParametroSistemaView() {
+		ParametroSistemaView view = new ParametroSistemaView();
+		ParametroSistemaService service= new ParametroSistemaService();
+		new ParametroSistemaController(view, service);
+		return view;
 	}
 	
 }

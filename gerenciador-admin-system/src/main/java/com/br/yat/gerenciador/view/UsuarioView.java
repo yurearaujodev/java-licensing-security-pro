@@ -15,6 +15,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 
 import com.br.yat.gerenciador.model.enums.MenuChave;
+import com.br.yat.gerenciador.model.enums.StatusUsuario;
 import com.br.yat.gerenciador.util.IconFactory;
 import com.br.yat.gerenciador.view.factory.ButtonFactory;
 import com.br.yat.gerenciador.view.factory.ComboBoxFactory;
@@ -33,7 +34,7 @@ public class UsuarioView extends JInternalFrame {
 	private JTextField txtEmpresa;
 	private Integer idEmpresa;
 	private JPasswordField txtSenha;
-	private JComboBox<String> cbStatus;
+	private JComboBox<StatusUsuario> cbStatus;
 	private JButton btnSalvar;
 	private JButton btnNovo;
 	private JButton btnCancelar;
@@ -77,7 +78,7 @@ public class UsuarioView extends JInternalFrame {
 		panel.add(txtSenha, "cell 1 1,growx,h 25!");
 
 		panel.add(LabelFactory.createLabel("STATUS: "), "cell 2 1, alignx trailing");
-		cbStatus = ComboBoxFactory.createComboBox("SELECIONE", "ATIVO", "INATIVO", "BLOQUEADO");
+		cbStatus = ComboBoxFactory.createEnumComboBox(StatusUsuario.class);
 		panel.add(cbStatus, "cell 3 1,growx,h 25!");
 
 		panel.add(LabelFactory.createLabel("EMPRESA: "), "cell 0 3, alignx trailing");
@@ -184,11 +185,11 @@ public class UsuarioView extends JInternalFrame {
 		return idEmpresa;
 	}
 
-	public String getStatus() {
-		return String.valueOf(cbStatus.getSelectedItem());
+	public StatusUsuario getStatus() {
+		return (StatusUsuario)cbStatus.getSelectedItem();
 	}
 
-	public void setStatus(String status) {
+	public void setStatus(StatusUsuario status) {
 		cbStatus.setSelectedItem(status);
 	}
 
@@ -220,12 +221,16 @@ public class UsuarioView extends JInternalFrame {
 		return txtSenha;
 	}
 
-	public JComboBox<String> getCbStatus() {
+	public JComboBox<StatusUsuario> getCbStatus() {
 		return cbStatus;
 	}
 
 	public JButton getBtnSalvar() {
 		return btnSalvar;
+	}
+	
+	public void setTextoBotaoSalvar(String texto) {
+	    btnSalvar.setText(texto);
 	}
 
 	public JButton getBtnNovo() {

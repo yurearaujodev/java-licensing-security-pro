@@ -58,11 +58,11 @@ public class UsuarioController extends BaseController {
 
 	public void novoUsuario() {
 		this.usuarioAtual = null;
+		view.limpar();
 		view.desativarAtivar(true);
 		view.setMaster(false);
 		view.getChkMaster().setEnabled(false);
-
-		view.limpar();
+		view.setTextoBotaoSalvar("SALVAR");
 		carregarEmpresaPadrao();
 	}
 
@@ -74,21 +74,22 @@ public class UsuarioController extends BaseController {
 		view.setStatus(usuario.getStatus());
 		view.setMaster(usuario.isMaster());
 
-		view.getChkMaster().setEnabled(false);
-
-		if (usuario.getIdEmpresa() != null) {
-			view.setEmpresa(usuario.getIdEmpresa().getIdEmpresa(), usuario.getIdEmpresa().getRazaoSocialEmpresa());
+		// view.getChkMaster().setEnabled(false);
+		view.setTextoBotaoSalvar("ALTERAR");
+		if (usuario.getEmpresa() != null) {
+			view.setEmpresa(usuario.getEmpresa().getIdEmpresa(), usuario.getEmpresa().getRazaoSocialEmpresa());
 		}
 
 		view.desativarAtivar(true);
-
-		if (usuario.isMaster()) {
-			view.bloquearStatus(false);
-			view.getChkMaster().setEnabled(false);
-		} else {
-			view.bloquearStatus(true);
-			view.getChkMaster().setEnabled(false);
-		}
+		view.bloquearStatus(!usuario.isMaster());
+		view.getChkMaster().setEnabled(!usuario.isMaster());
+//		if (usuario.isMaster()) {
+//			view.bloquearStatus(false);
+//			view.getChkMaster().setEnabled(false);
+//		} else {
+//			view.bloquearStatus(true);
+//			view.getChkMaster().setEnabled(false);
+//		}
 
 		runAsync(null, () -> service.carregarPermissoesAtivas(usuario.getIdUsuario()), chavesDoBanco -> {
 			view.desmarcarTodasPermissoes();
@@ -96,11 +97,12 @@ public class UsuarioController extends BaseController {
 				view.setPermissaoSelecionada(chave, true);
 			}
 
-			if (usuario.isMaster()) {
-				view.bloquearGradePermissoes(false);
-			} else {
-				view.bloquearGradePermissoes(true);
-			}
+			view.bloquearGradePermissoes(!usuario.isMaster());
+//			if (usuario.isMaster()) {
+//				view.bloquearGradePermissoes(false);
+//			} else {
+//				view.bloquearGradePermissoes(true);
+//			}
 
 			Map<String, List<MenuChave>> grupos = view.getGruposPermissoes();
 			grupos.forEach((cat, lista) -> {
@@ -110,26 +112,36 @@ public class UsuarioController extends BaseController {
 	}
 
 	private void salvarUsuario() {
-		if (usuarioAtual == null)
+		boolean isNovo = (usuarioAtual == null || usuarioAtual.getIdUsuario() == null);
+
+		if (isNovo)
 			usuarioAtual = new Usuario();
 
 		usuarioAtual.setNome(view.getNome());
 		usuarioAtual.setEmail(view.getEmail());
-		usuarioAtual.setSenhaHash(view.getSenha());
+		char[] senha = view.getSenha();
+		if (senha !=null&&senha.length>0) {
+			usuarioAtual.setSenhaHash(senha);			
+		}
 		usuarioAtual.setStatus(view.getStatus());
 		usuarioAtual.setMaster(view.isMaster());
 
 		Empresa emp = new Empresa();
 		emp.setIdEmpresa(view.getEmpresa());
-		usuarioAtual.setIdEmpresa(emp);
+		usuarioAtual.setEmpresa(emp);
 
 		List<MenuChave> permissoes = coletarPermissoesMarcadas();
 
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-			service.salvarUsuarioCompleto(usuarioAtual, permissoes, Sessao.getUsuario());
+			service.salvarUsuario(usuarioAtual, permissoes, Sessao.getUsuario());
 			return true;
 		}, sucesso -> {
-			DialogFactory.informacao(view, "USUÁRIO SALVO COM SUCESSO!");
+			if (isNovo) {
+				DialogFactory.informacao(view, "USUÁRIO SALVO COM SUCESSO!");
+			} else {
+				DialogFactory.informacao(view, "ALTERAÇÃO REALIZADA COM SUCESSO!");
+			}
+
 			if (refreshCallback != null)
 				refreshCallback.onSaveSuccess();
 			view.doDefaultCloseAction();

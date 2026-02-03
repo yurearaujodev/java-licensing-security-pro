@@ -28,7 +28,7 @@ public final class UsuarioValidationUtils {
             validarSenha(usuario.getSenhaHash());
         }
         
-        if (usuario.getIdEmpresa() == null || usuario.getIdEmpresa().getIdEmpresa() == null || usuario.getIdEmpresa().getIdEmpresa() <= 0) {
+        if (usuario.getEmpresa() == null || usuario.getEmpresa().getIdEmpresa() == null || usuario.getEmpresa().getIdEmpresa() <= 0) {
             throw new ValidationException(ValidationErrorType.INVALID_FIELD, "USUÁRIO DEVE ESTAR VINCULADO A UMA EMPRESA.");
         }
     }

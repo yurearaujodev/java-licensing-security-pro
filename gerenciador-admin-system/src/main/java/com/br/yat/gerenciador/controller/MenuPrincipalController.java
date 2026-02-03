@@ -32,7 +32,9 @@ import com.br.yat.gerenciador.util.IconFactory;
 import com.br.yat.gerenciador.util.MenuRegistry;
 import com.br.yat.gerenciador.view.ConfiguracaoBancoView;
 import com.br.yat.gerenciador.view.EmpresaView;
+import com.br.yat.gerenciador.view.LogSistemaView;
 import com.br.yat.gerenciador.view.MenuPrincipal;
+import com.br.yat.gerenciador.view.ParametroSistemaView;
 import com.br.yat.gerenciador.view.PermissaoConsultaView;
 import com.br.yat.gerenciador.view.UsuarioConsultaView;
 import com.br.yat.gerenciador.view.UsuarioView;
@@ -70,12 +72,14 @@ public class MenuPrincipalController extends BaseController {
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_CONEXAO_BANCO_DADOS, e -> abrirConfiguracaoBanco());
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES, e -> abrirConsultaUsuario());
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_PERMISSAO, e -> abrirConsultaPermissoes());
+		configurarAcaoMenu(MenuChave.CONFIGURACAO_PARAMETRO_SISTEMA, e -> abrirParametroSistema());
 		configurarAcaoMenu(MenuChave.AUDITORIA_LOG_DO_SISTEMA, e -> abrirConsultaLogs());
 		for (var al : view.getBtnLogout().getActionListeners()) {
 			view.getBtnLogout().removeActionListener(al);
 		}
 		view.getBtnLogout().addActionListener(e -> processarLogout());
 	}
+
 
 	private void processarLogout() {
 		if (processandoLogout)
@@ -103,33 +107,33 @@ public class MenuPrincipalController extends BaseController {
 	}
 
 	private void carregarLogoSistema() {
-	    runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
-	       try (Connection conn = ConnectionFactory.getConnection()) {
-	            EmpresaDao empDao = new EmpresaDao(conn);
-	            var fornecedora = empDao.buscarPorFornecedora();
-	            
-	            if (fornecedora != null) {
-	                var compDao = new ComplementarDao(conn);
-	                var complementar = compDao.buscarPorEmpresa(fornecedora.getIdEmpresa());
-	                return (complementar != null) ? complementar.getLogoTipoComplementar() : null;
-	            }
-	        } catch (Exception e) {
-	            logger.error("ERRO AO BUSCAR LOGO: ", e);
-	        }
-	        return null;
-	        
-	    }, (String caminhoLogo) -> {
-	       if (caminhoLogo != null && !caminhoLogo.isBlank()) {
-	            Icon iconePersonalizado = IconFactory.externalIcon(caminhoLogo, 160, 160);
-	            view.getLblLogo().setIcon(iconePersonalizado);
-	        } else {
-	            view.getLblLogo().setIcon(IconFactory.logo());
-	        }
+		runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
+			try (Connection conn = ConnectionFactory.getConnection()) {
+				EmpresaDao empDao = new EmpresaDao(conn);
+				var fornecedora = empDao.buscarPorFornecedora();
 
-	        if (view.getLblLogo().getParent() != null) {
-	            view.getLblLogo().getParent().repaint();
-	        }
-	    });
+				if (fornecedora != null) {
+					var compDao = new ComplementarDao(conn);
+					var complementar = compDao.buscarPorEmpresa(fornecedora.getIdEmpresa());
+					return (complementar != null) ? complementar.getLogoTipoComplementar() : null;
+				}
+			} catch (Exception e) {
+				logger.error("ERRO AO BUSCAR LOGO: ", e);
+			}
+			return null;
+
+		}, (String caminhoLogo) -> {
+			if (caminhoLogo != null && !caminhoLogo.isBlank()) {
+				Icon iconePersonalizado = IconFactory.externalIcon(caminhoLogo, 160, 160);
+				view.getLblLogo().setIcon(iconePersonalizado);
+			} else {
+				view.getLblLogo().setIcon(IconFactory.logo());
+			}
+
+			if (view.getLblLogo().getParent() != null) {
+				view.getLblLogo().getParent().repaint();
+			}
+		});
 	}
 
 	private void iniciarMonitorDeConexao() {
@@ -304,7 +308,7 @@ public class MenuPrincipalController extends BaseController {
 	private void abrirConsultaLogs() {
 		JDesktopPane desk = view.getDesktopPane();
 
-		if (DesktopUtils.reuseIfOpen(desk, com.br.yat.gerenciador.view.LogSistemaView.class)) {
+		if (DesktopUtils.reuseIfOpen(desk, LogSistemaView.class)) {
 			return;
 		}
 
@@ -318,6 +322,16 @@ public class MenuPrincipalController extends BaseController {
 			return;
 
 		PermissaoConsultaView frame = ViewFactory.createPermissaoConsultaView();
+		DesktopUtils.showFrame(desk, frame);
+	}
+	
+
+	private void abrirParametroSistema() {
+		JDesktopPane desk = view.getDesktopPane();
+		if (DesktopUtils.reuseIfOpen(desk, PermissaoConsultaView.class))
+			return;
+
+		ParametroSistemaView frame = ViewFactory.createParametroSistemaView();
 		DesktopUtils.showFrame(desk, frame);
 	}
 

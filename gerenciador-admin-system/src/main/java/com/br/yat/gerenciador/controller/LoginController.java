@@ -28,13 +28,11 @@ public class LoginController extends BaseController {
 
             view.limpar();
             
-            // Roda o processo pesado (BCrypt/Banco) na Virtual Thread da BaseController
-            runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+           runAsync(SwingUtilities.getWindowAncestor(view), () -> {
                 Usuario user = service.autenticar(email, senha);
                 List<MenuChave> permissoes = service.carregarPermissoesAtivas(user.getIdUsuario());
                 return new LoginData(user, permissoes);
             }, data -> {
-                // Sucesso: popula a sessão e fecha a janela de login
                 Sessao.login(data.user(), data.permissoes());
                 ViewFactory.atualizarAcoesMenuPrincipal();
                 view.dispose();

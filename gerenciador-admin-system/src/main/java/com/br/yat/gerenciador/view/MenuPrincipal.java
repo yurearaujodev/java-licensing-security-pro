@@ -94,6 +94,7 @@ public class MenuPrincipal extends JFrame {
 
 	private JPanel criarPainelLateral() {
 		JPanel painel = PanelFactory.createPanel("fill, insets 0", "[grow]", "[]10[]10[]30[]");
+		painel.setOpaque(false);
 		lblHora = LabelFactory.createImageLabel("", IconFactory.data());
 		lblUsuarioLogado = LabelFactory.createImageLabel("CONECTANDO...", IconFactory.usuario());
 		painel.add(lblUsuarioLogado, "cell 0 0, alignx center");
@@ -161,7 +162,7 @@ public class MenuPrincipal extends JFrame {
 	}
 
 	public void setNomeUsuario(String nome) {
-		lblUsuarioLogado.setText(nome.toUpperCase());
+		lblUsuarioLogado.setText(nome);
 	}
 
 	public JDesktopPane getDesktopPane() {

@@ -27,8 +27,8 @@ public class UsuarioTableModel extends BaseTableModel<Usuario> {
             case 1 -> u.getNome() != null ? u.getNome().toUpperCase() : "";
             case 2 -> u.getEmail() != null ? u.getEmail().toLowerCase() : "";
             case 3 -> u.getStatus();
-            case 4 -> (u.getIdEmpresa() != null && u.getIdEmpresa().getRazaoSocialEmpresa() != null) 
-                      ? u.getIdEmpresa().getRazaoSocialEmpresa().toUpperCase() 
+            case 4 -> (u.getEmpresa() != null && u.getEmpresa().getRazaoSocialEmpresa() != null) 
+                      ? u.getEmpresa().getRazaoSocialEmpresa().toUpperCase() 
                       : "NÃO VINCULADA";
             default -> null;
         };

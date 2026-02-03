@@ -22,10 +22,8 @@ public class LogSistemaDao extends GenericDao<LogSistema> {
 				+ "sucesso, mensagem_erro, ip_origem, data_hora, id_usuario) "
 				+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-		// Seguindo seu padrão de extrair IDs de objetos complexos
 		Integer idUsuario = (log.getUsuario() != null) ? log.getUsuario().getIdUsuario() : null;
 
-		// O bindParameters da sua GenericDao já trata LocalDateTime automaticamente
 		int id = executeInsert(sql, 
 				log.getTipo(), 
 				log.getAcao(), 
@@ -83,21 +81,17 @@ public class LogSistemaDao extends GenericDao<LogSistema> {
 		log.setMensagemErro(rs.getString("mensagem_erro"));
 		log.setIpOrigem(rs.getString("ip_origem"));
 		
-		// Tratamento de LocalDateTime seguindo seu padrão da UsuarioDao
 		Timestamp ts = rs.getTimestamp("data_hora");
 		if (ts != null) {
 			log.setDataHora(ts.toLocalDateTime());
 		}
 
-		// Mapeamento do usuário (id_usuario) seguindo a lógica do id_empresa na sua UsuarioDao
 		Usuario u = new Usuario();
 		u.setIdUsuario(rs.getInt("id_usuario"));
 		
 		try {
-			// Tenta pegar o nome se o JOIN foi realizado
 			u.setNome(rs.getString("nome_usuario"));
 		} catch (SQLException e) {
-			// Sem join, o usuário terá apenas o ID
 		}
 		
 		log.setUsuario(u);

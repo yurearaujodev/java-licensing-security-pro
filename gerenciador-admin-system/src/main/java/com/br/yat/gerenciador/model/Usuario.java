@@ -2,6 +2,8 @@ package com.br.yat.gerenciador.model;
 
 import java.time.LocalDateTime;
 
+import com.br.yat.gerenciador.model.enums.StatusUsuario;
+
 public class Usuario extends BaseEntity {
 
 	private Integer idUsuario;
@@ -9,10 +11,10 @@ public class Usuario extends BaseEntity {
 	private String email;
 	private transient char[] senhaHash; // Usado para entrada segura na View
 	private transient String senhaHashString; // Usado para persistência no Banco (BCrypt)
-	private String status;
+	private StatusUsuario status;
 	private int tentativasFalhas;
 	private LocalDateTime ultimoLogin;
-	private Empresa idEmpresa;
+	private Empresa empresa;
 	private boolean master;
 
 	public Usuario() {
@@ -58,11 +60,11 @@ public class Usuario extends BaseEntity {
 		this.senhaHashString = senhaHashString;
 	}
 
-	public String getStatus() {
+	public StatusUsuario getStatus() {
 		return status;
 	}
 
-	public void setStatus(String status) {
+	public void setStatus(StatusUsuario status) {
 		this.status = status;
 	}
 
@@ -74,12 +76,12 @@ public class Usuario extends BaseEntity {
 		this.ultimoLogin = ultimoLogin;
 	}
 
-	public Empresa getIdEmpresa() {
-		return idEmpresa;
+	public Empresa getEmpresa() {
+		return empresa;
 	}
 
-	public void setIdEmpresa(Empresa idEmpresa) {
-		this.idEmpresa = idEmpresa;
+	public void setEmpresa(Empresa empresa) {
+		this.empresa = empresa;
 	}
 
 	public int getTentativasFalhas() {
