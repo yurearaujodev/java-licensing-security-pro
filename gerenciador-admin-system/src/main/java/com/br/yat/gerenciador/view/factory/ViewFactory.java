@@ -148,12 +148,10 @@ public final class ViewFactory {
 	    UsuarioController controller = new UsuarioController(view, service);
 	    view.putClientProperty("controller", controller);
 
-	    // Evita que a janela feche sem validar se há dados pendentes
 	    view.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 	    view.addInternalFrameListener(new InternalFrameAdapter() {
 	        @Override
 	        public void internalFrameClosing(InternalFrameEvent e) {
-	            // Se você quiser implementar o 'podeFechar' no UsuarioController depois
 	            view.dispose(); 
 	            controller.dispose();
 	        }
@@ -164,7 +162,6 @@ public final class ViewFactory {
 	public static UsuarioViewLogin createLoginView() {
 		UsuarioViewLogin view = new UsuarioViewLogin();
 
-		// Agora o Controller não pede mais Connection no construtor
 		new LoginController(view);
 
 		view.setClosable(false);
@@ -190,25 +187,18 @@ public final class ViewFactory {
 	    UsuarioView view = createUsuarioView();
 	    view.setTitle("CONFIGURAÇÃO INICIAL: CADASTRAR ADMINISTRADOR MASTER");
 	    
-	    // Força ser Master e impede desmarcar
-	    view.setMaster(true);
-	    view.getChkMaster().setEnabled(false);
-	    
-	    // No primeiro acesso, o status deve ser ATIVO obrigatoriamente
 	    view.setStatus(StatusUsuario.ATIVO);
 	    view.bloquearStatus(false);
 	    
 	    view.getPermissoes().values().forEach(chk -> chk.setSelected(true));
-	    view.bloquearGradePermissoes(false); // Master não mexe nas próprias permissões
+	    view.bloquearGradePermissoes(false);
 	    
 	    return view;
 	}
 	
-	// Adicione este método na sua ViewFactory
 	public static LogSistemaView createLogSistemaView() {
 	    LogSistemaView view = new LogSistemaView();
 	    
-	    // O Controller assume o controle da View aqui
 	    new LogSistemaController(view);
 	    
 	    view.addInternalFrameListener(new InternalFrameAdapter() {
@@ -226,7 +216,6 @@ public final class ViewFactory {
 	    var view = new PermissaoConsultaView();
 	    UsuarioService service = new UsuarioService();
 	    
-	    // Instancia o controller que criamos anteriormente
 	    new PermissaoConsultaController(view, service);
 	    
 	    return view;

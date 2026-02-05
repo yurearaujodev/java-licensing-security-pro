@@ -11,6 +11,7 @@ import javax.swing.JComboBox;
 import javax.swing.JInternalFrame;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 
@@ -33,7 +34,12 @@ public class UsuarioView extends JInternalFrame {
 	private JTextField txtEmail;
 	private JTextField txtEmpresa;
 	private Integer idEmpresa;
-	private JPasswordField txtSenha;
+	private JPasswordField txtSenhaNova;
+	private JPasswordField txtSenhaAntiga;
+	private JPasswordField txtConfirmarSenha;
+	private JProgressBar barraForcaSenha;
+
+
 	private JComboBox<StatusUsuario> cbStatus;
 	private JButton btnSalvar;
 	private JButton btnNovo;
@@ -73,66 +79,73 @@ public class UsuarioView extends JInternalFrame {
 		txtEmail = FieldFactory.createTextField(20);
 		panel.add(txtEmail, "cell 3 0,growx,h 25!");
 
-		panel.add(LabelFactory.createLabel("SENHA: "), "cell 0 1, alignx trailing");
-		txtSenha = FieldFactory.createPasswordField(20);
-		panel.add(txtSenha, "cell 1 1,growx,h 25!");
+		panel.add(LabelFactory.createLabel("SENHA ANTIGA: "), "cell 0 1, alignx trailing");
+		txtSenhaAntiga = FieldFactory.createPasswordField(20);
+		panel.add(txtSenhaAntiga, "cell 1 1,growx,h 25!");
 
 		panel.add(LabelFactory.createLabel("STATUS: "), "cell 2 1, alignx trailing");
 		cbStatus = ComboBoxFactory.createEnumComboBox(StatusUsuario.class);
 		panel.add(cbStatus, "cell 3 1,growx,h 25!");
 
-		panel.add(LabelFactory.createLabel("EMPRESA: "), "cell 0 3, alignx trailing");
+		panel.add(LabelFactory.createLabel("NOVA SENHA: "), "cell 0 2, alignx trailing");
+		txtSenhaNova = FieldFactory.createPasswordField(20);
+		panel.add(txtSenhaNova, "cell 1 2,growx,h 25!");
+
+		barraForcaSenha = DesktopFactory.createPasswordStrengthBar();
+		panel.add(barraForcaSenha, "cell 1 2,growx,h 15!, wrap");
+
+		panel.add(LabelFactory.createLabel("CONFIRMAR SENHA: "), "cell 2 2, alignx trailing");
+		txtConfirmarSenha = FieldFactory.createPasswordField(20);
+		panel.add(txtConfirmarSenha, "cell 3 2,growx,h 25!");
+
+		panel.add(LabelFactory.createLabel("MASTER: "), "cell 0 3, alignx trailing");
+		chkMaster = ButtonFactory.createCheckBox("ESTE USUÁRIO É ADMINISTRADOR MASTER");
+		panel.add(chkMaster, "cell 1 3 3 1, growx");
+
+		panel.add(LabelFactory.createLabel("EMPRESA: "), "cell 0 4, alignx trailing");
 		txtEmpresa = FieldFactory.createTextField(20);
 		txtEmpresa.setEditable(false);
-		panel.add(txtEmpresa, "cell 1 3 3 1,growx,h 25!");
-		
-		panel.add(LabelFactory.createLabel("MASTER: "), "cell 0 2, alignx trailing");
-		chkMaster = ButtonFactory.createCheckBox("ESTE USUÁRIO É ADMINISTRADOR MASTER");
-		panel.add(chkMaster, "cell 1 2 3 1, growx");
+		panel.add(txtEmpresa, "cell 1 4 3 1,growx,h 25!");
+
 	}
 
 	private JScrollPane criarPermissoes() {
-        JPanel container = new JPanel(new MigLayout("wrap 1", "[grow]", "[]10[]"));
-        container.setBorder(BorderFactory.createTitledBorder("Permissões do Usuário"));
-        // Removido o MenuChaveGrouper daqui!
-        
-        // Atribuímos o container a uma variável para podermos adicionar os grupos depois
-        this.pnlPermissoesContainer = container; 
-        
-        return DesktopFactory.createScroll(container);
-    }
-    
-    // Variável necessária para adicionar os grupos dinamicamente
-    private JPanel pnlPermissoesContainer;
+		JPanel container = new JPanel(new MigLayout("wrap 1", "[grow]", "[]10[]"));
+		container.setBorder(BorderFactory.createTitledBorder("Permissões do Usuário"));
 
-    // NOVO MÉTODO: O Controller chamará este método passando os dados
-    public void construirGradePermissoes(Map<String, List<MenuChave>> grupos) {
-        gruposPermissoes.clear();
-        gruposPermissoes.putAll(grupos);
-        pnlPermissoesContainer.removeAll(); // Limpa se houver algo
+		this.pnlPermissoesContainer = container;
 
-        for (var entry : gruposPermissoes.entrySet()) {
-            String categoria = entry.getKey();
-            List<MenuChave> chaves = entry.getValue();
+		return DesktopFactory.createScroll(container);
+	}
 
-            JPanel categoriaPanel = new JPanel(new MigLayout("wrap 1", "[grow]", "[]5[]"));
-            categoriaPanel.setBorder(BorderFactory.createTitledBorder(categoria));
+	private JPanel pnlPermissoesContainer;
 
-            JCheckBox chkTodos = ButtonFactory.createCheckBox("MARCAR TODOS");
-            chkTodosPorCategoria.put(categoria, chkTodos);
-            categoriaPanel.add(chkTodos, "span, growx");
+	public void construirGradePermissoes(Map<String, List<MenuChave>> grupos) {
+		gruposPermissoes.clear();
+		gruposPermissoes.putAll(grupos);
+		pnlPermissoesContainer.removeAll();
+		for (var entry : gruposPermissoes.entrySet()) {
+			String categoria = entry.getKey();
+			List<MenuChave> chaves = entry.getValue();
 
-            for (MenuChave chave : chaves) {
-                JCheckBox cb = ButtonFactory.createCheckBox(formatarTexto(chave.name()));
-                cb.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 0));
-                permissoes.put(chave, cb);
-                categoriaPanel.add(cb, "wrap, growx");
-            }
-            pnlPermissoesContainer.add(categoriaPanel, "growx, wrap");
-        }
-        pnlPermissoesContainer.revalidate();
-        pnlPermissoesContainer.repaint();
-    }
+			JPanel categoriaPanel = new JPanel(new MigLayout("wrap 1", "[grow]", "[]5[]"));
+			categoriaPanel.setBorder(BorderFactory.createTitledBorder(categoria));
+
+			JCheckBox chkTodos = ButtonFactory.createCheckBox("MARCAR TODOS");
+			chkTodosPorCategoria.put(categoria, chkTodos);
+			categoriaPanel.add(chkTodos, "span, growx");
+
+			for (MenuChave chave : chaves) {
+				JCheckBox cb = ButtonFactory.createCheckBox(formatarTexto(chave.name()));
+				cb.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 0));
+				permissoes.put(chave, cb);
+				categoriaPanel.add(cb, "wrap, growx");
+			}
+			pnlPermissoesContainer.add(categoriaPanel, "growx, wrap");
+		}
+		pnlPermissoesContainer.revalidate();
+		pnlPermissoesContainer.repaint();
+	}
 
 	private JPanel criarBotoes() {
 		JPanel panel = PanelFactory.createPanel("insets 5", "[left][grow][right]", "[]");
@@ -168,12 +181,16 @@ public class UsuarioView extends JInternalFrame {
 		txtEmail.setText(email);
 	}
 
-	public char[] getSenha() {
-		return txtSenha.getPassword();
+	public char[] getSenhaNova() {
+		return txtSenhaNova.getPassword();
 	}
 
-	public void setSenha(char[] password) {
-		txtSenha.setText("");
+	public char[] getSenhaAntiga() {
+		return txtSenhaAntiga.getPassword();
+	}
+
+	public char[] getConfirmarSenha() {
+		return txtConfirmarSenha.getPassword();
 	}
 
 	public void setEmpresa(Integer id, String nome) {
@@ -186,7 +203,7 @@ public class UsuarioView extends JInternalFrame {
 	}
 
 	public StatusUsuario getStatus() {
-		return (StatusUsuario)cbStatus.getSelectedItem();
+		return (StatusUsuario) cbStatus.getSelectedItem();
 	}
 
 	public void setStatus(StatusUsuario status) {
@@ -218,7 +235,7 @@ public class UsuarioView extends JInternalFrame {
 	}
 
 	public JPasswordField getTxtSenha() {
-		return txtSenha;
+		return txtSenhaNova;
 	}
 
 	public JComboBox<StatusUsuario> getCbStatus() {
@@ -228,9 +245,9 @@ public class UsuarioView extends JInternalFrame {
 	public JButton getBtnSalvar() {
 		return btnSalvar;
 	}
-	
+
 	public void setTextoBotaoSalvar(String texto) {
-	    btnSalvar.setText(texto);
+		btnSalvar.setText(texto);
 	}
 
 	public JButton getBtnNovo() {
@@ -240,29 +257,37 @@ public class UsuarioView extends JInternalFrame {
 	public JButton getBtnCancelar() {
 		return btnCancelar;
 	}
-	
+
 	public boolean isMaster() {
-	    return chkMaster.isSelected();
+		return chkMaster.isSelected();
 	}
 
 	public void setMaster(boolean master) {
-	    chkMaster.setSelected(master);
+		chkMaster.setSelected(master);
+		chkMaster.setEnabled(false);
 	}
 
 	public JCheckBox getChkMaster() {
-	    return chkMaster;
+		return chkMaster;
 	}
+	
+	public JProgressBar getBarraForcaSenha() {
+	    return barraForcaSenha;
+	}
+
 
 	public void limpar() {
 		idEmpresa = null;
 		txtNome.setText("");
 		txtEmail.setText("");
-		txtSenha.setText("");
+		txtSenhaNova.setText("");
+		txtSenhaAntiga.setText("");
+		txtConfirmarSenha.setText("");
 		cbStatus.setSelectedIndex(0);
 		txtEmpresa.setText("");
-		
+
 		chkMaster.setSelected(false);
-	    chkMaster.setEnabled(false);
+		chkMaster.setEnabled(false);
 		permissoes.values().forEach(cb -> cb.setSelected(false));
 		chkTodosPorCategoria.values().forEach(cb -> cb.setSelected(false));
 	}
@@ -270,13 +295,15 @@ public class UsuarioView extends JInternalFrame {
 	public void desativarAtivar(boolean ativa) {
 		txtNome.setEnabled(ativa);
 		txtEmail.setEnabled(ativa);
-		txtSenha.setEnabled(ativa);
+		txtSenhaNova.setEnabled(ativa);
+		txtSenhaAntiga.setEnabled(ativa);
+		txtConfirmarSenha.setEnabled(ativa);
 		cbStatus.setEnabled(ativa);
+		chkMaster.setEnabled(ativa);
 		permissoes.values().forEach(cb -> cb.setEnabled(ativa));
 		chkTodosPorCategoria.values().forEach(cb -> cb.setEnabled(ativa));
 	}
 
-	// Substitua o marcarPermissoes antigo por este:
 	public void setPermissaoSelecionada(MenuChave chave, boolean selecionada) {
 		JCheckBox chk = permissoes.get(chave);
 		if (chk != null) {
@@ -284,37 +311,33 @@ public class UsuarioView extends JInternalFrame {
 		}
 	}
 
-	// Mantenha este para resetar a tela antes de começar
 	public void desmarcarTodasPermissoes() {
 		permissoes.values().forEach(chk -> chk.setSelected(false));
 		chkTodosPorCategoria.values().forEach(chk -> chk.setSelected(false));
 	}
 
-	// Adicione este para atualizar o "Marcar Todos" de uma categoria específica
 	public void atualizarStatusMarcarTodos(String categoria, boolean selecionado) {
 		JCheckBox chk = chkTodosPorCategoria.get(categoria);
 		if (chk != null) {
 			chk.setSelected(selecionado);
 		}
 	}
-	
+
 	public void marcarTodosDaCategoria(String categoria, boolean selecionado) {
-	    List<MenuChave> chaves = gruposPermissoes.get(categoria);
-	    if (chaves != null) {
-	        for (MenuChave chave : chaves) {
-	            setPermissaoSelecionada(chave, selecionado);
-	        }
-	    }
-	}
-	
-	public void bloquearStatus(boolean editavel) {
-	    // Substitua 'comboStatus' pelo nome real do seu componente de status
-	    this.cbStatus.setEnabled(editavel);
+		List<MenuChave> chaves = gruposPermissoes.get(categoria);
+		if (chaves != null) {
+			for (MenuChave chave : chaves) {
+				setPermissaoSelecionada(chave, selecionado);
+			}
+		}
 	}
 
-	// Método para bloquear todos os checkboxes de permissões
+	public void bloquearStatus(boolean editavel) {
+		this.cbStatus.setEnabled(editavel);
+	}
+
 	public void bloquearGradePermissoes(boolean editavel) {
-	    getPermissoes().values().forEach(chk -> chk.setEnabled(editavel));
-	    getChkTodosPorCategoria().values().forEach(chk -> chk.setEnabled(editavel));
+		getPermissoes().values().forEach(chk -> chk.setEnabled(editavel));
+		getChkTodosPorCategoria().values().forEach(chk -> chk.setEnabled(editavel));
 	}
 }

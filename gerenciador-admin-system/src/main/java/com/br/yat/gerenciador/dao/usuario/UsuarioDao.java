@@ -2,7 +2,6 @@ package com.br.yat.gerenciador.dao.usuario;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.List;
@@ -71,6 +70,12 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		return lista.isEmpty() ? null : lista.get(0);
 	}
 
+	public void atualizarUltimaAlteracaoSenha(int idUsuario) {
+		String sql = "UPDATE " + tableName + " SET ultima_alteracao_senha = NOW(), atualizado_em = NOW() "
+				+ " WHERE id_usuario = ?";
+		executeUpdate(sql, idUsuario);
+	}
+
 	public Usuario buscarMasterUnico() {
 		String sql = "SELECT * FROM " + tableName + " WHERE is_master = 1 AND deletado_em IS NULL LIMIT 1";
 		var lista = executeQuery(sql);
@@ -80,11 +85,6 @@ public class UsuarioDao extends GenericDao<Usuario> {
 	public void atualizarUltimoLogin(int idUsuario) {
 		String sql = "UPDATE " + tableName + " SET ultimo_login = NOW(), tentativas_falhas = 0 WHERE id_usuario = ?";
 		executeUpdate(sql, idUsuario);
-	}
-
-	public void incrementarTentativasFalhas(String email) {
-		String sql = "UPDATE " + tableName + " SET tentativas_falhas = tentativas_falhas + 1 WHERE email = ?";
-		executeUpdate(sql, email);
 	}
 
 	public void bloquearUsuario(int idUsuario) {
@@ -97,6 +97,29 @@ public class UsuarioDao extends GenericDao<Usuario> {
 				+ "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa " + "WHERE u.deletado_em IS NOT NULL";
 
 		return executeQuery(sql);
+	}
+
+	public int incrementarERetornarTentativas(String email) {
+		String sqlUpdate = "UPDATE " + tableName + " SET tentativas_falhas = tentativas_falhas + 1 WHERE email = ?";
+		executeUpdate(sqlUpdate, email);
+
+		String sqlSelect = "SELECT tentativas_falhas FROM " + tableName + " WHERE email = ?";
+		try (var ps = getConnection().prepareStatement(sqlSelect)) {
+			ps.setString(1, email);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return rs.getInt("tentativas_falhas");
+				}
+			}
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.QUERY_FAILED, "Erro ao recuperar tentativas", e);
+		}
+		return 0;
+	}
+
+	public void resetTentativasFalhas(int idUsuario) {
+		String sql = "UPDATE " + tableName + " SET tentativas_falhas = 0 WHERE id_usuario = ?";
+		executeUpdate(sql, idUsuario);
 	}
 
 	public void restaurar(int id) {
@@ -150,9 +173,13 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		Empresa emp = new Empresa();
 		emp.setIdEmpresa(rs.getInt("id_empresa"));
 
-		if (colunaExiste(rs, "razao_social_empresa")) {
-            emp.setRazaoSocialEmpresa(rs.getString("razao_social_empresa"));
-        }
+		try {
+			String razaoSocial = rs.getString("razao_social_empresa");
+			if (razaoSocial != null)
+				emp.setRazaoSocialEmpresa(razaoSocial);
+		} catch (SQLException e) {
+
+		}
 		u.setEmpresa(emp);
 
 		u.setTentativasFalhas(rs.getInt("tentativas_falhas"));
@@ -163,14 +190,5 @@ public class UsuarioDao extends GenericDao<Usuario> {
 
 		return u;
 	}
-	
-	private boolean colunaExiste(ResultSet rs, String coluna) throws SQLException {
-        ResultSetMetaData meta = rs.getMetaData();
-        for (int i = 1; i <= meta.getColumnCount(); i++) {
-            if (coluna.equalsIgnoreCase(meta.getColumnLabel(i))) {
-                return true;
-            }
-        }
-        return false;
-    }
+
 }

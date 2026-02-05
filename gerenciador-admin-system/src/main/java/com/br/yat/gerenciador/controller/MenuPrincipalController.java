@@ -24,12 +24,14 @@ import com.br.yat.gerenciador.dao.empresa.ComplementarDao;
 import com.br.yat.gerenciador.dao.empresa.EmpresaDao;
 import com.br.yat.gerenciador.dao.usuario.UsuarioDao;
 import com.br.yat.gerenciador.model.Sessao;
+import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.util.AppEventManager;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.IconFactory;
 import com.br.yat.gerenciador.util.MenuRegistry;
+import com.br.yat.gerenciador.util.TimeUtils;
 import com.br.yat.gerenciador.view.ConfiguracaoBancoView;
 import com.br.yat.gerenciador.view.EmpresaView;
 import com.br.yat.gerenciador.view.LogSistemaView;
@@ -80,7 +82,6 @@ public class MenuPrincipalController extends BaseController {
 		view.getBtnLogout().addActionListener(e -> processarLogout());
 	}
 
-
 	private void processarLogout() {
 		if (processandoLogout)
 			return;
@@ -91,7 +92,7 @@ public class MenuPrincipalController extends BaseController {
 				Sessao.logout();
 
 				view.setNomeUsuario("CONECTANDO...");
-
+				view.setTempoAcesso("");
 				for (JInternalFrame frame : view.getDesktopPane().getAllFrames()) {
 					frame.dispose();
 				}
@@ -289,8 +290,15 @@ public class MenuPrincipalController extends BaseController {
 
 	public void atualizarDadosUsuario() {
 		if (Sessao.getUsuario() != null) {
-			String nome = Sessao.getUsuario().getNome();
-			view.setNomeUsuario(nome);
+			Usuario user = Sessao.getUsuario();
+			view.setNomeUsuario(user.getNome());
+
+			if (user.getUltimoLogin() != null) {
+				String tempoFormatado = TimeUtils.formatarTempoDecorrido(user.getUltimoLogin());
+				view.setTempoAcesso("Último acesso: " + tempoFormatado);
+			} else {
+				view.setTempoAcesso("Bem-vindo! Este é seu primeiro acesso.");
+			}
 		}
 	}
 
@@ -324,7 +332,6 @@ public class MenuPrincipalController extends BaseController {
 		PermissaoConsultaView frame = ViewFactory.createPermissaoConsultaView();
 		DesktopUtils.showFrame(desk, frame);
 	}
-	
 
 	private void abrirParametroSistema() {
 		JDesktopPane desk = view.getDesktopPane();

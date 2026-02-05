@@ -128,8 +128,10 @@ public abstract class GenericDao<T> {
 			case LocalDate ld -> stmt.setDate(idx, Date.valueOf(ld));
 			case LocalDateTime ldt -> stmt.setTimestamp(idx, Timestamp.valueOf(ldt));
 			case Enum<?> e -> stmt.setString(idx, e.name());
-			case Boolean b -> stmt.setBoolean(idx, b);
-
+			case Boolean b -> stmt.setInt(idx, b ? 1 : 0);
+			case Long l -> stmt.setLong(idx, l);
+			case Double d -> stmt.setDouble(idx, d);
+			
 			default -> stmt.setObject(idx, value);
 			}
 		}

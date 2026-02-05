@@ -35,9 +35,8 @@ public class UsuarioConsultaController extends BaseController {
 		configurarFiltros();
 		Usuario logado = Sessao.getUsuario();
 		if (logado != null) {
-			boolean podeVerLixeira = logado.isMaster() || 
-                    service.carregarPermissoesAtivas(logado.getIdUsuario())
-                           .contains(MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES);
+			boolean podeVerLixeira = logado.isMaster() || service.carregarPermissoesAtivas(logado.getIdUsuario())
+					.contains(MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES);
 			view.getChkVerExcluidos().setVisible(podeVerLixeira);
 		}
 
@@ -72,8 +71,7 @@ public class UsuarioConsultaController extends BaseController {
 			boolean modoLixeira = view.getChkVerExcluidos().isSelected();
 
 			view.getBtnEditar().setEnabled(temSelecao && !modoLixeira);
-
-			// REGRA: Se for lixeira, habilita Restaurar. Se não, exclui (protegendo Master)
+			
 			if (modoLixeira) {
 				view.getBtnExcluir().setEnabled(temSelecao);
 			} else {
@@ -85,8 +83,6 @@ public class UsuarioConsultaController extends BaseController {
 	private void carregarDados() {
 		boolean verExcluidos = view.getChkVerExcluidos().isSelected();
 
-		// Use runAsyncSilent aqui para evitar que o "Loading" trave a tela em consultas
-		// rápidas
 		runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
 			List<Usuario> lista = verExcluidos ? service.listarExcluidos(Sessao.getUsuario())
 					: service.listarUsuarios("");
@@ -120,24 +116,18 @@ public class UsuarioConsultaController extends BaseController {
 		if (sel == null)
 			return;
 
-		// 1. Confirmação (ainda na Thread do Swing)
 		boolean confirmou = DialogFactory.confirmacao(view,
 				"DESEJA REALMENTE EXCLUIR O USUÁRIO: " + sel.getNome().toUpperCase() + "?");
 
 		if (confirmou) {
-			// 2. Uso do seu runAsync padrão da BaseController
-			// Passamos: a view, a tarefa (TaskWithResult), e o que fazer no sucesso
-			// (Consumer)
 			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
 
-				// Aqui roda em Virtual Thread (Executor da BaseController)
 				service.excluirUsuario(sel.getIdUsuario(), Sessao.getUsuario());
-				return null; // TaskWithResult precisa retornar algo, como é void usamos null
+				return null;
 
 			}, unused -> {
-				// Aqui volta para a UI Thread (SwingUtilities.invokeLater da BaseController)
 				DialogFactory.informacao(view, "USUÁRIO EXCLUÍDO COM SUCESSO!");
-				carregarDados(); // Atualiza a tabela
+				carregarDados();
 			});
 		}
 	}
@@ -150,12 +140,7 @@ public class UsuarioConsultaController extends BaseController {
 			debounceTask.cancel(false);
 
 		debounceTask = scheduler.schedule(() -> {
-			// Passamos a janela correta em vez de null
 			runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
-				// Se estiver na lixeira, você pode decidir se filtra os excluídos ou se limpa a
-				// busca
-				// Por enquanto, vamos manter a lógica de listarUsuarios, mas o ideal seria o
-				// DAO filtrar deletados
 				List<Usuario> lista = verExcluidos ? service.listarExcluidos(Sessao.getUsuario())
 						: service.listarUsuarios(termo);
 
@@ -178,6 +163,11 @@ public class UsuarioConsultaController extends BaseController {
 	}
 
 	private void abrirFormulario(Usuario usuario) {
+		if (!podeAbrirCadastro()) {
+			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE USUÁRIOS.");
+			return;
+		}
+
 		JDesktopPane desk = view.getDesktopPane();
 		String idJanela = (usuario == null) ? "NOVO_USUARIO" : "EDIT_USUARIO_" + usuario.getIdUsuario();
 
@@ -198,4 +188,11 @@ public class UsuarioConsultaController extends BaseController {
 
 		DesktopUtils.showFrame(desk, cadastroView);
 	}
+
+	private boolean podeAbrirCadastro() {
+		Usuario logado = Sessao.getUsuario();
+		return logado != null && (logado.isMaster()
+				|| service.carregarPermissoesAtivas(logado.getIdUsuario()).contains(MenuChave.CADASTROS_USUARIO));
+	}
+
 }

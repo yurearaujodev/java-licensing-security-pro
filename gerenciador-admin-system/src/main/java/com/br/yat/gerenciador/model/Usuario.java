@@ -12,10 +12,13 @@ public class Usuario extends BaseEntity {
 	private transient char[] senhaHash; // Usado para entrada segura na View
 	private transient String senhaHashString; // Usado para persistência no Banco (BCrypt)
 	private StatusUsuario status;
+	private transient char[] senhaAntiga; // usado só para validação na troca
+	private transient char[] confirmarSenha;
 	private int tentativasFalhas;
 	private LocalDateTime ultimoLogin;
 	private Empresa empresa;
 	private boolean master;
+	private String tempoDesdeUltimoAcesso;
 
 	public Usuario() {
 	}
@@ -60,6 +63,22 @@ public class Usuario extends BaseEntity {
 		this.senhaHashString = senhaHashString;
 	}
 
+	public char[] getSenhaAntiga() {
+		return senhaAntiga;
+	}
+
+	public void setSenhaAntiga(char[] senhaAntiga) {
+		this.senhaAntiga = senhaAntiga;
+	}
+
+	public char[] getConfirmarSenha() {
+		return confirmarSenha;
+	}
+
+	public void setConfirmarSenha(char[] confirmarSenha) {
+		this.confirmarSenha = confirmarSenha;
+	}
+
 	public StatusUsuario getStatus() {
 		return status;
 	}
@@ -98,5 +117,32 @@ public class Usuario extends BaseEntity {
 
 	public void setMaster(boolean master) {
 		this.master = master;
+	}
+
+	public String getTempoDesdeUltimoAcesso() {
+		return tempoDesdeUltimoAcesso;
+	}
+
+	public void setTempoDesdeUltimoAcesso(String tempoDesdeUltimoAcesso) {
+		this.tempoDesdeUltimoAcesso = tempoDesdeUltimoAcesso;
+	}
+
+	/**
+	 * Cria uma cópia parcial do usuário contendo apenas os dados necessários para
+	 * validação e auditoria de senha. Não expõe dados sensíveis em memória
+	 * desnecessariamente.
+	 */
+	public static Usuario snapshotParaValidacaoSenha(Usuario origem) {
+		if (origem == null) {
+			return null;
+		}
+
+		Usuario u = new Usuario();
+		u.setIdUsuario(origem.getIdUsuario());
+		u.setSenhaHashString(origem.getSenhaHashString());
+		u.setEmail(origem.getEmail());
+		u.setStatus(origem.getStatus());
+		u.setMaster(origem.isMaster());
+		return u;
 	}
 }

@@ -340,5 +340,18 @@ public final class ValidationUtils {
 	        return false;
 	    }
 	}
+	
+	public static int calcularForcaSenha(String senha) {
+	    if (isEmpty(senha)) return 0;
+
+	    int score = 0;
+	    if (senha.length() >= 6) score++;
+	    if (senha.matches(".*[A-Z].*")) score++;
+	    if (senha.matches(".*[0-9].*")) score++;
+	    if (senha.matches(".*[!@#$%^&*(),.?\":{}|<>].*")) score++;
+
+	    return score; // varia de 0 a 4
+	}
+
 
 }

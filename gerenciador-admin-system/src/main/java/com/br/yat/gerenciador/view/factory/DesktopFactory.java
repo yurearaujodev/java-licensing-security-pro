@@ -70,6 +70,15 @@ public final class DesktopFactory {
 		barra.setIndeterminate(true);
 		return barra;
 	}
+	
+	public static JProgressBar createPasswordStrengthBar() {
+	    JProgressBar barra = new JProgressBar(0, 4);
+	    barra.setStringPainted(true);
+	    barra.setValue(0);
+	    barra.setString("Fraca");
+	    return barra;
+	}
+
 
 	/**
 	 * Cria um {@link JTabbedPane} configurado com fonte padrão.

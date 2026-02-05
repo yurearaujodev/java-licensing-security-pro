@@ -39,6 +39,7 @@ public class MenuPrincipal extends JFrame {
 	private JDesktopPane desktopPane;
 	private JButton btnLogout;
 	private JLabel lblStatusBanco;
+	private JLabel lblTempoAcesso;
 
 	public MenuPrincipal() {
 		configurarFrame();
@@ -46,7 +47,7 @@ public class MenuPrincipal extends JFrame {
 	}
 
 	private void montarTela() {
-		painelPrincipal = PanelFactory.createPanel("fill,insets 0,gap 0", "[grow][200!]", "[][][grow][30!]");
+		painelPrincipal = PanelFactory.createPanel("fill,insets 0,gap 0", "[grow][220!]", "[][][grow][30!]");
 		setContentPane(painelPrincipal);
 
 		painelPrincipal.add(criarPainelMenu(), "cell 0 0 2 1, growx");
@@ -93,16 +94,23 @@ public class MenuPrincipal extends JFrame {
 	}
 
 	private JPanel criarPainelLateral() {
-		JPanel painel = PanelFactory.createPanel("fill, insets 0", "[grow]", "[]10[]10[]30[]");
+		JPanel painel = PanelFactory.createPanel("fill, insets 0", "[grow]", "[]10[]5[]10[]30[]");
 		painel.setOpaque(false);
-		lblHora = LabelFactory.createImageLabel("", IconFactory.data());
+		
 		lblUsuarioLogado = LabelFactory.createImageLabel("CONECTANDO...", IconFactory.usuario());
-		painel.add(lblUsuarioLogado, "cell 0 0, alignx center");
-		painel.add(lblHora, "cell 0 1, alignx center");
-		lblLogo = LabelFactory.createImageLabel("", IconFactory.logo());
+		painel.add(lblUsuarioLogado, "cell 0 1, alignx center");
+		
+		lblTempoAcesso = LabelFactory.createLabel(""); 
+	    lblTempoAcesso.setForeground(Color.GRAY);
+	    painel.add(lblTempoAcesso, "cell 0 0, alignx center");
+	    
+	    lblHora = LabelFactory.createImageLabel("", IconFactory.data());
+	    painel.add(lblHora, "cell 0 2, alignx center");
+
+	    lblLogo = LabelFactory.createImageLabel("", IconFactory.logo());
 		lblLogo.setOpaque(false);
 		lblLogo.setBackground(new Color(0,0,0,0));
-		painel.add(lblLogo, "cell 0 2, alignx center");
+		painel.add(lblLogo, "cell 0 3, alignx center");
 		return painel;
 
 	}
@@ -147,6 +155,10 @@ public class MenuPrincipal extends JFrame {
 
 		toolBar.add(btnLogout);
 		return toolBar;
+	}
+	
+	public void setTempoAcesso(String tempo) {
+	    lblTempoAcesso.setText(tempo);
 	}
 
 	public JLabel getLblLogo() {

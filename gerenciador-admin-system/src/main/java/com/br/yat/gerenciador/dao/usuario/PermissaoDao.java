@@ -16,7 +16,6 @@ public class PermissaoDao extends GenericDao<Permissao> {
  // ESTE É O MÉTODO QUE ESTAVA FALTANDO
     public int save(Permissao p) {
         String sql = "INSERT INTO " + tableName + " (chave, tipo, categoria, criado_em, atualizado_em) VALUES (?, ?, ?, NOW(), NOW())";
-        // O executeInsert da sua GenericDao já retorna o ID gerado (int)
         return executeInsert(sql, p.getChave(), p.getTipo(), p.getCategoria());
     }
 
