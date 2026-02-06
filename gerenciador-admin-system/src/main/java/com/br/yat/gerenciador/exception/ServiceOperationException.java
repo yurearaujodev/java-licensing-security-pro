@@ -11,6 +11,12 @@ public final class ServiceOperationException extends RuntimeException {
 		super(resolveMessage(errorType));
 		this.errorType = resolveErrorType(errorType);
 	}
+	
+	public ServiceOperationException(ServiceErrorType errorType, String message) {
+	    super(message != null ? message : resolveMessage(errorType));
+	    this.errorType = resolveErrorType(errorType);
+	}
+
 
 	public ServiceOperationException(ServiceErrorType errorType, String message, Throwable cause) {
 		super(message != null ? message : resolveMessage(errorType), cause);

@@ -1,7 +1,7 @@
 package com.br.yat.gerenciador.model.enums;
 
 public enum StatusUsuario {
-	SELECINE,
+	SELECIONE,
 	ATIVO,
 	INATIVO, 
 	BLOQUEADO;

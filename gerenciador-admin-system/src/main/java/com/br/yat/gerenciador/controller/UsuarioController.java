@@ -1,6 +1,7 @@
 package com.br.yat.gerenciador.controller;
 
 import java.awt.Color;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -11,6 +12,7 @@ import com.br.yat.gerenciador.model.Empresa;
 import com.br.yat.gerenciador.model.Sessao;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
+import com.br.yat.gerenciador.model.enums.StatusUsuario;
 import com.br.yat.gerenciador.service.UsuarioService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.MenuChaveGrouper;
@@ -44,6 +46,8 @@ public class UsuarioController extends BaseController {
 		carregarEmpresaPadrao();
 		view.desativarAtivar(false);
 		view.getBtnNovo().setEnabled(true);
+		view.getBtnNovo().requestFocusInWindow();
+		view.getBtnSalvar().setEnabled(false);
 	}
 
 	public void setRefreshCallback(RefreshCallback callback) {
@@ -86,7 +90,9 @@ public class UsuarioController extends BaseController {
 		this.usuarioAtual = null;
 		view.limpar();
 		view.getBtnNovo().setEnabled(false);
+		view.getBtnSalvar().setEnabled(true);
 		view.desativarAtivar(true);
+		view.getTxtSenhaAntiga().setEnabled(false);
 		view.setTextoBotaoSalvar("SALVAR");
 		carregarEmpresaPadrao();
 
@@ -109,6 +115,8 @@ public class UsuarioController extends BaseController {
 		view.setMaster(usuario.isMaster());
 		view.getChkMaster().setEnabled(false);
 		view.getBtnNovo().setEnabled(false);
+		view.getBtnSalvar().setEnabled(true);
+		view.getTxtSenhaAntiga().setEnabled(true);
 		view.bloquearStatus(!usuario.isMaster());
 
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> service.carregarPermissoesAtivas(usuario.getIdUsuario()),
@@ -140,7 +148,7 @@ public class UsuarioController extends BaseController {
 		char[] senhaConfirmar = view.getConfirmarSenha();
 
 		if (senha != null && senha.length > 0) {
-			if (senhaConfirmar == null || !java.util.Arrays.equals(senha, senhaConfirmar)) {
+			if (senhaConfirmar == null || !Arrays.equals(senha, senhaConfirmar)) {
 				DialogFactory.erro(view, "A CONFIRMAÇÃO DE SENHA NÃO CONFERE.");
 				return;
 			}
@@ -149,8 +157,15 @@ public class UsuarioController extends BaseController {
 			usuarioAtual.setConfirmarSenha(senhaConfirmar);
 			usuarioAtual.setSenhaAntiga(senhaAntiga);
 		}
+		StatusUsuario status = view.getStatus();
 
-		usuarioAtual.setStatus(view.getStatus());
+		if (status == StatusUsuario.SELECIONE) {
+			DialogFactory.aviso(view, "SELECIONE UM STATUS VÁLIDO!");
+			return;
+		}
+
+		usuarioAtual.setStatus(status);
+
 		usuarioAtual.setMaster(view.isMaster());
 
 		Empresa emp = new Empresa();

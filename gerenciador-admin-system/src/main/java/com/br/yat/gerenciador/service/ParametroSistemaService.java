@@ -1,140 +1,126 @@
 package com.br.yat.gerenciador.service;
 
-import java.awt.Color;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Objects;
-
-import javax.swing.UIManager;
 
 import com.br.yat.gerenciador.configurations.ConnectionFactory;
 import com.br.yat.gerenciador.dao.ParametroSistemaDao;
 import com.br.yat.gerenciador.exception.DataAccessException;
+import com.br.yat.gerenciador.exception.ServiceOperationException;
 import com.br.yat.gerenciador.model.ParametroSistema;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
-import com.br.yat.gerenciador.model.enums.Tema;
+import com.br.yat.gerenciador.model.enums.ParametroChave;
+import com.br.yat.gerenciador.model.enums.ServiceErrorType;
 
 public class ParametroSistemaService {
 
-	// --- MÉTODOS DE CARREGAMENTO ---
+    // -------------------- MÉTODOS PÚBLICOS --------------------
+    public int getInt(ParametroChave chave, int valorPadrao) {
+        try (Connection conn = ConnectionFactory.getConnection()) {
+            return new Interno(conn).getInt(chave, valorPadrao);
+        } catch (SQLException e) {
+            throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR,
+                    "Erro ao carregar parâmetro do sistema", e);
+        }
+    }
 
-	public Tema carregarTema() {
-		try (Connection conn = ConnectionFactory.getConnection()) {
-			ParametroSistemaDao dao = new ParametroSistemaDao(conn);
-			return dao.getParametro("tema").map(p -> Tema.valueOf(p.getValor())).orElse(Tema.CLARO);
-		} catch (SQLException | IllegalArgumentException e) {
-			return Tema.CLARO;
-		}
-	}
+    public boolean getBoolean(ParametroChave chave, boolean valorPadrao) {
+        try (Connection conn = ConnectionFactory.getConnection()) {
+            return new Interno(conn).getBoolean(chave, valorPadrao);
+        } catch (SQLException e) {
+            throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR,
+                    "Erro ao carregar parâmetro do sistema", e);
+        }
+    }
 
-	public String carregarFonte() {
-		try (Connection conn = ConnectionFactory.getConnection()) {
-			ParametroSistemaDao dao = new ParametroSistemaDao(conn);
-			return dao.getParametro("fonte").map(ParametroSistema::getValor).orElse("Arial");
-		} catch (SQLException e) {
-			return "Arial";
-		}
-	}
+    public String getString(ParametroChave chave, String valorPadrao) {
+        try (Connection conn = ConnectionFactory.getConnection()) {
+            return new Interno(conn).getString(chave, valorPadrao);
+        } catch (SQLException e) {
+            throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR,
+                    "Erro ao carregar parâmetro do sistema", e);
+        }
+    }
 
-	public Color carregarCorTexto() {
-		try (Connection conn = ConnectionFactory.getConnection()) {
-			ParametroSistemaDao dao = new ParametroSistemaDao(conn);
-			return dao.getParametro("cor_texto").map(p -> Color.decode(p.getValor())).orElse(Color.BLACK);
-		} catch (SQLException | NumberFormatException e) {
-			return Color.BLACK;
-		}
-	}
+    public void salvarOuAtualizar(ParametroSistema parametro) {
+        try (Connection conn = ConnectionFactory.getConnection()) {
+            ConnectionFactory.beginTransaction(conn);
+            new Interno(conn).salvarOuAtualizar(parametro);
+            ConnectionFactory.commitTransaction(conn);
+        } catch (SQLException e) {
+            throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR,
+                    "Erro ao salvar parâmetro do sistema", e);
+        }
+    }
 
-	public Color carregarCorFundo() {
-		try (Connection conn = ConnectionFactory.getConnection()) {
-			ParametroSistemaDao dao = new ParametroSistemaDao(conn);
-			return dao.getParametro("cor_fundo").map(p -> Color.decode(p.getValor())).orElse(null);
-		} catch (SQLException | NumberFormatException e) {
-			return Color.WHITE;
-		}
-	}
+    // -------------------- CLASSE INTERNA --------------------
+    private static class Interno {
 
-	// --- MÉTODOS DE SALVAMENTO (COM DUPLA VALIDAÇÃO) ---
+        private final ParametroSistemaDao dao;
 
-	public void salvarTema(Tema tema) {
-		// Validação no Service
-		Objects.requireNonNull(tema, "O tema não pode ser nulo.");
+        private Interno(Connection conn) {
+            this.dao = new ParametroSistemaDao(conn);
+        }
 
-		executarSalvar("tema", tema.toString(), "Tema do Sistema");
-	}
+        // --- GET INT ---
+        private int getInt(ParametroChave chave, int valorPadrao) {
+            return dao.getParametro(chave.getChaveBanco())
+                    .map(p -> parseInt(p.getValor(), chave))
+                    .orElse(valorPadrao);
+        }
 
-	public void salvarFonte(String fonte) {
-		// Validação no Service
-		if (fonte == null || fonte.trim().isEmpty()) {
-			throw new IllegalArgumentException("A fonte não pode ser vazia.");
-		}
+        // --- GET BOOLEAN ---
+        private boolean getBoolean(ParametroChave chave, boolean valorPadrao) {
+            return dao.getParametro(chave.getChaveBanco())
+                    .map(p -> parseBoolean(p.getValor(), chave))
+                    .orElse(valorPadrao);
+        }
 
-		executarSalvar("fonte", fonte, "Fonte do Sistema");
-	}
+        // --- GET STRING ---
+        private String getString(ParametroChave chave, String valorPadrao) {
+            return dao.getParametro(chave.getChaveBanco())
+                    .map(ParametroSistema::getValor)
+                    .orElse(valorPadrao);
+        }
 
-	public void salvarCorTexto(Color cor) {
-		Objects.requireNonNull(cor, "A cor do texto não pode ser nula.");
-		String hex = colorToHex(cor);
-		executarSalvar("cor_texto", hex, "Cor do texto do sistema");
-	}
+        // --- SALVAR OU ATUALIZAR ---
+        private void salvarOuAtualizar(ParametroSistema parametro) {
+            validarParametro(parametro);
+            dao.salvarOuAtualizar(parametro);
+        }
 
-	public void salvarCorFundo(Color cor) {
-		Objects.requireNonNull(cor, "A cor de fundo não pode ser nula.");
-		String hex = colorToHex(cor);
-		executarSalvar("cor_fundo", hex, "Cor de fundo do sistema");
-	}
+        // --- PARSE INT COM TRATAMENTO ---
+        private int parseInt(String valor, ParametroChave chave) {
+            try {
+                return Integer.parseInt(valor);
+            } catch (NumberFormatException e) {
+                throw new ServiceOperationException(ServiceErrorType.BUSINESS_RULE_VIOTATION,
+                        "Parâmetro inválido (int): " + chave.name(), e);
+            }
+        }
 
-	// Método auxiliar para evitar repetição de código
-	private void executarSalvar(String chave, String valor, String descricao) {
-		try (Connection conn = ConnectionFactory.getConnection()) {
-			ParametroSistemaDao dao = new ParametroSistemaDao(conn);
-			dao.salvarOuAtualizar(new ParametroSistema(0, chave, valor, descricao));
-		} catch (SQLException e) {
-			throw new DataAccessException(DataAccessErrorType.QUERY_FAILED, "Erro ao salvar parâmetro: " + chave, e);
-		}
-	}
+        // --- PARSE BOOLEAN COM TRATAMENTO ---
+        private boolean parseBoolean(String valor, ParametroChave chave) {
+            if (valor == null) {
+                return false;
+            }
+            return valor.equalsIgnoreCase("true") || valor.equals("1");
+        }
 
-	private String colorToHex(Color cor) {
-		return String.format("#%02x%02x%02x", cor.getRed(), cor.getGreen(), cor.getBlue());
-	}
-
-	public void aplicarConfiguracoesGlobais() {
-		try {
-			Tema tema = carregarTema();
-
-			// 1. Aplica o LookAndFeel primeiro
-			if (tema == Tema.ESCURO) {
-				com.formdev.flatlaf.FlatDarkLaf.setup();
-			} else {
-				com.formdev.flatlaf.FlatLightLaf.setup();
-			}
-
-			// 2. Busca as cores (que agora podem vir nulas)
-			Color corFundo = carregarCorFundo();
-			Color corTexto = carregarCorTexto();
-
-			// 3. SE O BANCO ESTIVER VAZIO (corFundo == null),
-			// pegamos a cor nativa do FlatLaf que acabou de ser carregado
-			if (corFundo == null) {
-				corFundo = UIManager.getColor("Panel.background");
-				corTexto = UIManager.getColor("Label.foreground");
-			}
-
-			// 4. AGORA SIM, injetamos no UIManager para as Factories usarem
-			UIManager.put("MenuBar.background", corFundo);
-			UIManager.put("Menu.background", corFundo);
-			UIManager.put("Desktop.background", corFundo);
-			UIManager.put("Panel.background", corFundo);
-			UIManager.put("MenuBar.foreground", corTexto);
-			UIManager.put("Menu.foreground", corTexto);
-			UIManager.put("Label.foreground", corTexto);
-
-			// Garante que o JMenuBar não seja transparente
-			UIManager.put("MenuBar.opaque", true);
-
-		} catch (Exception e) {
-			com.formdev.flatlaf.FlatIntelliJLaf.setup();
-		}
-	}
-
+        // --- VALIDAÇÃO BÁSICA ---
+        private void validarParametro(ParametroSistema p) {
+            if (p == null) {
+                throw new ServiceOperationException(ServiceErrorType.BUSINESS_RULE_VIOTATION,
+                        "Parâmetro não pode ser nulo");
+            }
+            if (p.getChave() == null || p.getChave().isBlank()) {
+                throw new ServiceOperationException(ServiceErrorType.BUSINESS_RULE_VIOTATION,
+                        "Chave do parâmetro é obrigatória");
+            }
+            if (p.getValor() == null) {
+                throw new ServiceOperationException(ServiceErrorType.BUSINESS_RULE_VIOTATION,
+                        "Valor do parâmetro é obrigatório");
+            }
+        }
+    }
 }

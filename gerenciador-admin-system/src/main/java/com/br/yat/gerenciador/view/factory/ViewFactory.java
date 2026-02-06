@@ -42,7 +42,7 @@ import com.br.yat.gerenciador.view.UsuarioViewLogin;
 import com.br.yat.gerenciador.view.empresa.EmpresaConsultaView;
 
 public final class ViewFactory {
-	
+
 	private static MenuPrincipalController mainController;
 
 	public static EmpresaView createEmpresaView(TipoCadastro tipoCadastro) {
@@ -79,16 +79,16 @@ public final class ViewFactory {
 
 	public static MenuPrincipal createMenuPrincipal() {
 		MenuPrincipal view = new MenuPrincipal();
-		mainController= new MenuPrincipalController(view);
+		mainController = new MenuPrincipalController(view);
 		return view;
 	}
-	
+
 	public static void atualizarAcoesMenuPrincipal() {
-        if (mainController != null) {
-        	mainController.registrarAcoes();       // Reativa os menus
-            mainController.atualizarDadosUsuario(); // ATUALIZA O NOME NA TELA
-        }
-    }
+		if (mainController != null) {
+			mainController.registrarAcoes(); // Reativa os menus
+			mainController.atualizarDadosUsuario(); // ATUALIZA O NOME NA TELA
+		}
+	}
 
 	public static EmpresaConsultaView createEmpresaConsultaView() {
 		EmpresaConsultaView view = new EmpresaConsultaView();
@@ -129,34 +129,35 @@ public final class ViewFactory {
 	}
 
 	public static UsuarioConsultaView createUsuarioConsultaView() {
-	    UsuarioConsultaView view = new UsuarioConsultaView();
-	    UsuarioService service = new UsuarioService();
-	    UsuarioConsultaController controller = new UsuarioConsultaController(view, service);
+		UsuarioConsultaView view = new UsuarioConsultaView();
+		UsuarioService service = new UsuarioService();
+		UsuarioConsultaController controller = new UsuarioConsultaController(view, service);
 
-	    // Garante que o scheduler e recursos do controller sejam liberados
-	    view.addInternalFrameListener(new InternalFrameAdapter() {
-	        @Override
-	        public void internalFrameClosed(InternalFrameEvent e) {
-	            controller.dispose();
-	        }
-	    });
-	    return view;
+		// Garante que o scheduler e recursos do controller sejam liberados
+		view.addInternalFrameListener(new InternalFrameAdapter() {
+			@Override
+			public void internalFrameClosed(InternalFrameEvent e) {
+				controller.dispose();
+			}
+		});
+		return view;
 	}
-	public static UsuarioView createUsuarioView() {
-	    UsuarioView view = new UsuarioView();
-	    UsuarioService service = new UsuarioService();
-	    UsuarioController controller = new UsuarioController(view, service);
-	    view.putClientProperty("controller", controller);
 
-	    view.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-	    view.addInternalFrameListener(new InternalFrameAdapter() {
-	        @Override
-	        public void internalFrameClosing(InternalFrameEvent e) {
-	            view.dispose(); 
-	            controller.dispose();
-	        }
-	    });
-	    return view;
+	public static UsuarioView createUsuarioView() {
+		UsuarioView view = new UsuarioView();
+		UsuarioService service = new UsuarioService();
+		UsuarioController controller = new UsuarioController(view, service);
+		view.putClientProperty("controller", controller);
+
+		view.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+		view.addInternalFrameListener(new InternalFrameAdapter() {
+			@Override
+			public void internalFrameClosing(InternalFrameEvent e) {
+				view.dispose();
+				controller.dispose();
+			}
+		});
+		return view;
 	}
 
 	public static UsuarioViewLogin createLoginView() {
@@ -184,48 +185,48 @@ public final class ViewFactory {
 	}
 
 	public static UsuarioView createPrimeiroMasterView() {
-	    UsuarioView view = createUsuarioView();
-	    view.setTitle("CONFIGURAÇÃO INICIAL: CADASTRAR ADMINISTRADOR MASTER");
-	    
-	    view.setStatus(StatusUsuario.ATIVO);
-	    view.bloquearStatus(false);
-	    
-	    view.getPermissoes().values().forEach(chk -> chk.setSelected(true));
-	    view.bloquearGradePermissoes(false);
-	    
-	    return view;
+		UsuarioView view = createUsuarioView();
+		view.setTitle("CONFIGURAÇÃO INICIAL: CADASTRAR ADMINISTRADOR MASTER");
+
+		view.setStatus(StatusUsuario.ATIVO);
+		view.bloquearStatus(false);
+
+		view.getPermissoes().values().forEach(chk -> chk.setSelected(true));
+		view.bloquearGradePermissoes(false);
+
+		return view;
 	}
-	
+
 	public static LogSistemaView createLogSistemaView() {
-	    LogSistemaView view = new LogSistemaView();
-	    
-	    new LogSistemaController(view);
-	    
-	    view.addInternalFrameListener(new InternalFrameAdapter() {
-	        @Override
-	        public void internalFrameClosed(InternalFrameEvent e) {
-	            // Se o controller tivesse recursos para liberar (como um scheduler),
-	            // chamaríamos o dispose aqui.
-	        }
-	    });
-	    
-	    return view;
+		LogSistemaView view = new LogSistemaView();
+
+		new LogSistemaController(view);
+
+		view.addInternalFrameListener(new InternalFrameAdapter() {
+			@Override
+			public void internalFrameClosed(InternalFrameEvent e) {
+				// Se o controller tivesse recursos para liberar (como um scheduler),
+				// chamaríamos o dispose aqui.
+			}
+		});
+
+		return view;
 	}
 
 	public static PermissaoConsultaView createPermissaoConsultaView() {
-	    var view = new PermissaoConsultaView();
-	    UsuarioService service = new UsuarioService();
-	    
-	    new PermissaoConsultaController(view, service);
-	    
-	    return view;
+		var view = new PermissaoConsultaView();
+		UsuarioService service = new UsuarioService();
+
+		new PermissaoConsultaController(view, service);
+
+		return view;
 	}
-	
+
 	public static ParametroSistemaView createParametroSistemaView() {
 		ParametroSistemaView view = new ParametroSistemaView();
-		ParametroSistemaService service= new ParametroSistemaService();
+		ParametroSistemaService service = new ParametroSistemaService();
 		new ParametroSistemaController(view, service);
 		return view;
 	}
-	
+
 }

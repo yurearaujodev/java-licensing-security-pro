@@ -335,7 +335,7 @@ public class MenuPrincipalController extends BaseController {
 
 	private void abrirParametroSistema() {
 		JDesktopPane desk = view.getDesktopPane();
-		if (DesktopUtils.reuseIfOpen(desk, PermissaoConsultaView.class))
+		if (DesktopUtils.reuseIfOpen(desk, ParametroSistemaView.class))
 			return;
 
 		ParametroSistemaView frame = ViewFactory.createParametroSistemaView();

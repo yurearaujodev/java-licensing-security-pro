@@ -39,7 +39,6 @@ public class UsuarioView extends JInternalFrame {
 	private JPasswordField txtConfirmarSenha;
 	private JProgressBar barraForcaSenha;
 
-
 	private JComboBox<StatusUsuario> cbStatus;
 	private JButton btnSalvar;
 	private JButton btnNovo;
@@ -104,7 +103,7 @@ public class UsuarioView extends JInternalFrame {
 
 		panel.add(LabelFactory.createLabel("EMPRESA: "), "cell 0 4, alignx trailing");
 		txtEmpresa = FieldFactory.createTextField(20);
-		txtEmpresa.setEditable(false);
+		txtEmpresa.setEnabled(false);
 		panel.add(txtEmpresa, "cell 1 4 3 1,growx,h 25!");
 
 	}
@@ -238,6 +237,10 @@ public class UsuarioView extends JInternalFrame {
 		return txtSenhaNova;
 	}
 
+	public JPasswordField getTxtSenhaAntiga() {
+		return txtSenhaAntiga;
+	}
+
 	public JComboBox<StatusUsuario> getCbStatus() {
 		return cbStatus;
 	}
@@ -270,11 +273,10 @@ public class UsuarioView extends JInternalFrame {
 	public JCheckBox getChkMaster() {
 		return chkMaster;
 	}
-	
-	public JProgressBar getBarraForcaSenha() {
-	    return barraForcaSenha;
-	}
 
+	public JProgressBar getBarraForcaSenha() {
+		return barraForcaSenha;
+	}
 
 	public void limpar() {
 		idEmpresa = null;

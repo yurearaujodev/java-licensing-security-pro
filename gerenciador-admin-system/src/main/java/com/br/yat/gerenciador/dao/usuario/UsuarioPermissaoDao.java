@@ -89,13 +89,15 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 		}
 	}
 
-	public void removerBloqueioTemporario(int idUsuario) {
-		String sql = "UPDATE usuario_permissoes SET expira_em = NULL WHERE id_usuario = ?";
-		executeUpdate(sql, idUsuario);
-	}
-
 	public boolean jaTeveBloqueioTemporario(int idUsuario) {
-		String sql = "SELECT 1 FROM usuario_permissoes " + "WHERE id_usuario = ? AND expira_em IS NOT NULL";
+		String sql = """
+				    SELECT 1
+				    FROM usuario_permissoes
+				    WHERE id_usuario = ?
+				      AND expira_em IS NOT NULL
+				      AND expira_em <= NOW()
+				    LIMIT 1
+				""";
 		try (var stmt = conn.prepareStatement(sql)) {
 			stmt.setInt(1, idUsuario);
 			try (ResultSet rs = stmt.executeQuery()) {

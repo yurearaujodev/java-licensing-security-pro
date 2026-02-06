@@ -34,7 +34,7 @@ public class ConfiguracaoBancoController extends BaseController {
 		view.getTxtNomeBanco().addFocusListener(ValidationUtils.createValidationListener(view.getTxtNomeBanco(), () -> {
 			view.mostrarStatusAguardando("AGUARDANDO NOVO TESTE...");
 		}));
-
+		view.getBtnSalvar().setEnabled(false);
 	}
 
 	private void carregarDados() {
@@ -114,9 +114,11 @@ public class ConfiguracaoBancoController extends BaseController {
 			if (status.available()) {
 				atualizarStatusVisual(true, "Sucesso");
 				DialogFactory.informacao(view, status.message());
+				view.getBtnSalvar().setEnabled(true);
 			} else {
 				atualizarStatusVisual(false, "Falha");
 				DialogFactory.erro(view, status.message());
+				view.getBtnSalvar().setEnabled(false);
 			}
 
 		});
