@@ -34,9 +34,11 @@ import com.br.yat.gerenciador.util.MenuRegistry;
 import com.br.yat.gerenciador.util.TimeUtils;
 import com.br.yat.gerenciador.view.ConfiguracaoBancoView;
 import com.br.yat.gerenciador.view.EmpresaView;
+import com.br.yat.gerenciador.view.LogManutencaoView;
 import com.br.yat.gerenciador.view.LogSistemaView;
 import com.br.yat.gerenciador.view.MenuPrincipal;
 import com.br.yat.gerenciador.view.ParametroSistemaView;
+import com.br.yat.gerenciador.view.PerfilConsultaView;
 import com.br.yat.gerenciador.view.PermissaoConsultaView;
 import com.br.yat.gerenciador.view.UsuarioConsultaView;
 import com.br.yat.gerenciador.view.UsuarioView;
@@ -67,6 +69,8 @@ public class MenuPrincipalController extends BaseController {
 
 	public void registrarAcoes() {
 		configurarAcaoMenu(MenuChave.CADASTROS_EMPRESA_CLIENTE, e -> abrirEmpresaCliente());
+		configurarAcaoMenu(MenuChave.CADASTROS_PERFIL, e -> abrirPerfil());
+		configurarAcaoMenu(MenuChave.CONSULTAS_PERFIL, e -> abrirConsultaPerfil());
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_EMPRESA_FORNECEDORA, e -> abrirEmpresaFornecedora());
 		configurarAcaoMenu(MenuChave.CONSULTAS_EMPRESAS_CLIENTES, e -> abrirEmpresaConsulta());
 		configurarAcaoMenu(MenuChave.CADASTROS_USUARIO, e -> abrirUsuario());
@@ -76,6 +80,7 @@ public class MenuPrincipalController extends BaseController {
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_PERMISSAO, e -> abrirConsultaPermissoes());
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_PARAMETRO_SISTEMA, e -> abrirParametroSistema());
 		configurarAcaoMenu(MenuChave.AUDITORIA_LOG_DO_SISTEMA, e -> abrirConsultaLogs());
+		configurarAcaoMenu(MenuChave.CONFIGURACAO_LIMPEZA_DE_LOGS, e -> abrirLogManutencao());
 		for (var al : view.getBtnLogout().getActionListeners()) {
 			view.getBtnLogout().removeActionListener(al);
 		}
@@ -202,8 +207,18 @@ public class MenuPrincipalController extends BaseController {
 				ViewFactory.showFrameWithCallback(view.getDesktopPane(), f, this::verificarSequenciaDeAcesso);
 			}
 			case 2 -> {
-				UsuarioView fUser = ViewFactory.createPrimeiroMasterView();
-				ViewFactory.showFrameWithCallback(view.getDesktopPane(), fUser, this::verificarSequenciaDeAcesso);
+			    // 1. Criamos a View e a Controller através da Factory
+			    // Supondo que sua ViewFactory já injete as Services e a Controller na View
+			    UsuarioView fUser = ViewFactory.createPrimeiroMasterView(); 
+			    
+			    // 2. Precisamos acessar a Controller da View para chamar o setup master
+			    // Se você seguiu o padrão de BaseController, deve ser algo assim:
+			    if (fUser.getClientProperty("controller") instanceof UsuarioController controller) {
+			        controller.prepararComoMaster();
+			    }
+			    
+			    // 3. Exibe com o callback para re-verificar quando fechar
+			    ViewFactory.showFrameWithCallback(view.getDesktopPane(), fUser, this::verificarSequenciaDeAcesso);
 			}
 			case 3 -> {
 				carregarLogoSistema();
@@ -341,5 +356,38 @@ public class MenuPrincipalController extends BaseController {
 		ParametroSistemaView frame = ViewFactory.createParametroSistemaView();
 		DesktopUtils.showFrame(desk, frame);
 	}
+	
+	private void abrirPerfil() {
+	    JDesktopPane desk = view.getDesktopPane();
+	    if (DesktopUtils.reuseIfOpen(desk, "NOVO_PERFIL")) {
+	        return;
+	    }
+	    // Usa a Factory para criar a View + Controller
+	    var frame = ViewFactory.createPerfilView();
+	    frame.setName("NOVO_PERFIL");
+	    DesktopUtils.showFrame(desk, frame);
+	}
+
+	private void abrirConsultaPerfil() {
+	    JDesktopPane desk = view.getDesktopPane();
+	    // Reutiliza se já estiver aberta para evitar múltiplas instâncias
+	    if (DesktopUtils.reuseIfOpen(desk, PerfilConsultaView.class)) {
+	        return;
+	    }
+	    // Chama a Factory
+	    var frame = ViewFactory.createPerfilConsultaView();
+	    DesktopUtils.showFrame(desk, frame);
+	}
+	
+	private void abrirLogManutencao() {
+    JDesktopPane desk = view.getDesktopPane();
+    // Reutiliza se já estiver aberta para evitar múltiplas instâncias
+    if (DesktopUtils.reuseIfOpen(desk, LogManutencaoView.class)) {
+        return;
+    }
+    // Chama a Factory
+    var frame = ViewFactory.createLogManutencao();
+    DesktopUtils.showFrame(desk, frame);
+}
 
 }

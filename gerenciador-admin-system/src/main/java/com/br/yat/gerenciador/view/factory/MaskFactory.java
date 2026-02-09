@@ -34,14 +34,8 @@ public final class MaskFactory {
 		map.put("CAPITAL", "#,##0.00");
 		map.put("CEP", "#####-###");
 		map.put("BANCO", "###");
+		map.put("DATA_HORA", "##/##/#### ##:##");
 		return map;
-	}
-	/**
-	 * 
-	 * @return
-	 */
-	public static String getCpfMask() {
-		return "###.###.###-##";
 	}
 
 }

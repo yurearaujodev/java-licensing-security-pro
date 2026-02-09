@@ -13,7 +13,6 @@ import com.br.yat.gerenciador.dao.empresa.DocumentoDao;
 import com.br.yat.gerenciador.dao.empresa.EmpresaDao;
 import com.br.yat.gerenciador.dao.empresa.EnderecoDao;
 import com.br.yat.gerenciador.dao.empresa.RepresentanteDao;
-import com.br.yat.gerenciador.dao.usuario.UsuarioPermissaoDao;
 import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Banco;
@@ -33,14 +32,14 @@ import com.br.yat.gerenciador.util.AuditLogHelper;
 import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 
-public class EmpresaService {
+public class EmpresaService extends BaseService {
 
 	private static final MenuChave CHAVE_SALVAR = MenuChave.CADASTROS_EMPRESA_CLIENTE;
 	private static final MenuChave CHAVE_CONSULTA = MenuChave.CONSULTAS_EMPRESAS_CLIENTES;
 
 	public EmpresaDTO carregarEmpresaCompleta(int id, TipoCadastro tipo, Usuario executor) {
-		validarAcesso(executor, CHAVE_CONSULTA);
 		try (Connection conn = ConnectionFactory.getConnection()) {
+			validarAcesso(conn, executor, CHAVE_CONSULTA, "READ");
 			EmpresaDao empDao = new EmpresaDao(conn);
 
 			Empresa emp = (tipo == TipoCadastro.FORNECEDORA) ? empDao.buscarPorFornecedora() : empDao.searchById(id);
@@ -63,30 +62,9 @@ public class EmpresaService {
 		}
 	}
 
-	private void validarAcesso(Usuario executor, MenuChave chaveNecessaria) {
-		if (executor == null) {
-			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-					"SESSÃO INVÁLIDA: USUÁRIO NÃO IDENTIFICADO.");
-		}
-		if (executor.isMaster())
-			return;
-
-		try (Connection conn = ConnectionFactory.getConnection()) {
-			UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
-			List<MenuChave> permissoesAtivas = upDao.buscarChavesAtivasPorUsuario(executor.getIdUsuario());
-
-			if (!permissoesAtivas.contains(chaveNecessaria)) {
-				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-						"ACESSO NEGADO: VOCÊ NÃO TEM PERMISSÃO PARA ESTA OPERAÇÃO.");
-			}
-		} catch (SQLException e) {
-			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO VALIDAR PERMISSÕES", e);
-		}
-	}
-
 	public List<Empresa> listarClientesParaTabela(boolean inativos, Usuario executor) {
-		validarAcesso(executor, CHAVE_CONSULTA);
 		try (Connection conn = ConnectionFactory.getConnection()) {
+			validarAcesso(conn, executor, CHAVE_CONSULTA, "READ");
 			return new EmpresaDao(conn).listarTodosClientes(inativos);
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
@@ -94,8 +72,8 @@ public class EmpresaService {
 	}
 
 	public List<Empresa> filtrarClientes(String termo, boolean inativos, Usuario executor) {
-		validarAcesso(executor, CHAVE_CONSULTA);
 		try (Connection conn = ConnectionFactory.getConnection()) {
+			validarAcesso(conn, executor, CHAVE_CONSULTA, "READ");
 			return new EmpresaDao(conn).filtrarClientes(termo, inativos);
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
@@ -106,9 +84,9 @@ public class EmpresaService {
 			List<Representante> representantes, List<Banco> bancos, Complementar complementar,
 			List<Documento> documentos, Usuario executor) {
 
-		validarAcesso(executor, CHAVE_SALVAR);
-
 		try (Connection conn = ConnectionFactory.getConnection()) {
+			validarAcesso(conn, executor, CHAVE_SALVAR, "WRITE");
+
 			EmpresaDao empDao = new EmpresaDao(conn);
 			Empresa anterior = (empresa.getIdEmpresa() > 0) ? empDao.searchById(empresa.getIdEmpresa()) : null;
 
@@ -132,11 +110,11 @@ public class EmpresaService {
 				salvarRelacionamentos(conn, empSalva, contatos, representantes, bancos, complementar, documentos);
 
 				registrarLogSucesso(conn, empSalva, anterior);
-				ConnectionFactory.commitTransaction(conn);
 
+				ConnectionFactory.commitTransaction(conn);
 			} catch (Exception e) {
 				ConnectionFactory.rollbackTransaction(conn);
-				registrarLogErro("SALVAR_EMPRESA", e);
+				registrarLogErro("ERRO", "SALVAR_EMPRESA", "empresa", e);
 				throw e;
 			}
 		} catch (SQLException e) {
@@ -217,14 +195,6 @@ public class EmpresaService {
 				AuditLogHelper.gerarLogSucesso("CADASTRO", acao, "empresa", atual.getIdEmpresa(), anterior, atual));
 	}
 
-	private void registrarLogErro(String operacao, Exception e) {
-		try (Connection connLog = ConnectionFactory.getConnection()) {
-			String msg = (e.getMessage() != null) ? e.getMessage() : e.toString();
-			new LogSistemaDao(connLog).save(AuditLogHelper.gerarLogErro("ERRO", operacao, "empresa", msg));
-		} catch (Exception ex) {
-		}
-	}
-
 	private void validarDados(Endereco endereco, Empresa empresa, List<Contato> contatos,
 			List<Representante> representantes, List<Banco> bancos, Complementar complementar,
 			List<Documento> documentos) {
@@ -253,9 +223,9 @@ public class EmpresaService {
 	}
 
 	public void restaurarEmpresa(int idEmpresa, Usuario executor) {
-		validarAcesso(executor, CHAVE_SALVAR);
 
 		try (Connection conn = ConnectionFactory.getConnection()) {
+			validarAcesso(conn, executor, CHAVE_SALVAR, "DELETE");
 			EmpresaDao dao = new EmpresaDao(conn);
 
 			dao.restaurar(idEmpresa);
@@ -269,8 +239,9 @@ public class EmpresaService {
 	}
 
 	public void ExcluirEmpresa(int idEmpresa, Usuario executor) {
-		validarAcesso(executor, CHAVE_SALVAR);
 		try (Connection conn = ConnectionFactory.getConnection()) {
+			validarAcesso(conn, executor, CHAVE_SALVAR, "DELETE");
+
 			EmpresaDao dao = new EmpresaDao(conn);
 			LogSistemaDao logDao = new LogSistemaDao(conn);
 
@@ -291,6 +262,22 @@ public class EmpresaService {
 			dao.softDeleteById(idEmpresa);
 			logDao.save(AuditLogHelper.gerarLogSucesso("CADASTRO", "INATIVAR_EMPRESA", "empresa", idEmpresa, empresa,
 					null));
+		} catch (SQLException e) {
+			registrarLogErro("ERRO", "EXCLUIR_EMPRESA", "empresa", e);
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
+		}
+	}
+
+	public Empresa buscarFornecedoraParaSetup() {
+		// Note que não chamamos validarAcesso aqui, pois é para o primeiro uso do
+		// sistema
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			Empresa fornecedora = new EmpresaDao(conn).buscarPorFornecedora();
+			if (fornecedora == null) {
+				throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND,
+						"EMPRESA FORNECEDORA NÃO ENCONTRADA. CADASTRE-A PRIMEIRO.");
+			}
+			return fornecedora;
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
 		}

@@ -1,11 +1,13 @@
 package com.br.yat.gerenciador.controller;
 
 import java.awt.Window;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 
+import javax.swing.AbstractButton;
 import javax.swing.SwingUtilities;
 
 import org.slf4j.Logger;
@@ -103,6 +105,34 @@ public abstract class BaseController {
 				loadingDialog.hide();
 			}
 		});
+	}
+	
+	/**
+	 * Aplica o "cadeado visual" nos botões da view baseado nas permissões do usuário.
+	 * * @param permissoes Lista de strings ("READ", "WRITE", "DELETE")
+	 * @param btnNovo Botão de criação (opcional)
+	 * @param btnEditar Botão de edição (opcional)
+	 * @param btnExcluir Botão de exclusão (opcional)
+	 * @return true se tiver permissão de leitura, false caso contrário
+	 */
+	protected boolean aplicarRestricoesVisuais(List<String> permissoes, 
+	                                          AbstractButton btnNovo, 
+	                                          AbstractButton btnEditar, 
+	                                          AbstractButton btnExcluir) {
+	    
+	    // Se não tem leitura, avisa a Controller filha para fechar a tela
+	    if (!permissoes.contains("READ")) {
+	        return false;
+	    }
+
+	    boolean podeEscrever = permissoes.contains("WRITE");
+	    boolean podeExcluir = permissoes.contains("DELETE");
+
+	    if (btnNovo != null) btnNovo.setVisible(podeEscrever);
+	    if (btnEditar != null) btnEditar.setVisible(podeEscrever);
+	    if (btnExcluir != null) btnExcluir.setVisible(podeExcluir);
+
+	    return true;
 	}
 
 }

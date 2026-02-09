@@ -28,6 +28,7 @@ public class UsuarioConsultaController extends BaseController {
 		this.view = view;
 		this.service = service;
 		configurar();
+		aplicarPermissoesEscopo();
 	}
 
 	private void configurar() {
@@ -85,7 +86,7 @@ public class UsuarioConsultaController extends BaseController {
 
 		runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
 			List<Usuario> lista = verExcluidos ? service.listarExcluidos(Sessao.getUsuario())
-					: service.listarUsuarios("");
+					: service.listarUsuarios("",Sessao.getUsuario());
 
 			Usuario logado = Sessao.getUsuario();
 			if (logado != null && !logado.isMaster()) {
@@ -142,7 +143,7 @@ public class UsuarioConsultaController extends BaseController {
 		debounceTask = scheduler.schedule(() -> {
 			runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
 				List<Usuario> lista = verExcluidos ? service.listarExcluidos(Sessao.getUsuario())
-						: service.listarUsuarios(termo);
+						: service.listarUsuarios(termo,Sessao.getUsuario());
 
 				Usuario logado = Sessao.getUsuario();
 				if (logado != null && !logado.isMaster()) {
@@ -161,7 +162,30 @@ public class UsuarioConsultaController extends BaseController {
 			DialogFactory.aviso(view, "SELECIONE UM USUÁRIO PARA EDITAR.");
 		}
 	}
+	
+	private void aplicarPermissoesEscopo() {
+	    Usuario logado = Sessao.getUsuario();
+	    if (logado == null || logado.isMaster()) return;
 
+	    // Busca as permissões na service
+	    List<String> permissoes = service.listarPermissoesAtivasPorMenu(
+	        logado.getIdUsuario(), 
+	        MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES
+	    );
+
+	    // Usa o método da BaseController
+	    boolean podeAcessar = aplicarRestricoesVisuais(
+	        permissoes, 
+	        view.getBtnNovo(), 
+	        view.getBtnEditar(), 
+	        view.getBtnExcluir()
+	    );
+
+	    if (!podeAcessar) {
+	        view.dispose();
+	        DialogFactory.aviso(null, "ACESSO NEGADO À GESTÃO DE USUÁRIOS.");
+	    }
+	}
 	private void abrirFormulario(Usuario usuario) {
 		if (!podeAbrirCadastro()) {
 			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE USUÁRIOS.");

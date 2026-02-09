@@ -118,10 +118,11 @@ public abstract class GenericDao<T> {
 		for (int i = 0; i < params.length; i++) {
 			Object value = params[i];
 			int idx = i + 1;
-
+			if (value == null) {
+	            stmt.setNull(idx, Types.NULL);
+	            continue;
+	        }
 			switch (value) {
-			case null -> stmt.setNull(idx, Types.NULL);
-			case String s when s.isBlank() -> stmt.setNull(idx, Types.VARCHAR);
 			case String s -> stmt.setString(idx, s);
 			case Integer iVal -> stmt.setInt(idx, iVal);
 			case BigDecimal db -> stmt.setBigDecimal(idx, db);
@@ -168,4 +169,15 @@ public abstract class GenericDao<T> {
 	    return this.conn;
 	}
 
+	protected int executeScalarInt(String sql, Object... params) {
+	    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+	        bindParameters(stmt, params);
+	        try (ResultSet rs = stmt.executeQuery()) {
+	            return rs.next() ? rs.getInt(1) : 0;
+	        }
+	    } catch (SQLException e) {
+	        throw new DataAccessException(DataAccessErrorType.QUERY_FAILED,
+	                "ERRO SCALAR EM [" + tableName + "]: " + e.getMessage(), e);
+	    }
+	}
 }

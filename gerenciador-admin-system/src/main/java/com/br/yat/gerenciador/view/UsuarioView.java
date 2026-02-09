@@ -8,6 +8,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JFormattedTextField;
 import javax.swing.JInternalFrame;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
@@ -15,6 +16,7 @@ import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 
+import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.StatusUsuario;
 import com.br.yat.gerenciador.util.IconFactory;
@@ -22,7 +24,9 @@ import com.br.yat.gerenciador.view.factory.ButtonFactory;
 import com.br.yat.gerenciador.view.factory.ComboBoxFactory;
 import com.br.yat.gerenciador.view.factory.DesktopFactory;
 import com.br.yat.gerenciador.view.factory.FieldFactory;
+import com.br.yat.gerenciador.view.factory.FormatterUtils;
 import com.br.yat.gerenciador.view.factory.LabelFactory;
+import com.br.yat.gerenciador.view.factory.MaskFactory;
 import com.br.yat.gerenciador.view.factory.PanelFactory;
 
 import net.miginfocom.swing.MigLayout;
@@ -34,6 +38,7 @@ public class UsuarioView extends JInternalFrame {
 	private JTextField txtEmail;
 	private JTextField txtEmpresa;
 	private Integer idEmpresa;
+	private Integer idPerfil;
 	private JPasswordField txtSenhaNova;
 	private JPasswordField txtSenhaAntiga;
 	private JPasswordField txtConfirmarSenha;
@@ -44,13 +49,16 @@ public class UsuarioView extends JInternalFrame {
 	private JButton btnNovo;
 	private JButton btnCancelar;
 	private JCheckBox chkMaster;
-
-	private final Map<MenuChave, JCheckBox> permissoes = new LinkedHashMap<>();
+	private JComboBox<Perfil> cbPerfil;
 
 	private final Map<String, JCheckBox> chkTodosPorCategoria = new LinkedHashMap<>();
 
 	private final Map<String, List<MenuChave>> gruposPermissoes = new LinkedHashMap<>();
 
+	private final Map<MenuChave, Map<String, JCheckBox>> permissoesGranulares = new LinkedHashMap<>();
+
+	private final Map<MenuChave, JTextField> datasExpiracao = new LinkedHashMap<>();
+	
 	public UsuarioView() {
 		super("Cadastro de Usuário", true, true, true, true);
 
@@ -73,6 +81,8 @@ public class UsuarioView extends JInternalFrame {
 		panel.add(LabelFactory.createLabel("USUÁRIO: "), "cell 0 0, alignx trailing");
 		txtNome = FieldFactory.createTextField(20);
 		panel.add(txtNome, "cell 1 0,growx,h 25!");
+
+	
 
 		panel.add(LabelFactory.createLabel("E-MAIL: "), "cell 2 0, alignx trailing");
 		txtEmail = FieldFactory.createTextField(20);
@@ -97,14 +107,18 @@ public class UsuarioView extends JInternalFrame {
 		txtConfirmarSenha = FieldFactory.createPasswordField(20);
 		panel.add(txtConfirmarSenha, "cell 3 2,growx,h 25!");
 
-		panel.add(LabelFactory.createLabel("MASTER: "), "cell 0 3, alignx trailing");
+		panel.add(LabelFactory.createLabel("MASTER: "), "cell 2 3, alignx trailing");
 		chkMaster = ButtonFactory.createCheckBox("ESTE USUÁRIO É ADMINISTRADOR MASTER");
-		panel.add(chkMaster, "cell 1 3 3 1, growx");
+		panel.add(chkMaster, "cell 3 3 3 1, growx");
 
 		panel.add(LabelFactory.createLabel("EMPRESA: "), "cell 0 4, alignx trailing");
 		txtEmpresa = FieldFactory.createTextField(20);
 		txtEmpresa.setEnabled(false);
 		panel.add(txtEmpresa, "cell 1 4 3 1,growx,h 25!");
+		
+		panel.add(LabelFactory.createLabel("PERFIL: "), "cell 0 3, alignx trailing");
+		cbPerfil = new JComboBox<>(); // Aqui você vai carregar os perfis do banco
+		panel.add(cbPerfil, "cell 1 3, growx, h 25!");
 
 	}
 
@@ -119,33 +133,116 @@ public class UsuarioView extends JInternalFrame {
 
 	private JPanel pnlPermissoesContainer;
 
+//	public void construirGradePermissoes(Map<String, List<MenuChave>> grupos) {
+//		gruposPermissoes.clear();
+//		gruposPermissoes.putAll(grupos);
+//		pnlPermissoesContainer.removeAll();
+//		permissoesGranulares.clear();
+//
+//		for (var entry : gruposPermissoes.entrySet()) {
+//			String categoria = entry.getKey();
+//			List<MenuChave> chaves = entry.getValue();
+//
+//			JPanel categoriaPanel = new JPanel(new MigLayout("wrap 4", "[grow,fill][center][center][center]", "[]5[]"));
+//			categoriaPanel.setBorder(BorderFactory.createTitledBorder(categoria));
+//
+//			JCheckBox chkTodos = ButtonFactory.createCheckBox("MARCAR TODOS DA CATEGORIA");
+//			chkTodosPorCategoria.put(categoria, chkTodos);
+//			categoriaPanel.add(chkTodos, "span 4, left, wrap");
+//
+//			// Cabeçalho da tabela
+//			categoriaPanel.add(LabelFactory.createLabel("MENU"), "growx");
+//			categoriaPanel.add(LabelFactory.createLabel("VER (R)"), "w 60!");
+//			categoriaPanel.add(LabelFactory.createLabel("EDITAR (W)"), "w 60!");
+//			categoriaPanel.add(LabelFactory.createLabel("EXCLUIR (D)"), "w 60!");
+//			categoriaPanel.add(LabelFactory.createLabel("EXPIRA EM"), "w 100!");
+//			
+//			for (MenuChave chave : chaves) {
+//				categoriaPanel.add(LabelFactory.createLabel(formatarTexto(chave.name())), "growx");
+//
+//				Map<String, JCheckBox> tiposMap = new LinkedHashMap<>();
+//
+//				JCheckBox chkRead = new JCheckBox();
+//				JCheckBox chkWrite = new JCheckBox();
+//				JCheckBox chkDelete = new JCheckBox();
+//
+//				categoriaPanel.add(chkRead);
+//				categoriaPanel.add(chkWrite);
+//				categoriaPanel.add(chkDelete);
+//
+//				tiposMap.put("READ", chkRead);
+//				tiposMap.put("WRITE", chkWrite);
+//				tiposMap.put("DELETE", chkDelete);
+//
+//				permissoesGranulares.put(chave, tiposMap);
+//				
+//				JTextField txtData = FieldFactory.createTextField(10);
+//		        txtData.setToolTipText("dd/mm/aaaa hh:mm");
+//		        datasExpiracao.put(chave, txtData);
+//		        categoriaPanel.add(txtData, "w 100!");
+//			}
+//			pnlPermissoesContainer.add(categoriaPanel, "growx, wrap");
+//		}
+//		pnlPermissoesContainer.revalidate();
+//		pnlPermissoesContainer.repaint();
+//	}
+
 	public void construirGradePermissoes(Map<String, List<MenuChave>> grupos) {
-		gruposPermissoes.clear();
-		gruposPermissoes.putAll(grupos);
-		pnlPermissoesContainer.removeAll();
-		for (var entry : gruposPermissoes.entrySet()) {
-			String categoria = entry.getKey();
-			List<MenuChave> chaves = entry.getValue();
+	    gruposPermissoes.clear();
+	    gruposPermissoes.putAll(grupos);
+	    pnlPermissoesContainer.removeAll();
+	    permissoesGranulares.clear();
+	    datasExpiracao.clear();
 
-			JPanel categoriaPanel = new JPanel(new MigLayout("wrap 1", "[grow]", "[]5[]"));
-			categoriaPanel.setBorder(BorderFactory.createTitledBorder(categoria));
+	    for (var entry : gruposPermissoes.entrySet()) {
+	        String categoria = entry.getKey();
+	        List<MenuChave> chaves = entry.getValue();
 
-			JCheckBox chkTodos = ButtonFactory.createCheckBox("MARCAR TODOS");
-			chkTodosPorCategoria.put(categoria, chkTodos);
-			categoriaPanel.add(chkTodos, "span, growx");
+	        // Layout com larguras preferenciais: Menu[grow], R[50], W[50], D[50], Data[120]
+	        JPanel categoriaPanel = new JPanel(new MigLayout("fillx, insets 10", "[grow,fill][50!][50!][50!][120!]", "[]5[]"));
+	        categoriaPanel.setBorder(BorderFactory.createTitledBorder(categoria));
 
-			for (MenuChave chave : chaves) {
-				JCheckBox cb = ButtonFactory.createCheckBox(formatarTexto(chave.name()));
-				cb.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 0));
-				permissoes.put(chave, cb);
-				categoriaPanel.add(cb, "wrap, growx");
-			}
-			pnlPermissoesContainer.add(categoriaPanel, "growx, wrap");
-		}
-		pnlPermissoesContainer.revalidate();
-		pnlPermissoesContainer.repaint();
+	        JCheckBox chkTodos = ButtonFactory.createCheckBox("MARCAR TODOS DESTA CATEGORIA");
+	        chkTodosPorCategoria.put(categoria, chkTodos);
+	        categoriaPanel.add(chkTodos, "span 5, left, gapy 5 10, wrap");
+
+	        // Cabeçalho estilizado
+	        categoriaPanel.add(LabelFactory.createLabel("MÓDULO / MENU"), "center");
+	        categoriaPanel.add(LabelFactory.createLabel("VER"), "center");
+	        categoriaPanel.add(LabelFactory.createLabel("ADD"), "center");
+	        categoriaPanel.add(LabelFactory.createLabel("DEL"), "center");
+	        categoriaPanel.add(LabelFactory.createLabel("EXPIRA EM (OPCIONAL)"), "center, wrap");
+
+	        for (MenuChave chave : chaves) {
+	            categoriaPanel.add(LabelFactory.createLabel(formatarTexto(chave.name())), "");
+
+	            Map<String, JCheckBox> tiposMap = new LinkedHashMap<>();
+	            JCheckBox chkRead = new JCheckBox();
+	            JCheckBox chkWrite = new JCheckBox();
+	            JCheckBox chkDelete = new JCheckBox();
+
+	            categoriaPanel.add(chkRead, "center");
+	            categoriaPanel.add(chkWrite, "center");
+	            categoriaPanel.add(chkDelete, "center");
+
+	            tiposMap.put("READ", chkRead);
+	            tiposMap.put("WRITE", chkWrite);
+	            tiposMap.put("DELETE", chkDelete);
+	            permissoesGranulares.put(chave, tiposMap);
+	            
+	            JFormattedTextField txtData = FieldFactory.createFormattedField();
+	            String mask = MaskFactory.createMask().get("DATA_HORA");
+	            FormatterUtils.applyDateMask(txtData, mask);
+	            txtData.setToolTipText("Ex: 31/12/2026 23:59");
+	            datasExpiracao.put(chave, txtData);
+	            categoriaPanel.add(txtData, "growx, h 20!, wrap");
+	        }
+	        pnlPermissoesContainer.add(categoriaPanel, "growx, wrap 10");
+	    }
+	    pnlPermissoesContainer.revalidate();
+	    pnlPermissoesContainer.repaint();
 	}
-
+	
 	private JPanel criarBotoes() {
 		JPanel panel = PanelFactory.createPanel("insets 5", "[left][grow][right]", "[]");
 
@@ -159,7 +256,15 @@ public class UsuarioView extends JInternalFrame {
 		panel.add(btnSalvar, "w 140!, h 35!, alignx center");
 		return panel;
 	}
-
+	
+	public Map<MenuChave, String> getDatasExpiracaoTexto() {
+	    Map<MenuChave, String> dados = new LinkedHashMap<>();
+	    datasExpiracao.forEach((chave, txtField) -> {
+	        dados.put(chave, txtField.getText());
+	    });
+	    return dados;
+	}
+	
 	private String formatarTexto(String texto) {
 		return texto.replace("_", " ").toUpperCase();
 	}
@@ -200,6 +305,44 @@ public class UsuarioView extends JInternalFrame {
 	public Integer getEmpresa() {
 		return idEmpresa;
 	}
+	
+	public void setPerfil(Perfil perfil) {
+	    if (perfil == null) return;
+	    
+	    this.idPerfil = perfil.getIdPerfil();
+	    cbPerfil.removeAllItems();
+	    cbPerfil.addItem(perfil);
+	    cbPerfil.setSelectedItem(perfil);
+	}
+
+	public Integer getPerfil() {
+	    return idPerfil;
+	}
+
+//	public Perfil getPerfilSelecionado() {
+//		return (Perfil) cbPerfil.getSelectedItem();
+//	}
+
+	public JComboBox<Perfil> getCbPerfil() {
+		return cbPerfil;
+	}
+
+	public void carregarCombosPerfil(List<Perfil> perfis) {
+		cbPerfil.removeAllItems();
+		for (Perfil p : perfis) {
+			cbPerfil.addItem(p);
+		}
+	}
+
+//	public void setPerfil(Integer idPerfil) {
+//		for (int i = 0; i < cbPerfil.getItemCount(); i++) {
+//			Perfil p = cbPerfil.getItemAt(i);
+//			if (p.getIdPerfil().equals(idPerfil)) {
+//				cbPerfil.setSelectedIndex(i);
+//				break;
+//			}
+//		}
+//	}
 
 	public StatusUsuario getStatus() {
 		return (StatusUsuario) cbStatus.getSelectedItem();
@@ -209,8 +352,8 @@ public class UsuarioView extends JInternalFrame {
 		cbStatus.setSelectedItem(status);
 	}
 
-	public Map<MenuChave, JCheckBox> getPermissoes() {
-		return permissoes;
+	public Map<MenuChave, Map<String, JCheckBox>> getPermissoesGranulares() {
+		return permissoesGranulares;
 	}
 
 	public Map<String, JCheckBox> getChkTodosPorCategoria() {
@@ -290,8 +433,10 @@ public class UsuarioView extends JInternalFrame {
 
 		chkMaster.setSelected(false);
 		chkMaster.setEnabled(false);
-		permissoes.values().forEach(cb -> cb.setSelected(false));
+
+		permissoesGranulares.values().forEach(map -> map.values().forEach(chk -> chk.setSelected(false)));
 		chkTodosPorCategoria.values().forEach(cb -> cb.setSelected(false));
+
 	}
 
 	public void desativarAtivar(boolean ativa) {
@@ -302,19 +447,25 @@ public class UsuarioView extends JInternalFrame {
 		txtConfirmarSenha.setEnabled(ativa);
 		cbStatus.setEnabled(ativa);
 		chkMaster.setEnabled(ativa);
-		permissoes.values().forEach(cb -> cb.setEnabled(ativa));
+
+		permissoesGranulares.values().forEach(map -> map.values().forEach(chk -> chk.setEnabled(ativa)));
 		chkTodosPorCategoria.values().forEach(cb -> cb.setEnabled(ativa));
 	}
 
-	public void setPermissaoSelecionada(MenuChave chave, boolean selecionada) {
-		JCheckBox chk = permissoes.get(chave);
-		if (chk != null) {
-			chk.setSelected(selecionada);
+	public void setPermissaoSelecionada(MenuChave chave, String tipo, boolean selecionada) {
+		Map<String, JCheckBox> tiposMap = permissoesGranulares.get(chave);
+		if (tiposMap != null) {
+			JCheckBox chk = tiposMap.get(tipo); // tipo aqui é "READ", "WRITE" ou "DELETE"
+			if (chk != null) {
+				chk.setSelected(selecionada);
+			}
 		}
 	}
 
 	public void desmarcarTodasPermissoes() {
-		permissoes.values().forEach(chk -> chk.setSelected(false));
+		// Limpa as granulares (READ, WRITE, DELETE)
+		permissoesGranulares.values().forEach(map -> map.values().forEach(chk -> chk.setSelected(false)));
+		// Limpa os seletores de categoria
 		chkTodosPorCategoria.values().forEach(chk -> chk.setSelected(false));
 	}
 
@@ -325,21 +476,20 @@ public class UsuarioView extends JInternalFrame {
 		}
 	}
 
-	public void marcarTodosDaCategoria(String categoria, boolean selecionado) {
-		List<MenuChave> chaves = gruposPermissoes.get(categoria);
-		if (chaves != null) {
-			for (MenuChave chave : chaves) {
-				setPermissaoSelecionada(chave, selecionado);
-			}
-		}
-	}
-
 	public void bloquearStatus(boolean editavel) {
 		this.cbStatus.setEnabled(editavel);
 	}
 
 	public void bloquearGradePermissoes(boolean editavel) {
-		getPermissoes().values().forEach(chk -> chk.setEnabled(editavel));
+		// Primeiro, entramos em cada MenuChave do Map principal
+		getPermissoesGranulares().values().forEach(tiposMap -> {
+			// Agora, para cada mapa de tipos (READ, WRITE, DELETE), desativamos os
+			// checkboxes
+			tiposMap.values().forEach(chk -> chk.setEnabled(editavel));
+		});
+
+		// Desativa também os seletores de "Marcar Todos" por categoria
 		getChkTodosPorCategoria().values().forEach(chk -> chk.setEnabled(editavel));
 	}
+
 }

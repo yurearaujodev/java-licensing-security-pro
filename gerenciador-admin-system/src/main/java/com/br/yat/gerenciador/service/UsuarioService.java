@@ -2,17 +2,21 @@ package com.br.yat.gerenciador.service;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
-
-import org.slf4j.LoggerFactory;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.br.yat.gerenciador.configurations.ConnectionFactory;
 import com.br.yat.gerenciador.dao.LogSistemaDao;
 import com.br.yat.gerenciador.dao.empresa.EmpresaDao;
 import com.br.yat.gerenciador.dao.usuario.MenuSistemaDao;
+import com.br.yat.gerenciador.dao.usuario.PerfilPermissoesDao;
 import com.br.yat.gerenciador.dao.usuario.PermissaoDao;
 import com.br.yat.gerenciador.dao.usuario.PermissaoMenuDao;
 import com.br.yat.gerenciador.dao.usuario.UsuarioDao;
@@ -36,7 +40,7 @@ import com.br.yat.gerenciador.util.AuditLogHelper;
 import com.br.yat.gerenciador.util.TimeUtils;
 import com.br.yat.gerenciador.validation.UsuarioValidationUtils;
 
-public class UsuarioService {
+public class UsuarioService extends BaseService {
 
 	private static final String ESPECIAIS = "!@#$%^&*(),.?\":{}|<>";
 	private static final EnumSet<RegraSenha> REGRAS_OBRIGATORIAS = EnumSet.of(RegraSenha.MAIUSCULA, RegraSenha.NUMERO,
@@ -47,14 +51,16 @@ public class UsuarioService {
 	public Usuario autenticar(String email, char[] senhaPura) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			UsuarioDao dao = new UsuarioDao(conn);
-			UsuarioPermissaoDao permDao = new UsuarioPermissaoDao(conn);
 			LogSistemaDao logDao = new LogSistemaDao(conn);
 			ParametroSistemaService parametroService = new ParametroSistemaService();
-			int maxTentativas = parametroService.getInt(ParametroChave.LOGIN_MAX_TENTATIVAS, 5);
 
+			// 1. Configurações de segurança
+			int maxTentativas = parametroService.getInt(ParametroChave.LOGIN_MAX_TENTATIVAS, 5);
 			int minutosBloqueio = parametroService.getInt(ParametroChave.LOGIN_TEMPO_BLOQUEIO_MIN, 5);
+
 			Usuario user = dao.buscarPorEmail(email);
 
+			// 2. Validações Básicas
 			if (user == null) {
 				logDao.save(
 						AuditLogHelper.gerarLogErro("SEGURANCA", "LOGIN_FALHA", "usuario", "Inexistente: " + email));
@@ -63,17 +69,26 @@ public class UsuarioService {
 
 			if (StatusUsuario.BLOQUEADO == user.getStatus()) {
 				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-						"ESTA CONTA ESTÁ BLOQUEADA PERMANENTEMENTE. PROCURE O ADMINISTRADOR.");
-			}
-			if (permDao.estaBloqueado(user.getIdUsuario())) {
-				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-						"ACESSO SUSPENSO TEMPORARIAMENTE. AGUARDE O PRAZO DE " + minutosBloqueio + " MINUTOS.");
+						"ESTA CONTA ESTÁ BLOQUEADA PERMANENTEMENTE.");
 			}
 
 			if (StatusUsuario.INATIVO == user.getStatus()) {
 				throw new ValidationException(ValidationErrorType.INVALID_FIELD, "ESTE USUÁRIO ESTÁ INATIVO.");
 			}
 
+			// 3. Verificação de Bloqueio Temporário (AQUI MUDOU)
+			if (user.getBloqueadoAte() != null) {
+				if (user.getBloqueadoAte().isAfter(java.time.LocalDateTime.now())) {
+					throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+							"ACESSO SUSPENSO TEMPORARIAMENTE ATÉ "
+									+ TimeUtils.formatarDataHora(user.getBloqueadoAte()));
+				} else {
+					// Se o tempo passou, limpamos o bloqueio na DAO
+					dao.resetTentativasFalhas(user.getIdUsuario());
+				}
+			}
+
+			// 4. Validação da Senha
 			boolean senhaValida = PasswordUtils.verifyPassword(senhaPura, user.getSenhaHashString());
 
 			if (!senhaValida) {
@@ -81,23 +96,17 @@ public class UsuarioService {
 					int tentativasAtuais = dao.incrementarERetornarTentativas(email);
 
 					if (tentativasAtuais >= maxTentativas) {
+						LocalDateTime ate = LocalDateTime.now().plusMinutes(minutosBloqueio);
+						dao.bloquearTemporariamente(user.getIdUsuario(), ate);
 
-						if (permDao.jaTeveBloqueioTemporario(user.getIdUsuario())) {
-							dao.bloquearUsuario(user.getIdUsuario());
-							logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "BLOQUEIO_PERMANENTE", "usuario",
-									user.getIdUsuario(), "ATIVO", "BLOQUEADO"));
-							throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-									"LIMITE ATINGIDO. SUA CONTA FOI BLOQUEADA POR SEGURANÇA.");
-						} else {
-							permDao.bloquearTemporariamente(user.getIdUsuario(), minutosBloqueio);
+						// IMPORTANTE: Atualizar o objeto em memória para refletir o bloqueio imediato
+						user.setBloqueadoAte(ate);
 
-							dao.resetTentativasFalhas(user.getIdUsuario());
+						logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "BLOQUEIO_TEMPORARIO", "usuario",
+								user.getIdUsuario(), "Tentativas: " + tentativasAtuais, "Até: " + ate));
 
-							logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "BLOQUEIO_TEMPORARIO", "usuario",
-									user.getIdUsuario(), null, "" + minutosBloqueio + " min"));
-							throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-									"LIMITE ATINGIDO. CONTA SUSPENSA POR " + minutosBloqueio + " MINUTOS.");
-						}
+						throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+								"LIMITE ATINGIDO. CONTA SUSPENSA ATÉ " + TimeUtils.formatarDataHora(ate));
 					}
 
 					throw new ValidationException(ValidationErrorType.INVALID_FIELD,
@@ -106,7 +115,9 @@ public class UsuarioService {
 				throw new ValidationException(ValidationErrorType.INVALID_FIELD, "SENHA INCORRETA.");
 			}
 
+			// 5. Sucesso
 			dao.atualizarUltimoLogin(user.getIdUsuario());
+			// Resetamos tentativas no sucesso para garantir
 			dao.resetTentativasFalhas(user.getIdUsuario());
 
 			logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "LOGIN_SUCESSO", "usuario", user.getIdUsuario(),
@@ -122,8 +133,10 @@ public class UsuarioService {
 		}
 	}
 
-	public List<Usuario> listarUsuarios(String termo) {
+	public List<Usuario> listarUsuarios(String termo, Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
+			validarAcesso(conn, executor, MenuChave.CADASTROS_USUARIO, "READ");
+
 			UsuarioDao dao = new UsuarioDao(conn);
 			return (termo == null || termo.trim().isEmpty()) ? dao.listAll() : dao.listarPorNomeOuEmail(termo);
 		} catch (SQLException e) {
@@ -131,8 +144,10 @@ public class UsuarioService {
 		}
 	}
 
-	public List<Usuario> listarUsuariosUltimoLogin(String termo) {
+	public List<Usuario> listarUsuariosUltimoLogin(String termo, Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
+			validarAcesso(conn, executor, MenuChave.CADASTROS_USUARIO, "READ");
+
 			UsuarioDao dao = new UsuarioDao(conn);
 			List<Usuario> lista = (termo == null || termo.trim().isEmpty()) ? dao.listAll()
 					: dao.listarPorNomeOuEmail(termo);
@@ -149,26 +164,28 @@ public class UsuarioService {
 	}
 
 	public List<Usuario> listarExcluidos(Usuario executor) {
-
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES);
+			validarAcesso(conn, executor, MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES, "READ");
+
 			return new UsuarioDao(conn).listarExcluidos();
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO LISTAR EXCLUÍDOS", e);
 		}
 	}
 
-	public void salvarUsuario(Usuario usuario, List<MenuChave> chavesSelecionadas, Usuario executor) {
-		validarDados(usuario, chavesSelecionadas);
+	public void salvarUsuario(Usuario usuario, Map<MenuChave, List<String>> permissoesGranulares,
+			Map<MenuChave, String> datasExpiracao, Usuario executor) {
+		validarDados(usuario, permissoesGranulares);
 		validarRestricoesMaster(usuario);
 
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			ConnectionFactory.beginTransaction(conn);
-			validarAcesso(conn, executor, CHAVE_SALVAR);
+			validarAcesso(conn, executor, CHAVE_SALVAR, "WRITE");
+
 			try {
 				UsuarioDao usuarioDao = new UsuarioDao(conn);
 				UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
-				PermissaoDao permissaoDao = new PermissaoDao(conn);
+				LogSistemaDao logDao = new LogSistemaDao(conn);
 
 				validarRegrasPersistencia(usuarioDao, usuario);
 
@@ -178,33 +195,57 @@ public class UsuarioService {
 				Usuario alvoExistente = null;
 				if (!isNovo) {
 					alvoExistente = usuarioDao.searchById(usuario.getIdUsuario());
-
 					if (alvoExistente == null) {
 						throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND,
-								"USUÁRIO NÃO ENCONTRADO PARA ATUALIZAÇÃO.");
+								"USUÁRIO NÃO ENCONTRADO.");
 					}
-
 					estadoAnterior = Usuario.snapshotParaValidacaoSenha(alvoExistente);
 				}
 
+				// Validação de poder entre executor e alvo
 				if (alvoExistente != null && !temMaisPoder(conn, executor, alvoExistente)) {
 					throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-							"Você não tem permissão para alterar este usuário, pois ele possui privilégios superiores.");
+							"Privilégios insuficientes para alterar este usuário.");
 				}
+
 				ParametroSistemaService parametroService = new ParametroSistemaService();
 				boolean senhaAlterada = processarSenha(parametroService, usuario, isNovo, executor, estadoAnterior);
 
+				// 1. SALVAMOS O USUÁRIO PRIMEIRO (Para garantir o ID se for novo)
 				salvarOuAtualizar(usuarioDao, usuario, estadoAnterior, isNovo, conn);
 
 				if (senhaAlterada && !isNovo) {
-					usuarioDao.atualizarUltimaAlteracaoSenha(usuario.getIdUsuario());
+					logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "SENHA_ALTERADA", "usuario",
+							usuario.getIdUsuario(), "O executor alterou a senha deste usuário.", null));
 				}
-				sincronizarPermissoes(conn, upDao, permissaoDao, usuario, chavesSelecionadas, executor);
+
+				// 2. CARREGAMOS AS PERMISSÕES (Agora o usuario.getIdUsuario() nunca é nulo)
+				List<UsuarioPermissao> permissoesPerfil = carregarPermissoesDoPerfil(conn, usuario, executor);
+				List<UsuarioPermissao> permissoesDiretas = carregarPermissoesGranulares(conn, usuario,
+						permissoesGranulares, datasExpiracao, executor);
+
+				// 3. MERGE DAS PERMISSÕES (Evita duplicados)
+				Map<Integer, UsuarioPermissao> mapa = new LinkedHashMap<>();
+				permissoesPerfil.forEach(up -> mapa.put(up.getIdPermissoes(), up));
+				permissoesDiretas.forEach(up -> mapa.put(up.getIdPermissoes(), up));
+
+				List<UsuarioPermissao> todasAsPermissoesParaSincronizar = new ArrayList<>(mapa.values());
+
+				// Garante o vínculo do ID do usuário em cada objeto de permissão
+				todasAsPermissoesParaSincronizar.forEach(up -> up.setIdUsuario(usuario.getIdUsuario()));
+
+				// 4. DOUBLE VALIDATION: Hierarquia de Acesso e de Tempo
+				validarHierarquiaUsuarioPermissao(conn, executor, todasAsPermissoesParaSincronizar);
+
+				// 5. SINCRONIZAÇÃO FINAL
+				upDao.syncByUsuario(usuario.getIdUsuario(), todasAsPermissoesParaSincronizar);
+
+				registrarLogPermissoesFinal(conn, usuario, todasAsPermissoesParaSincronizar);
 
 				ConnectionFactory.commitTransaction(conn);
 			} catch (Exception e) {
 				ConnectionFactory.rollbackTransaction(conn);
-				registrarLogErro("SALVAR_USUARIO", e);
+				registrarLogErro("ERRO", "SALVAR_USUARIO", "usuario", e);
 				throw e;
 			}
 		} catch (SQLException e) {
@@ -220,13 +261,9 @@ public class UsuarioService {
 			usuario.setIdUsuario(id);
 			logDao.save(AuditLogHelper.gerarLogSucesso("CADASTRO", "INSERIR_USUARIO", "usuario", id, null, usuario));
 		} else {
+			// Se estiver reativando o usuário (Inativo -> Ativo) ou tirando de Bloqueado
 			if (anterior.getStatus() != StatusUsuario.ATIVO && usuario.getStatus() == StatusUsuario.ATIVO) {
-
 				dao.resetTentativasFalhas(usuario.getIdUsuario());
-
-				// new
-				// UsuarioPermissaoDao(conn).removerBloqueioTemporario(usuario.getIdUsuario());
-
 				logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "REATIVACAO_MANUAL", "usuario",
 						usuario.getIdUsuario(), anterior.getStatus().name(), "ATIVO"));
 			}
@@ -248,6 +285,8 @@ public class UsuarioService {
 					"SEGURANÇA: VOCÊ NÃO PODE EXCLUIR SUA PRÓPRIA CONTA.");
 		}
 		try (Connection conn = ConnectionFactory.getConnection()) {
+			validarAcesso(conn, executor, MenuChave.CADASTROS_USUARIO, "DELETE");
+
 			UsuarioDao dao = new UsuarioDao(conn);
 			LogSistemaDao logDao = new LogSistemaDao(conn);
 			Usuario anterior = dao.searchById(idUsuario);
@@ -269,14 +308,15 @@ public class UsuarioService {
 			logDao.save(AuditLogHelper.gerarLogSucesso("CADASTRO", "EXCLUIR_USUARIO", "usuario", idUsuario, anterior,
 					null));
 		} catch (SQLException e) {
+			registrarLogErro("ERRO", "EXCLUIR_USUARIO", "usuario", e);
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO ACESSAR BANCO", e);
 		}
 	}
 
 	public void restaurarUsuario(int idUsuario, Usuario executor) {
-
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES);
+			validarAcesso(conn, executor, MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES, "DELETE");
+
 			UsuarioDao dao = new UsuarioDao(conn);
 			dao.restaurar(idUsuario);
 
@@ -285,6 +325,24 @@ public class UsuarioService {
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO RESTAURAR", e);
 		}
+	}
+
+	private List<UsuarioPermissao> carregarPermissoesDoPerfil(Connection conn, Usuario usuario, Usuario executor) {
+		if (usuario.getPerfil() == null || usuario.getPerfil().getIdPerfil() == null) {
+			return List.of();
+		}
+
+		PerfilPermissoesDao ppDao = new PerfilPermissoesDao(conn);
+
+		return ppDao.listarPermissoesPorPerfil(usuario.getPerfil().getIdPerfil()).stream().map(p -> {
+			UsuarioPermissao up = new UsuarioPermissao();
+			up.setIdUsuario(usuario.getIdUsuario());
+			up.setIdPermissoes(p.getIdPermissoes());
+			up.setAtiva(true);
+			up.setHerdada(true);
+			up.setUsuarioConcedeu(executor);
+			return up;
+		}).toList();
 	}
 
 	private boolean processarSenha(ParametroSistemaService parametroService, Usuario usuario, boolean isNovo,
@@ -377,59 +435,56 @@ public class UsuarioService {
 		throw new ValidationException(ValidationErrorType.INVALID_FIELD, "A SENHA DEVE CONTER PELO MENOS " + msg + ".");
 	}
 
-	private void sincronizarPermissoes(Connection conn, UsuarioPermissaoDao upDao, PermissaoDao pDao, Usuario usuario,
-			List<MenuChave> chaves, Usuario executor) {
-
-		List<MenuChave> chavesAnteriores = upDao.buscarChavesAtivasPorUsuario(usuario.getIdUsuario());
-
-		if (UsuarioPolicy.isPrivilegiado(usuario)) {
-			chaves = UsuarioPolicy.permissoesCompletas();
-		}
-
-		validarHierarquiaPermissao(conn, chaves, executor);
-
+	private List<UsuarioPermissao> carregarPermissoesGranulares(Connection conn, Usuario usuario,
+			Map<MenuChave, List<String>> permissoesGranulares, Map<MenuChave, String> datasTexto, Usuario executor) {
 		List<UsuarioPermissao> novasEntidades = new ArrayList<>();
-		for (MenuChave chave : chaves) {
-			int idPermissao = garantirInfraestruturaMenu(conn, chave);
+		PermissaoDao pDao = new PermissaoDao(conn);
 
-			UsuarioPermissao up = new UsuarioPermissao();
-			up.setIdUsuario(usuario.getIdUsuario());
-			up.setIdPermissoes(idPermissao);
-			up.setAtiva(true);
-			up.setUsuarioConcedeu(executor != null ? executor : usuario);
-
-			novasEntidades.add(up);
+		if (usuario.isMaster()) {
+			for (MenuChave chave : MenuChave.values()) {
+				List<Integer> ids = garantirInfraestruturaMenu(conn, chave);
+				for (Integer id : ids) {
+					UsuarioPermissao up = criarEntidadePermissao(usuario.getIdUsuario(), id, executor);
+					up.setHerdada(false);
+					novasEntidades.add(up);
+				}
+			}
+			return novasEntidades;
 		}
 
-		upDao.syncByUsuario(usuario.getIdUsuario(), novasEntidades);
+		permissoesGranulares.forEach((chave, tipos) -> {
+			LocalDateTime dataExp = null;
+			if (datasTexto != null && datasTexto.containsKey(chave)) {
+				dataExp = TimeUtils.parseDataHora(datasTexto.get(chave));
+			}
+			for (String tipo : tipos) {
+				Permissao p = pDao.findByChaveETipo(chave.name(), tipo);
+				if (p != null) {
+					UsuarioPermissao up = criarEntidadePermissao(usuario.getIdUsuario(), p.getIdPermissoes(), executor);
+					up.setHerdada(false);
+					up.setExpiraEm(dataExp);
+					novasEntidades.add(up);
+				}
+			}
+		});
 
-		registrarLogPermissoes(conn, usuario, chavesAnteriores, chaves);
+		return novasEntidades;
 	}
 
-	private void registrarLogErro(String operacao, Exception e) {
-		try (Connection connLog = ConnectionFactory.getConnection()) {
-			new LogSistemaDao(connLog).save(AuditLogHelper.gerarLogErro("ERRO", operacao, "usuario", e.getMessage()));
-		} catch (Exception ex) {
-			LoggerFactory.getLogger(UsuarioService.class).error("Falha ao registrar log de erro", ex);
-		}
+	private UsuarioPermissao criarEntidadePermissao(Integer idUsuario, Integer idPermissao, Usuario executor) {
+		UsuarioPermissao up = new UsuarioPermissao();
+		up.setIdUsuario(idUsuario);
+		up.setIdPermissoes(idPermissao);
+		up.setAtiva(true);
+		return up;
 	}
 
-	private void validarAcesso(Connection conn, Usuario executor, MenuChave chaveNecessaria) {
-		if (executor == null) {
-			throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "Usuário não autenticado.");
+	public Usuario buscarMasterUnico() {
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			return new UsuarioDao(conn).buscarMasterUnico();
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO BUSCAR MASTER", e);
 		}
-		if (UsuarioPolicy.ignoraValidacaoPermissao(executor)) {
-			return;
-		}
-
-		UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
-		List<MenuChave> permissoesAtivas = upDao.buscarChavesAtivasPorUsuario(executor.getIdUsuario());
-
-		if (!permissoesAtivas.contains(chaveNecessaria)) {
-			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-					"ACESSO NEGADO: O SEU UTILIZADOR NÃO TEM PERMISSÃO PARA ESTA OPERAÇÃO.");
-		}
-
 	}
 
 	private void validarRegrasPersistencia(UsuarioDao dao, Usuario usuario) {
@@ -445,6 +500,15 @@ public class UsuarioService {
 			Usuario base = dao.searchById(usuario.getIdUsuario());
 			if (base != null && base.isMaster())
 				usuario.setMaster(true);
+		}
+	}
+
+	public List<String> listarPermissoesAtivasPorMenu(int idUsuario, MenuChave menu) {
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			PermissaoDao pDao = new PermissaoDao(conn);
+			return pDao.buscarTiposAtivosPorUsuarioEMenu(idUsuario, menu.name());
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO BUSCAR PERMISSÕES", e);
 		}
 	}
 
@@ -476,19 +540,59 @@ public class UsuarioService {
 		if (executor == null || UsuarioPolicy.isPrivilegiado(executor))
 			return true;
 
-		List<MenuChave> permissoesExecutor = carregarPermissoesAtivas(conn, executor.getIdUsuario());
+		UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
+
 		for (MenuChave chave : chavesNecessarias) {
-			if (!permissoesExecutor.contains(chave)) {
+			if (!upDao.usuarioPossuiPermissaoEspecifica(executor.getIdUsuario(), chave.name(), "WRITE")) {
 				return false;
 			}
 		}
 		return true;
 	}
 
-	private void validarHierarquiaPermissao(Connection conn, List<MenuChave> chavesAlvo, Usuario executor) {
-		if (!possuiTodasAsPermissoes(conn, executor, chavesAlvo)) {
-			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-					"SEGURANÇA: VOCÊ NÃO PODE CONCEDER PERMISSÕES QUE NÃO POSSUI.");
+	private void validarHierarquiaUsuarioPermissao(Connection conn, Usuario executor,
+			List<UsuarioPermissao> permissoesSendoAtribuidas) {
+
+		if (executor == null || UsuarioPolicy.isPrivilegiado(executor)) {
+			return;
+		}
+
+		UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
+		PermissaoDao pDao = new PermissaoDao(conn);
+
+		// 1. Buscamos as permissões atuais do EXECUTOR (incluindo as datas de expiração
+		// dele)
+		List<UsuarioPermissao> permissoesDoExecutor = upDao.listarPorUsuario(executor.getIdUsuario());
+
+		// Criamos um mapa: ID_PERMISSAO -> DATA_EXPIRACAO para busca rápida
+		Map<Integer, java.time.LocalDateTime> mapaExecutor = permissoesDoExecutor.stream()
+				.collect(Collectors.toMap(UsuarioPermissao::getIdPermissoes,
+						up -> up.getExpiraEm() == null ? java.time.LocalDateTime.MAX : up.getExpiraEm(),
+						(existente, substituto) -> existente // Caso haja duplicata, mantém a primeira
+				));
+
+		for (UsuarioPermissao upAlvo : permissoesSendoAtribuidas) {
+			// 2. Tranca 1: O executor possui essa permissão?
+			if (!mapaExecutor.containsKey(upAlvo.getIdPermissoes())) {
+				Permissao p = pDao.findById(upAlvo.getIdPermissoes());
+				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+						"VOCÊ NÃO PODE CONCEDER [" + (p != null ? p.getChave() : "ID " + upAlvo.getIdPermissoes())
+								+ "]. VOCÊ NÃO POSSUI ESTE ACESSO.");
+			}
+
+			// 3. Tranca 2: Hierarquia de Tempo (Double Validation)
+			java.time.LocalDateTime expiraExecutor = mapaExecutor.get(upAlvo.getIdPermissoes());
+			java.time.LocalDateTime expiraAlvo = upAlvo.getExpiraEm() == null ? java.time.LocalDateTime.MAX
+					: upAlvo.getExpiraEm();
+
+			if (expiraAlvo.isAfter(expiraExecutor)) {
+				Permissao p = pDao.findById(upAlvo.getIdPermissoes());
+				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+						"DATA INVÁLIDA: Sua permissão para [" + p.getChave() + "] expira em "
+								+ (expiraExecutor.equals(java.time.LocalDateTime.MAX) ? "nunca"
+										: TimeUtils.formatarDataHora(expiraExecutor))
+								+ ". Você não pode conceder um prazo maior que o seu.");
+			}
 		}
 	}
 
@@ -497,6 +601,16 @@ public class UsuarioService {
 			return new UsuarioPermissaoDao(conn).buscarChavesAtivasPorUsuario(idUsuario);
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
+		}
+	}
+
+	public List<Permissao> carregarPermissoesDetalhadas(Integer idUsuario) {
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			PermissaoDao pDao = new PermissaoDao(conn);
+			return pDao.listarPermissoesAtivasPorUsuario(idUsuario);
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR,
+					"ERRO AO CARREGAR PERMISSÕES DETALHADAS", e);
 		}
 	}
 
@@ -509,27 +623,41 @@ public class UsuarioService {
 		}
 	}
 
-	private int garantirInfraestruturaMenu(Connection conn, MenuChave chave) {
+	private List<Integer> garantirInfraestruturaMenu(Connection conn, MenuChave chave) {
 		PermissaoDao pDao = new PermissaoDao(conn);
-		var permissaoBanco = pDao.findByChave(chave.name());
-
-		if (permissaoBanco != null)
-			return permissaoBanco.getIdPermissoes();
-
-		permissaoBanco = new Permissao();
-		permissaoBanco.setChave(chave.name());
-		permissaoBanco.setTipo("MENU");
-		String categoria = extrairCategoria(chave.name());
-		permissaoBanco.setCategoria(categoria);
-
-		int idPerm = pDao.save(permissaoBanco);
-
 		MenuSistemaDao menuDao = new MenuSistemaDao(conn);
+		PermissaoMenuDao pmDao = new PermissaoMenuDao(conn);
+
+		String categoria = extrairCategoria(chave.name());
+
+		// 1. Garante que o Menu existe na tabela menu_sistema
 		int idMenu = menuDao.save(chave.name(), categoria);
 
-		new PermissaoMenuDao(conn).vincular(idPerm, idMenu);
+		List<Integer> idsGerados = new ArrayList<>();
+		List<String> tiposOperacao = List.of("READ", "WRITE", "DELETE");
 
-		return idPerm;
+		for (String tipo : tiposOperacao) {
+			// Busca se já existe a combinação CHAVE + TIPO (ex: CADASTROS_USUARIO + READ)
+			var permissaoBanco = pDao.findByChaveETipo(chave.name(), tipo);
+
+			int idPerm;
+			if (permissaoBanco == null) {
+				// Se não existe, cria a nova permissão granular
+				Permissao novaP = new Permissao();
+				novaP.setChave(chave.name());
+				novaP.setTipo(tipo);
+				novaP.setCategoria(categoria);
+				novaP.setDescricao("Permissão de " + tipo + " em " + chave.name());
+
+				idPerm = pDao.save(novaP);
+				pmDao.vincular(idPerm, idMenu);
+			} else {
+				idPerm = permissaoBanco.getIdPermissoes();
+			}
+			idsGerados.add(idPerm);
+		}
+
+		return idsGerados;
 	}
 
 	public boolean podeEditarPermissoes(Usuario u) {
@@ -544,9 +672,9 @@ public class UsuarioService {
 		}
 	}
 
-	private void validarDados(Usuario usuario, List<MenuChave> chaves) {
+	private void validarDados(Usuario usuario, Map<MenuChave, List<String>> chaves) {
 		UsuarioValidationUtils.validarUsuario(usuario);
-		if (chaves == null || chaves.isEmpty()) {
+		if (chaves == null || chaves.isEmpty() && (usuario.getPerfil() == null)) {
 			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING,
 					"O USUÁRIO DEVE TER AO MENOS UMA PERMISSÃO.");
 		}
@@ -560,15 +688,35 @@ public class UsuarioService {
 		}
 	}
 
-	private void registrarLogPermissoes(Connection conn, Usuario usuario, List<MenuChave> anteriores,
-			List<MenuChave> novas) {
-
+	private void registrarLogPermissoesFinal(Connection conn, Usuario usuario, List<UsuarioPermissao> finais) {
 		LogSistemaDao logDao = new LogSistemaDao(conn);
-		String antes = anteriores != null ? anteriores.toString() : "NENHUMA";
-		String depois = usuario.isMaster() ? "PACOTE_MASTER_COMPLETO" : (novas != null ? novas.toString() : "NENHUMA");
+		PermissaoDao pDao = new PermissaoDao(conn);
 
+		// 1. PERFORMANCE: Busca todas as permissões ativas do sistema (1 única query)
+		List<Permissao> todasPermissoes = pDao.listAll();
+
+		// 2. Transforma em um mapa para busca O(1) em memória
+		Map<Integer, Permissao> mapaRef = todasPermissoes.stream()
+				.collect(Collectors.toMap(Permissao::getIdPermissoes, p -> p));
+
+		// 3. Monta o resumo formatado
+		String resumo = finais.stream().map(up -> {
+			// Busca no mapa em vez de ir no banco
+			Permissao p = mapaRef.get(up.getIdPermissoes());
+
+			String nome = (p != null) ? p.getChave() + " (" + p.getTipo() + ")" : "ID:" + up.getIdPermissoes();
+			String origem = up.isHerdada() ? "[PERFIL]" : "[DIRETA]";
+
+			// Formata a expiração se existir (Double Validation visual no log)
+			String expira = (up.getExpiraEm() != null) ? " EXPIRA EM: " + TimeUtils.formatarDataHora(up.getExpiraEm())
+					: " (PERMANENTE)";
+
+			return nome + origem + expira;
+		}).collect(Collectors.joining(" | "));
+
+		// 4. Grava o log de auditoria
 		logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "SINCRONIZAR_PERMISSOES", "usuario_permissao",
-				usuario.getIdUsuario(), antes, depois));
+				usuario.getIdUsuario(), "Sincronização de acessos realizada com sucesso.", resumo));
 	}
 
 	private String extrairCategoria(String nomeEnum) {

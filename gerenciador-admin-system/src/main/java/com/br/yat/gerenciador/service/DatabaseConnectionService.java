@@ -6,18 +6,17 @@ import com.br.yat.gerenciador.model.dto.DatabaseConfigDTO;
 
 public class DatabaseConnectionService {
 
-    private final DatabaseSetupService setupService;
+	private final DatabaseSetupService setupService;
 
-    public DatabaseConnectionService(DatabaseSetupService setupService) {
-        this.setupService = setupService;
-    }
+	public DatabaseConnectionService(DatabaseSetupService setupService) {
+		this.setupService = setupService;
+	}
 
-    public DatabaseStatus testarConfiguracao(DatabaseConfigDTO dto) {
+	public DatabaseStatus testarConfiguracao(DatabaseConfigDTO dto) {
 
-        setupService.saveDatabaseConfigConfiguration(dto);
+		setupService.saveDatabaseConfigConfiguration(dto);
 
-    
-        ConnectionFactory.shutdown();
-        return ConnectionFactory.reloadAndCheck();
-    }
+		ConnectionFactory.shutdown();
+		return ConnectionFactory.reloadAndCheck();
+	}
 }

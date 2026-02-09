@@ -217,18 +217,50 @@ public class EmpresaController extends BaseController {
 		view.getTabbedPane().setSelectedIndex(0);
 		atualizarTextoSalvar();
 	}
-
+	
 	private void setModoEdicao(boolean ativo) {
-		boolean temPermissaoSalvar = Sessao.getUsuario().isMaster()
-				|| Sessao.getPermissoes().contains(MenuChave.CADASTROS_EMPRESA_CLIENTE);
+	    Usuario logado = Sessao.getUsuario();
+	    
+	    // 1. Verificamos se é o setup inicial (sem ninguém logado e cadastrando a fornecedora)
+	    boolean isSetupInicial = (logado == null && tipoCadastro == TipoCadastro.FORNECEDORA);
+	    
+	    // 2. Verificamos as permissões normais (apenas se houver alguém logado)
+	    boolean temPermissaoSalvar = false;
+	    if (isSetupInicial) {
+	        temPermissaoSalvar = true; // Liberado para o setup
+	    } else if (logado != null) {
+	        // Lógica normal de permissão do sistema
+	        temPermissaoSalvar = logado.isMaster() || 
+	            Sessao.getPermissoes().contains(MenuChave.CADASTROS_EMPRESA_CLIENTE);
+	    }
 
-		ePrincipal.desativarAtivar(ativo);
-		eEndereco.desativarAtivar(ativo);
-		eContato.desativarAtivar(ativo);
+	    // 3. Aplicamos as travas nos componentes
+	    ePrincipal.desativarAtivar(ativo);
+	    eEndereco.desativarAtivar(ativo);
+	    eContato.desativarAtivar(ativo);
+	    
+	    if (tipoCadastro == TipoCadastro.FORNECEDORA) {
+	        eFiscal.desativarAtivar(ativo);
+	        eRepresentante.desativarAtivar(ativo);
+	        eBancario.desativarAtivar(ativo);
+	        eComplementar.desativarAtivar(ativo);
+	    }
 
-		view.getBtnSalvar().setEnabled(ativo && temPermissaoSalvar);
-		view.getBtnNovo().setEnabled(!ativo && tipoCadastro == TipoCadastro.CLIENTE && temPermissaoSalvar);
+	    view.getBtnSalvar().setEnabled(ativo && temPermissaoSalvar);
+	    view.getBtnNovo().setEnabled(!ativo && tipoCadastro == TipoCadastro.CLIENTE && temPermissaoSalvar);
 	}
+
+//	private void setModoEdicao(boolean ativo) {
+//		boolean temPermissaoSalvar = Sessao.getUsuario().isMaster()
+//				|| Sessao.getPermissoes().contains(MenuChave.CADASTROS_EMPRESA_CLIENTE);
+//
+//		ePrincipal.desativarAtivar(ativo);
+//		eEndereco.desativarAtivar(ativo);
+//		eContato.desativarAtivar(ativo);
+//
+//		view.getBtnSalvar().setEnabled(ativo && temPermissaoSalvar);
+//		view.getBtnNovo().setEnabled(!ativo && tipoCadastro == TipoCadastro.CLIENTE && temPermissaoSalvar);
+//	}
 
 	private void atualizarAbas() {
 		view.getTabbedPane().removeAll();

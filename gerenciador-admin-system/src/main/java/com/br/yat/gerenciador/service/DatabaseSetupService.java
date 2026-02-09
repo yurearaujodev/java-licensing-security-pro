@@ -56,11 +56,11 @@ public class DatabaseSetupService {
 			DatabaseConfigLoader.validateRequiredProperties(props);
 
 			FileManager.saveText(DB_CONFIG_FILE, toPropertiesString(props));
-			logger.info("Configuração de banco salva com sucesso em {}", DB_CONFIG_FILE);
+			logger.info("Configuração de banco salva com sucesso.");
 
 		} catch (Exception e) {
-			logger.error("FALHA AO SALVAR CONFIGURAÇÃO DO BANCO", e);
-			throw new CryptoException("ERRO TÉCNICO AO GRAVAR CONFIGURAÇÕES", e);
+			logger.error("ERRO CRÍTICO AO SALVAR CONFIGURAÇÃO: {}", e.getMessage());
+            throw new CryptoException("ERRO TÉCNICO AO GRAVAR CONFIGURAÇÕES", e);
 		} finally {
 			SensitiveData.safeClear(encryptedPassword);
 			SensitiveData.safeClear(encryptedUrl);

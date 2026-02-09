@@ -17,36 +17,23 @@ public class LogSistemaDao extends GenericDao<LogSistema> {
 	}
 
 	public int save(LogSistema log) {
-		String sql = "INSERT INTO " + tableName 
-				+ " (tipo, acao, entidade, id_entidade, dados_anteriores, dados_novos, "
+		String sql = "INSERT INTO " + tableName + " (tipo, acao, entidade, id_entidade, dados_anteriores, dados_novos, "
 				+ "sucesso, mensagem_erro, ip_origem, data_hora, id_usuario) "
 				+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 		Integer idUsuario = (log.getUsuario() != null) ? log.getUsuario().getIdUsuario() : null;
 
-		int id = executeInsert(sql, 
-				log.getTipo(), 
-				log.getAcao(), 
-				log.getEntidade(), 
-				log.getIdEntidade(),
-				log.getDadosAnteriores(), 
-				log.getDadosNovos(), 
-				log.isSucesso(), 
-				log.getMensagemErro(),
-				log.getIpOrigem(), 
-				log.getDataHora(), 
-				idUsuario);
+		int id = executeInsert(sql, log.getTipo(), log.getAcao(), log.getEntidade(), log.getIdEntidade(),
+				log.getDadosAnteriores(), log.getDadosNovos(), log.isSucesso(), log.getMensagemErro(),
+				log.getIpOrigem(), log.getDataHora(), idUsuario);
 
 		log.setIdLog(id);
 		return id;
 	}
 
 	public List<LogSistema> listarComFiltros(String tipo, String acao, String usuarioNome) {
-		StringBuilder sql = new StringBuilder(
-				"SELECT l.*, u.nome AS nome_usuario " + 
-				"FROM " + tableName + " l " +
-				"LEFT JOIN usuario u ON l.id_usuario = u.id_usuario WHERE 1=1 ");
-
+		StringBuilder sql = new StringBuilder("SELECT l.*, IFNULL(u.nome, 'SISTEMA') AS nome_usuario " + "FROM "
+				+ tableName + " l " + "LEFT JOIN usuario u ON l.id_usuario = u.id_usuario WHERE 1=1 ");
 		List<Object> params = new ArrayList<>();
 
 		if (tipo != null && !tipo.isEmpty()) {
@@ -67,6 +54,22 @@ public class LogSistemaDao extends GenericDao<LogSistema> {
 		return executeQuery(sql.toString(), params.toArray());
 	}
 
+	public int limparLogsAntigos(int diasRetencao) {
+		// Usamos DATEDIFF ou DATE_SUB dependendo do banco,
+		// mas essa sintaxe é padrão para MySQL:
+		String sql = "DELETE FROM " + tableName + " WHERE data_hora < DATE_SUB(NOW(), INTERVAL ? DAY)";
+
+		try {
+			// Usamos executeUpdate da classe pai ou do próprio JDBC
+			return executeUpdate(sql, diasRetencao);
+		} catch (Exception e) {
+			// Como é uma operação de manutenção, se falhar, apenas reportamos no
+			// console/log de arquivo
+			System.err.println("Erro ao realizar manutenção de logs: " + e.getMessage());
+			return 0;
+		}
+	}
+
 	@Override
 	protected LogSistema mapResultSetToEntity(ResultSet rs) throws SQLException {
 		LogSistema log = new LogSistema();
@@ -80,7 +83,7 @@ public class LogSistemaDao extends GenericDao<LogSistema> {
 		log.setSucesso(rs.getBoolean("sucesso"));
 		log.setMensagemErro(rs.getString("mensagem_erro"));
 		log.setIpOrigem(rs.getString("ip_origem"));
-		
+
 		Timestamp ts = rs.getTimestamp("data_hora");
 		if (ts != null) {
 			log.setDataHora(ts.toLocalDateTime());
@@ -88,12 +91,12 @@ public class LogSistemaDao extends GenericDao<LogSistema> {
 
 		Usuario u = new Usuario();
 		u.setIdUsuario(rs.getInt("id_usuario"));
-		
+
 		try {
 			u.setNome(rs.getString("nome_usuario"));
 		} catch (SQLException e) {
 		}
-		
+
 		log.setUsuario(u);
 
 		return log;

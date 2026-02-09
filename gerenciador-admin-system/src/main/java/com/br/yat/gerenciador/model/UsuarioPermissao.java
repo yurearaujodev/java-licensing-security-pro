@@ -7,6 +7,8 @@ public class UsuarioPermissao extends BaseEntity {
 	private Integer idPermissoes;
 	private boolean ativa;
 	private LocalDateTime expiraEm;
+	private boolean herdada;
+
 	private Usuario usuarioConcedeu; // Referência ao objeto Usuario
 
 	public UsuarioPermissao() {
@@ -50,5 +52,13 @@ public class UsuarioPermissao extends BaseEntity {
 
 	public void setUsuarioConcedeu(Usuario usuarioConcedeu) {
 		this.usuarioConcedeu = usuarioConcedeu;
+	}
+
+	public boolean isHerdada() {
+		return herdada;
+	}
+
+	public void setHerdada(boolean herdada) {
+		this.herdada = herdada;
 	}
 }

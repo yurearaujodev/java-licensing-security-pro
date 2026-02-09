@@ -4,6 +4,7 @@ import javax.swing.SwingUtilities;
 
 import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.ParametroSistema;
+import com.br.yat.gerenciador.model.Sessao;
 import com.br.yat.gerenciador.model.enums.ParametroChave;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.service.ParametroSistemaService;
@@ -12,142 +13,145 @@ import com.br.yat.gerenciador.view.ParametroSistemaView;
 
 public class ParametroSistemaController extends BaseController {
 
-    private final ParametroSistemaView view;
-    private final ParametroSistemaService service;
+	private final ParametroSistemaView view;
+	private final ParametroSistemaService service;
 
-    public ParametroSistemaController(ParametroSistemaView view, ParametroSistemaService service) {
-        this.view = view;
-        this.service = service;
-        init();
-    }
+	public ParametroSistemaController(ParametroSistemaView view, ParametroSistemaService service) {
+		this.view = view;
+		this.service = service;
+		init();
+	}
 
-    private void init() {
-        carregarParametros();
-        configurarAcoes();
-    }
+	private void init() {
+		carregarParametros();
+		configurarAcoes();
+	}
 
-    // -------------------- CARREGAR PARÂMETROS --------------------
-    private void carregarParametros() {
-        runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+	// -------------------- CARREGAR PARÂMETROS --------------------
+	private void carregarParametros() {
+		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
 
-            return new ParametrosDTO(
-                    // --- LOGIN ---
-                    service.getInt(ParametroChave.LOGIN_MAX_TENTATIVAS, 5),
-                    service.getInt(ParametroChave.LOGIN_TEMPO_BLOQUEIO_MIN, 5),
-                    service.getInt(ParametroChave.SENHA_MIN_TAMANHO, 6),
-                    service.getInt(ParametroChave.FORCAR_TROCA_SENHA_DIAS, 90),
-                    service.getInt(ParametroChave.TEMPO_SESSAO_MIN, 30),
+			return new ParametrosDTO(
+					// --- LOGIN ---
+					service.getInt(ParametroChave.LOGIN_MAX_TENTATIVAS, 5),
+					service.getInt(ParametroChave.LOGIN_TEMPO_BLOQUEIO_MIN, 5),
+					service.getInt(ParametroChave.SENHA_MIN_TAMANHO, 6),
+					service.getInt(ParametroChave.FORCAR_TROCA_SENHA_DIAS, 90),
+					service.getInt(ParametroChave.TEMPO_SESSAO_MIN, 30),
 
-                    // --- LICENÇA ---
-                    service.getInt(ParametroChave.LICENCA_ALERTA_EXPIRACAO_DIAS, 7),
-                    service.getInt(ParametroChave.LICENCA_MAX_DISPOSITIVOS, 3),
-                    service.getBoolean(ParametroChave.LICENCA_ATIVA_PADRAO, true),
+					// --- LICENÇA ---
+					service.getInt(ParametroChave.LICENCA_ALERTA_EXPIRACAO_DIAS, 7),
+					service.getInt(ParametroChave.LICENCA_MAX_DISPOSITIVOS, 3),
+					service.getBoolean(ParametroChave.LICENCA_ATIVA_PADRAO, true),
 
-                    // --- SISTEMA / LOGS ---
-                    service.getBoolean(ParametroChave.LOG_SISTEMA_ATIVO, true),
-                    service.getString(ParametroChave.LOG_NIVEL_PADRAO, "INFO"),
-                    service.getInt(ParametroChave.TEMPO_REFRESH_DASHBOARD, 60),
+					// --- SISTEMA / LOGS ---
+					service.getBoolean(ParametroChave.LOG_SISTEMA_ATIVO, true),
+					service.getString(ParametroChave.LOG_NIVEL_PADRAO, "INFO"),
+					service.getInt(ParametroChave.TEMPO_REFRESH_DASHBOARD, 60),
 
-                    // --- NOTIFICAÇÕES / EMAIL ---
-                    service.getBoolean(ParametroChave.EMAIL_NOTIFICACAO_ATIVO, true),
-                    service.getString(ParametroChave.EMAIL_ALERTA_LICENCA, "")
-            );
+					// --- NOTIFICAÇÕES / EMAIL ---
+					service.getInt(ParametroChave.LOGS_DIAS_RETENCAO, 90),
+					service.getBoolean(ParametroChave.EMAIL_NOTIFICACAO_ATIVO, true),
+					service.getString(ParametroChave.EMAIL_ALERTA_LICENCA, ""));
 
-        }, dto -> {
-            // --- LOGIN ---
-            view.spnLoginMaxTentativas.setValue(dto.loginMaxTentativas());
-            view.spnLoginTempoBloqueio.setValue(dto.loginTempoBloqueio());
-            view.spnSenhaMinTamanho.setValue(dto.senhaMin());
-            view.spnForcarTrocaSenha.setValue(dto.forcarTrocaSenhaDias());
-            view.spnTempoSessaoMin.setValue(dto.tempoSessaoMin());
+		}, dto -> {
+			// --- LOGIN ---
+			view.spnLoginMaxTentativas.setValue(dto.loginMaxTentativas());
+			view.spnLoginTempoBloqueio.setValue(dto.loginTempoBloqueio());
+			view.spnSenhaMinTamanho.setValue(dto.senhaMin());
+			view.spnForcarTrocaSenha.setValue(dto.forcarTrocaSenhaDias());
+			view.spnTempoSessaoMin.setValue(dto.tempoSessaoMin());
 
-            // --- LICENÇA ---
-            view.spnLicencaExpiracaoAlertaDias.setValue(dto.licencaAlertaExpiracaoDias());
-            view.spnLicencaMaxDispositivos.setValue(dto.licencaMaxDispositivos());
-            view.chkLicencaAtivaPadrao.setSelected(dto.licencaAtivaPadrao());
+			// --- LICENÇA ---
+			view.spnLicencaExpiracaoAlertaDias.setValue(dto.licencaAlertaExpiracaoDias());
+			view.spnLicencaMaxDispositivos.setValue(dto.licencaMaxDispositivos());
+			view.chkLicencaAtivaPadrao.setSelected(dto.licencaAtivaPadrao());
 
-            // --- SISTEMA / LOGS ---
-            view.chkLogSistemaAtivo.setSelected(dto.logSistemaAtivo());
-            view.cmbNivelLogPadrao.setSelectedItem(dto.logNivelPadrao());
-            view.spnTempoRefreshDashboard.setValue(dto.tempoRefreshDashboard());
+			// --- SISTEMA / LOGS ---
+			view.chkLogSistemaAtivo.setSelected(dto.logSistemaAtivo());
+			view.cmbNivelLogPadrao.setSelectedItem(dto.logNivelPadrao());
+			view.spnTempoRefreshDashboard.setValue(dto.tempoRefreshDashboard());
 
-            // --- NOTIFICAÇÕES / EMAIL ---
-            view.chkEmailNotificacaoAtivo.setSelected(dto.emailNotificacaoAtivo());
-            view.txtEmailAlertaLicenca.setText(dto.emailAlertaLicenca());
-        });
-    }
+			// --- NOTIFICAÇÕES / EMAIL ---
+			view.chkEmailNotificacaoAtivo.setSelected(dto.emailNotificacaoAtivo());
+			view.txtEmailAlertaLicenca.setText(dto.emailAlertaLicenca());
+			view.spnLogsDiasRetencao.setValue(dto.logsDiasRetencao());
+		});
+	}
 
-    // -------------------- CONFIGURAR AÇÕES --------------------
-    private void configurarAcoes() {
-        view.btnSalvar.addActionListener(e -> salvar());
-        view.btnCancelar.addActionListener(e -> view.dispose());
-    }
+	// -------------------- CONFIGURAR AÇÕES --------------------
+	private void configurarAcoes() {
+		view.btnSalvar.addActionListener(e -> salvar());
+		view.btnCancelar.addActionListener(e -> view.dispose());
+	}
 
-    // -------------------- SALVAR PARÂMETROS --------------------
-    private void salvar() {
-        runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+	// -------------------- SALVAR PARÂMETROS --------------------
+	private void salvar() {
+		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+			java.util.List<ParametroSistema> lista = new java.util.ArrayList<>();
 
-            // --- LOGIN ---
-            salvarParametro(ParametroChave.LOGIN_MAX_TENTATIVAS, view.spnLoginMaxTentativas.getValue(), "Máx. tentativas de login");
-            salvarParametro(ParametroChave.LOGIN_TEMPO_BLOQUEIO_MIN, view.spnLoginTempoBloqueio.getValue(), "Tempo de bloqueio");
-            salvarParametro(ParametroChave.SENHA_MIN_TAMANHO, view.spnSenhaMinTamanho.getValue(), "Tamanho mínimo da senha");
-            salvarParametro(ParametroChave.FORCAR_TROCA_SENHA_DIAS, view.spnForcarTrocaSenha.getValue(), "Forçar troca de senha (dias)");
-            salvarParametro(ParametroChave.TEMPO_SESSAO_MIN, view.spnTempoSessaoMin.getValue(), "Tempo sessão (min)");
+			// Montamos a lista de objetos primeiro
+			lista.add(preparar(ParametroChave.LOGIN_MAX_TENTATIVAS, view.spnLoginMaxTentativas.getValue(),
+					"Máx. tentativas de login"));
+			lista.add(preparar(ParametroChave.LOGIN_TEMPO_BLOQUEIO_MIN, view.spnLoginTempoBloqueio.getValue(),
+					"Tempo de bloqueio"));
+			lista.add(preparar(ParametroChave.SENHA_MIN_TAMANHO, view.spnSenhaMinTamanho.getValue(),
+					"Tamanho mínimo da senha"));
+			lista.add(preparar(ParametroChave.FORCAR_TROCA_SENHA_DIAS, view.spnForcarTrocaSenha.getValue(),
+					"Forçar troca de senha (dias)"));
+			lista.add(
+					preparar(ParametroChave.TEMPO_SESSAO_MIN, view.spnTempoSessaoMin.getValue(), "Tempo sessão (min)"));
+			lista.add(preparar(ParametroChave.LICENCA_ALERTA_EXPIRACAO_DIAS,
+					view.spnLicencaExpiracaoAlertaDias.getValue(), "Dias para alerta de expiração"));
+			lista.add(preparar(ParametroChave.LICENCA_MAX_DISPOSITIVOS, view.spnLicencaMaxDispositivos.getValue(),
+					"Máx. dispositivos por licença"));
+			lista.add(preparar(ParametroChave.LICENCA_ATIVA_PADRAO, view.chkLicencaAtivaPadrao.isSelected(),
+					"Licença ativa por padrão"));
+			lista.add(preparar(ParametroChave.LOG_SISTEMA_ATIVO, view.chkLogSistemaAtivo.isSelected(),
+					"Log do sistema ativo"));
+			lista.add(preparar(ParametroChave.LOG_NIVEL_PADRAO, view.cmbNivelLogPadrao.getSelectedItem(),
+					"Nível de log padrão"));
+			lista.add(preparar(ParametroChave.TEMPO_REFRESH_DASHBOARD, view.spnTempoRefreshDashboard.getValue(),
+					"Tempo refresh dashboard"));
+			lista.add(preparar(ParametroChave.LOGS_DIAS_RETENCAO, view.spnLogsDiasRetencao.getValue(),
+					"Dias de retenção de logs"));
+			lista.add(preparar(ParametroChave.EMAIL_NOTIFICACAO_ATIVO, view.chkEmailNotificacaoAtivo.isSelected(),
+					"Email notificações ativo"));
+			lista.add(preparar(ParametroChave.EMAIL_ALERTA_LICENCA, view.txtEmailAlertaLicenca.getText(),
+					"Email alerta licença"));
 
-            // --- LICENÇA ---
-            salvarParametro(ParametroChave.LICENCA_ALERTA_EXPIRACAO_DIAS, view.spnLicencaExpiracaoAlertaDias.getValue(), "Dias para alerta de expiração");
-            salvarParametro(ParametroChave.LICENCA_MAX_DISPOSITIVOS, view.spnLicencaMaxDispositivos.getValue(), "Máx. dispositivos por licença");
-            salvarParametro(ParametroChave.LICENCA_ATIVA_PADRAO, view.chkLicencaAtivaPadrao.isSelected(), "Licença ativa por padrão");
+			// CHAMADA ÚNICA: Se um falhar, a Service lança exceção, o rollback desfaz tudo
+			// e a BaseController mostra o erro sem ter salvo nada "metade".
+			service.salvarOuAtualizar(lista, Sessao.getUsuario());
 
-            // --- SISTEMA / LOGS ---
-            salvarParametro(ParametroChave.LOG_SISTEMA_ATIVO, view.chkLogSistemaAtivo.isSelected(), "Log do sistema ativo");
-            salvarParametro(ParametroChave.LOG_NIVEL_PADRAO, view.cmbNivelLogPadrao.getSelectedItem(), "Nível de log padrão");
-            salvarParametro(ParametroChave.TEMPO_REFRESH_DASHBOARD, view.spnTempoRefreshDashboard.getValue(), "Tempo refresh dashboard");
+			return null;
+		}, r -> DialogFactory.informacao(view, "Parâmetros salvos com sucesso."));
+	}
 
-            // --- NOTIFICAÇÕES / EMAIL ---
-            salvarParametro(ParametroChave.EMAIL_NOTIFICACAO_ATIVO, view.chkEmailNotificacaoAtivo.isSelected(), "Email notificações ativo");
-            salvarParametro(ParametroChave.EMAIL_ALERTA_LICENCA, view.txtEmailAlertaLicenca.getText(), "Email alerta licença");
+	private ParametroSistema preparar(ParametroChave chave, Object valor, String descricao) {
+		if (valor == null) {
+			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "Campo nulo: " + descricao);
+		}
 
-            return null;
-        }, r -> DialogFactory.informacao(view, "Parâmetros salvos com sucesso."));
-    }
+		ParametroSistema p = new ParametroSistema();
+		p.setChave(chave.getChaveBanco());
+		p.setDescricao(descricao);
 
-    // -------------------- MÉTODO GENÉRICO DE SALVAR --------------------
-    private void salvarParametro(ParametroChave chave, Object valor, String descricao) {
-        if (valor == null) {
-            throw new ValidationException(ValidationErrorType.INVALID_FIELD, "Valor inválido para: " + descricao);
-        }
+		// Normalização: Transforma o valor em String, garantindo que não seja null para
+		// o banco
+		p.setValor(String.valueOf(valor).trim());
 
-        ParametroSistema p = new ParametroSistema();
-        p.setChave(chave.getChaveBanco());
-        p.setDescricao(descricao);
+		return p;
+	}
 
-        if (valor instanceof Boolean || valor instanceof Integer || valor instanceof String) {
-            p.setValor(String.valueOf(valor));
-        } else {
-            throw new ValidationException(ValidationErrorType.INVALID_FIELD, "Tipo de valor inválido para: " + descricao);
-        }
+	// -------------------- DTO PARA CARREGAMENTO --------------------
+	private record ParametrosDTO(int loginMaxTentativas, int loginTempoBloqueio, int senhaMin, int forcarTrocaSenhaDias,
+			int tempoSessaoMin,
 
-        service.salvarOuAtualizar(p);
-    }
+			int licencaAlertaExpiracaoDias, int licencaMaxDispositivos, boolean licencaAtivaPadrao,
 
-    // -------------------- DTO PARA CARREGAMENTO --------------------
-    private record ParametrosDTO(
-            int loginMaxTentativas,
-            int loginTempoBloqueio,
-            int senhaMin,
-            int forcarTrocaSenhaDias,
-            int tempoSessaoMin,
+			boolean logSistemaAtivo, String logNivelPadrao, int tempoRefreshDashboard, int logsDiasRetencao,
 
-            int licencaAlertaExpiracaoDias,
-            int licencaMaxDispositivos,
-            boolean licencaAtivaPadrao,
-
-            boolean logSistemaAtivo,
-            String logNivelPadrao,
-            int tempoRefreshDashboard,
-
-            boolean emailNotificacaoAtivo,
-            String emailAlertaLicenca
-    ) {}
+			boolean emailNotificacaoAtivo, String emailAlertaLicenca) {
+	}
 }

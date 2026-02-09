@@ -4,11 +4,13 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.br.yat.gerenciador.dao.GenericDao;
 import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.model.Empresa;
+import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 import com.br.yat.gerenciador.model.enums.StatusUsuario;
@@ -21,16 +23,27 @@ public class UsuarioDao extends GenericDao<Usuario> {
 
 	public int save(Usuario u) {
 		String sql = "INSERT INTO " + tableName
-				+ " (nome, email, senha_hash, status, tentativas_falhas, id_empresa, is_master, criado_em, atualizado_em) "
-				+ "VALUES (?, ?, ?, ?, 0, ?, ?, NOW(), NOW())";
+				+ " (nome, email, senha_hash, status, tentativas_falhas, id_empresa, id_perfil, is_master, "
+				+ "senha_expira_em, bloqueado_ate, forcar_reset_senha, criado_em, atualizado_em) "
+				+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
 
 		Integer idEmpresa = (u.getEmpresa() != null) ? u.getEmpresa().getIdEmpresa() : null;
+		Integer idPerfil = (u.getPerfil() != null) ? u.getPerfil().getIdPerfil() : null;
 
-		int id = executeInsert(sql, u.getNome(), u.getEmail(), u.getSenhaHashString(), u.getStatus(), idEmpresa,
-				u.isMaster());
+		int id = executeInsert(sql, 
+				u.getNome(), 
+				u.getEmail(), 
+				u.getSenhaHashString(), 
+				u.getStatus().name(), 
+				u.getTentativasFalhas(),
+				idEmpresa,
+				idPerfil,
+				u.isMaster() ? 1 : 0,
+				u.getSenhaExpiraEm(),
+				u.getBloqueadoAte(),
+				u.isForcarResetSenha() ? 1 : 0);
 
 		u.setIdUsuario(id);
-		u.setTentativasFalhas(0);
 		return id;
 	}
 
@@ -39,37 +52,46 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		Object[] params;
 
 		Integer idEmpresa = (u.getEmpresa() != null) ? u.getEmpresa().getIdEmpresa() : null;
+		Integer idPerfil = (u.getPerfil() != null) ? u.getPerfil().getIdPerfil() : null;
+
+		String baseSql = "UPDATE " + tableName + " SET nome = ?, email = ?, status = ?, id_empresa = ?, id_perfil = ?, "
+				+ "is_master = ?, senha_expira_em = ?, bloqueado_ate = ?, forcar_reset_senha = ?, atualizado_em = NOW()";
 
 		if (u.getSenhaHashString() != null && !u.getSenhaHashString().isEmpty()) {
-			sql = "UPDATE " + tableName
-					+ " SET nome = ?, email = ?, status = ?, id_empresa = ?, senha_hash = ?, is_master = ?, atualizado_em = NOW() WHERE id_usuario = ?";
-			params = new Object[] { u.getNome(), u.getEmail(), u.getStatus(), idEmpresa, u.getSenhaHashString(),
-					u.isMaster(), u.getIdUsuario() };
+			sql = baseSql + ", senha_hash = ? WHERE id_usuario = ?";
+			params = new Object[] { u.getNome(), u.getEmail(), u.getStatus(), idEmpresa, idPerfil,
+					u.isMaster() ? 1 : 0, u.getSenhaExpiraEm(), u.getBloqueadoAte(), u.isForcarResetSenha() ? 1 : 0,
+					u.getSenhaHashString(), u.getIdUsuario() };
 		} else {
-			sql = "UPDATE " + tableName
-					+ " SET nome = ?, email = ?, status = ?, id_empresa = ?, is_master = ?, atualizado_em = NOW() WHERE id_usuario = ?";
-			params = new Object[] { u.getNome(), u.getEmail(), u.getStatus(), idEmpresa, u.isMaster(),
+			sql = baseSql + " WHERE id_usuario = ?";
+			params = new Object[] { u.getNome(), u.getEmail(), u.getStatus(), idEmpresa, idPerfil,
+					u.isMaster() ? 1 : 0, u.getSenhaExpiraEm(), u.getBloqueadoAte(), u.isForcarResetSenha() ? 1 : 0,
 					u.getIdUsuario() };
 		}
 		executeUpdate(sql, params);
 	}
-
 	public List<Usuario> listarPorPermissao(String chavePermissao) {
-		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa " + "FROM " + tableName + " u "
+		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa, p.nome AS nome_perfil " + "FROM " + tableName + " u "
 				+ "INNER JOIN usuario_permissoes up ON u.id_usuario = up.id_usuario "
-				+ "INNER JOIN permissoes p ON up.id_permissoes = p.id_permissoes "
+				+ "INNER JOIN permissoes perm ON up.id_permissoes = perm.id_permissoes "
 				+ "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa "
-				+ "WHERE p.chave = ? AND up.ativa = 1 AND u.deletado_em IS NULL";
+				+ "LEFT JOIN perfil p ON u.id_perfil = p.id_perfil "
+				+ "WHERE perm.chave = ? AND up.ativa = 1 AND u.deletado_em IS NULL";
 
 		return executeQuery(sql, chavePermissao);
 	}
 
 	public Usuario buscarPorEmail(String email) {
-		String sql = "SELECT * FROM " + tableName + " WHERE email = ? AND deletado_em IS NULL";
+		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa, p.nome AS nome_perfil " 
+				+ "FROM " + tableName + " u "
+				+ "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa "
+				+ "LEFT JOIN perfil p ON u.id_perfil = p.id_perfil "
+				+ "WHERE u.email = ? AND u.deletado_em IS NULL";
 		var lista = executeQuery(sql, email);
 		return lista.isEmpty() ? null : lista.get(0);
 	}
 
+	//e pra ser removido banco mudou
 	public void atualizarUltimaAlteracaoSenha(int idUsuario) {
 		String sql = "UPDATE " + tableName + " SET ultima_alteracao_senha = NOW(), atualizado_em = NOW() "
 				+ " WHERE id_usuario = ?";
@@ -83,7 +105,7 @@ public class UsuarioDao extends GenericDao<Usuario> {
 	}
 
 	public void atualizarUltimoLogin(int idUsuario) {
-		String sql = "UPDATE " + tableName + " SET ultimo_login = NOW(), tentativas_falhas = 0 WHERE id_usuario = ?";
+		String sql = "UPDATE " + tableName + " SET ultimo_login = NOW(), tentativas_falhas = 0, bloqueado_ate = NULL WHERE id_usuario = ?";
 		executeUpdate(sql, idUsuario);
 	}
 
@@ -93,38 +115,39 @@ public class UsuarioDao extends GenericDao<Usuario> {
 	}
 
 	public List<Usuario> listarExcluidos() {
-		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa " + "FROM " + tableName + " u "
-				+ "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa " + "WHERE u.deletado_em IS NOT NULL";
+		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa, p.nome AS nome_perfil " + "FROM " + tableName + " u "
+				+ "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa " 
+				+ "LEFT JOIN perfil p ON u.id_perfil = p.id_perfil "
+				+ "WHERE u.deletado_em IS NOT NULL";
 
 		return executeQuery(sql);
 	}
 
 	public int incrementarERetornarTentativas(String email) {
-		String sqlUpdate = "UPDATE " + tableName + " SET tentativas_falhas = tentativas_falhas + 1 WHERE email = ?";
-		executeUpdate(sqlUpdate, email);
+	    // 1. Incrementa no banco
+	    String sqlUpdate = "UPDATE " + tableName + " SET tentativas_falhas = COALESCE(tentativas_falhas, 0) + 1 WHERE email = ?";
+	    executeUpdate(sqlUpdate, email);
 
-		String sqlSelect = "SELECT tentativas_falhas FROM " + tableName + " WHERE email = ?";
-		try (var ps = getConnection().prepareStatement(sqlSelect)) {
-			ps.setString(1, email);
-			try (ResultSet rs = ps.executeQuery()) {
-				if (rs.next()) {
-					return rs.getInt("tentativas_falhas");
-				}
-			}
-		} catch (SQLException e) {
-			throw new DataAccessException(DataAccessErrorType.QUERY_FAILED, "Erro ao recuperar tentativas", e);
-		}
-		return 0;
+	    // 2. Busca o novo valor usando o método da GenericDao
+	    String sqlSelect = "SELECT tentativas_falhas FROM " + tableName + " WHERE email = ?";
+	    
+	    // USANDO O MÉTODO QUE JÁ EXISTE NA SUA GENERICDAO
+	    return executeScalarInt(sqlSelect, email);
 	}
 
 	public void resetTentativasFalhas(int idUsuario) {
-		String sql = "UPDATE " + tableName + " SET tentativas_falhas = 0 WHERE id_usuario = ?";
+		String sql = "UPDATE " + tableName + " SET tentativas_falhas = 0, bloqueado_ate = NULL WHERE id_usuario = ?";
 		executeUpdate(sql, idUsuario);
 	}
 
 	public void restaurar(int id) {
 		String sql = "UPDATE " + tableName + " SET deletado_em = NULL, status = 'ATIVO' WHERE " + pkName + " = ?";
 		executeUpdate(sql, id);
+	}
+	
+	public void bloquearTemporariamente(int idUsuario, LocalDateTime ate) {
+		String sql = "UPDATE " + tableName + " SET bloqueado_ate = ?, atualizado_em = NOW() WHERE id_usuario = ?";
+		executeUpdate(sql, ate, idUsuario);
 	}
 
 	@Override
@@ -145,16 +168,30 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		String sqlStatus = "UPDATE " + tableName + " SET status = 'INATIVO' WHERE " + pkName + " = ?";
 		executeUpdate(sqlStatus, idUsuario);
 	}
+	
+	@Override
+	public Usuario searchById(int id) {
+        String sql = "SELECT u.*, e.razao_social AS razao_social_empresa, p.nome AS nome_perfil " 
+                + "FROM " + tableName + " u "
+                + "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa "
+                + "LEFT JOIN perfil p ON u.id_perfil = p.id_perfil "
+                + "WHERE u." + pkName + " = ? AND u.deletado_em IS NULL";
+        List<Usuario> resultados = executeQuery(sql, id);
+        return resultados.isEmpty() ? null : resultados.get(0);
+    }
 
 	public List<Usuario> listAll() {
-		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa " + "FROM " + tableName + " u "
-				+ "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa " + "WHERE u.deletado_em IS NULL";
+		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa, p.nome AS nome_perfil " + "FROM " + tableName + " u "
+				+ "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa " 
+				+ "LEFT JOIN perfil p ON u.id_perfil = p.id_perfil "
+				+ "WHERE u.deletado_em IS NULL";
 		return executeQuery(sql);
 	}
-
 	public List<Usuario> listarPorNomeOuEmail(String termo) {
-		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa " + "FROM " + tableName + " u "
-				+ "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa " + "WHERE (u.nome LIKE ? OR u.email LIKE ?) "
+		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa, p.nome AS nome_perfil " + "FROM " + tableName + " u "
+				+ "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa " 
+				+ "LEFT JOIN perfil p ON u.id_perfil = p.id_perfil "
+				+ "WHERE (u.nome LIKE ? OR u.email LIKE ?) "
 				+ "AND u.deletado_em IS NULL";
 
 		String likeTermo = "%" + termo + "%";
@@ -169,26 +206,39 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		u.setEmail(rs.getString("email"));
 		u.setSenhaHashString(rs.getString("senha_hash"));
 		u.setStatus(valueOf(StatusUsuario.class, rs.getString("status")));
-
-		Empresa emp = new Empresa();
-		emp.setIdEmpresa(rs.getInt("id_empresa"));
-
-		try {
-			String razaoSocial = rs.getString("razao_social_empresa");
-			if (razaoSocial != null)
-				emp.setRazaoSocialEmpresa(razaoSocial);
-		} catch (SQLException e) {
-
-		}
-		u.setEmpresa(emp);
-
 		u.setTentativasFalhas(rs.getInt("tentativas_falhas"));
-		Timestamp ts = rs.getTimestamp("ultimo_login");
-		if (ts != null)
-			u.setUltimoLogin(ts.toLocalDateTime());
 		u.setMaster(rs.getBoolean("is_master"));
+		u.setForcarResetSenha(rs.getBoolean("forcar_reset_senha"));
+
+		// Datas de segurança (LocalDateTime via Timestamp)
+        u.setUltimoLogin(getLocalDateTime(rs, "ultimo_login"));
+        u.setSenhaExpiraEm(getLocalDateTime(rs, "senha_expira_em"));
+        u.setBloqueadoAte(getLocalDateTime(rs, "bloqueado_ate"));
+        
+		// Empresa (Tratando o ID nulo corretamente)
+        int idEmp = rs.getInt("id_empresa");
+        if (!rs.wasNull()) {
+            Empresa emp = new Empresa();
+            emp.setIdEmpresa(idEmp);
+            try { emp.setRazaoSocialEmpresa(rs.getString("razao_social_empresa")); } catch (Exception e) {}
+            u.setEmpresa(emp);
+        }
+
+        // Perfil (Tratando o ID nulo corretamente)
+        int idPerf = rs.getInt("id_perfil");
+        if (!rs.wasNull()) {
+            Perfil perf = new Perfil();
+            perf.setIdPerfil(idPerf);
+            try { perf.setNome(rs.getString("nome_perfil")); } catch (Exception e) {}
+            u.setPerfil(perf);
+        }
 
 		return u;
 	}
-
+	
+	// Helper para evitar repetição de código de data
+    private java.time.LocalDateTime getLocalDateTime(ResultSet rs, String column) throws SQLException {
+        Timestamp ts = rs.getTimestamp(column);
+        return (ts != null) ? ts.toLocalDateTime() : null;
+    }
 }

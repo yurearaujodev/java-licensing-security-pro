@@ -2,10 +2,11 @@ package com.br.yat.gerenciador.model;
 
 public class Permissao extends BaseEntity {
 	private Integer idPermissoes;
-	private String chave; // Ex: "CONFIGURACAO_USUARIOS"
-	private String tipo; // ENUM('GRUPO','MENU')
-	private String categoria; // Ex: "CONFIGURAÇÕES"
+	private String chave;
+	private String tipo;
+	private String categoria;
 	private String descricao;
+	private Integer nivel; // NOVO CAMPO
 
 	public Permissao() {
 	}
@@ -50,4 +51,11 @@ public class Permissao extends BaseEntity {
 		this.descricao = descricao;
 	}
 
+	public Integer getNivel() {
+		return nivel;
+	}
+
+	public void setNivel(Integer nivel) {
+		this.nivel = nivel;
+	}
 }

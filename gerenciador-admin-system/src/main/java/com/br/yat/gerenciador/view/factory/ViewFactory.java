@@ -7,10 +7,13 @@ import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
 
 import com.br.yat.gerenciador.controller.ConfiguracaoBancoController;
+import com.br.yat.gerenciador.controller.LogManutencaoController;
 import com.br.yat.gerenciador.controller.LogSistemaController;
 import com.br.yat.gerenciador.controller.LoginController;
 import com.br.yat.gerenciador.controller.MenuPrincipalController;
 import com.br.yat.gerenciador.controller.ParametroSistemaController;
+import com.br.yat.gerenciador.controller.PerfilConsultaController;
+import com.br.yat.gerenciador.controller.PerfilController;
 import com.br.yat.gerenciador.controller.PermissaoConsultaController;
 import com.br.yat.gerenciador.controller.UsuarioConsultaController;
 import com.br.yat.gerenciador.controller.UsuarioController;
@@ -23,18 +26,23 @@ import com.br.yat.gerenciador.controller.empresa.DadoPrincipalController;
 import com.br.yat.gerenciador.controller.empresa.DadoRepresentanteController;
 import com.br.yat.gerenciador.controller.empresa.EmpresaConsultaController;
 import com.br.yat.gerenciador.controller.empresa.EmpresaController;
-import com.br.yat.gerenciador.model.enums.StatusUsuario;
+import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.service.DatabaseConnectionService;
 import com.br.yat.gerenciador.service.DatabaseSetupService;
 import com.br.yat.gerenciador.service.EmpresaService;
+import com.br.yat.gerenciador.service.LogSistemaService;
 import com.br.yat.gerenciador.service.ParametroSistemaService;
+import com.br.yat.gerenciador.service.PerfilService;
 import com.br.yat.gerenciador.service.UsuarioService;
 import com.br.yat.gerenciador.view.ConfiguracaoBancoView;
 import com.br.yat.gerenciador.view.EmpresaView;
+import com.br.yat.gerenciador.view.LogManutencaoView;
 import com.br.yat.gerenciador.view.LogSistemaView;
 import com.br.yat.gerenciador.view.MenuPrincipal;
 import com.br.yat.gerenciador.view.ParametroSistemaView;
+import com.br.yat.gerenciador.view.PerfilConsultaView;
+import com.br.yat.gerenciador.view.PerfilView;
 import com.br.yat.gerenciador.view.PermissaoConsultaView;
 import com.br.yat.gerenciador.view.UsuarioConsultaView;
 import com.br.yat.gerenciador.view.UsuarioView;
@@ -146,7 +154,8 @@ public final class ViewFactory {
 	public static UsuarioView createUsuarioView() {
 		UsuarioView view = new UsuarioView();
 		UsuarioService service = new UsuarioService();
-		UsuarioController controller = new UsuarioController(view, service);
+		PerfilService perfilService = new PerfilService();
+		UsuarioController controller = new UsuarioController(view, service, perfilService);
 		view.putClientProperty("controller", controller);
 
 		view.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
@@ -185,14 +194,14 @@ public final class ViewFactory {
 	}
 
 	public static UsuarioView createPrimeiroMasterView() {
+		// Cria a estrutura padrão (View + Controller + Service)
 		UsuarioView view = createUsuarioView();
-		view.setTitle("CONFIGURAÇÃO INICIAL: CADASTRAR ADMINISTRADOR MASTER");
 
-		view.setStatus(StatusUsuario.ATIVO);
-		view.bloquearStatus(false);
+		// Recupera a controller injetada
+		UsuarioController controller = (UsuarioController) view.getClientProperty("controller");
 
-		view.getPermissoes().values().forEach(chk -> chk.setSelected(true));
-		view.bloquearGradePermissoes(false);
+		// Manda a controller executar a lógica de negócio de primeiro acesso
+		controller.prepararComoMaster();
 
 		return view;
 	}
@@ -226,6 +235,58 @@ public final class ViewFactory {
 		ParametroSistemaView view = new ParametroSistemaView();
 		ParametroSistemaService service = new ParametroSistemaService();
 		new ParametroSistemaController(view, service);
+		return view;
+	}
+
+	public static PerfilView createPerfilView() {
+		PerfilView view = new PerfilView();
+		PerfilService service = new PerfilService();
+		PerfilController controller = new PerfilController(view, service);
+
+		// Armazena a controller na view caso precise recuperar depois (como na edição)
+		view.putClientProperty("controller", controller);
+
+		view.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+		view.addInternalFrameListener(new InternalFrameAdapter() {
+			@Override
+			public void internalFrameClosing(InternalFrameEvent e) {
+				view.dispose();
+				controller.dispose();
+			}
+		});
+		return view;
+	}
+
+	public static PerfilConsultaView createPerfilConsultaView() {
+	    PerfilConsultaView view = new PerfilConsultaView();
+	    PerfilService service = new PerfilService();
+	    // Instancia a controller de consulta vinculando-a à view e service
+	    PerfilConsultaController controller = new PerfilConsultaController(view, service);
+
+	    // Garante limpeza de recursos ao fechar
+	    view.addInternalFrameListener(new InternalFrameAdapter() {
+	        @Override
+	        public void internalFrameClosed(InternalFrameEvent e) {
+	            controller.dispose();
+	        }
+	    });
+	    return view;
+	}
+
+	// Método para abrir o perfil já carregado para edição
+	public static PerfilView createPerfilEdicaoView(Perfil perfil) {
+		PerfilView view = createPerfilView();
+		PerfilController controller = (PerfilController) view.getClientProperty("controller");
+		controller.carregarParaEdicao(perfil);
+		return view;
+	}
+	
+	public static LogManutencaoView createLogManutencao() {
+		LogManutencaoView view = new LogManutencaoView();
+		ParametroSistemaService parametro = new ParametroSistemaService();
+		LogSistemaService service = new LogSistemaService();
+		new LogManutencaoController(view, service, parametro);
+		
 		return view;
 	}
 

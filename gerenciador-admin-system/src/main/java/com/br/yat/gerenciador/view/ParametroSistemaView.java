@@ -23,6 +23,7 @@ public class ParametroSistemaView extends JInternalFrame {
     public JCheckBox chkLogSistemaAtivo;
     public JComboBox<String> cmbNivelLogPadrao;
     public JSpinner spnTempoRefreshDashboard;
+    public JSpinner spnLogsDiasRetencao;
 
     // --- NOTIFICAÇÕES / EMAIL ---
     public JCheckBox chkEmailNotificacaoAtivo;
@@ -112,11 +113,14 @@ public class ParametroSistemaView extends JInternalFrame {
 
     // --- ABA SISTEMA / LOGS ---
     private JPanel criarPainelSistema() {
-        JPanel panel = new JPanel(new MigLayout("insets 15", "[right][grow]", "[]10[]10[]"));
+        JPanel panel = new JPanel(new MigLayout("insets 15", "[right][grow]", "[]10[]10[]10[]"));
 
         chkLogSistemaAtivo = new JCheckBox("Log do sistema ativo");
         cmbNivelLogPadrao = new JComboBox<>(new String[]{"INFO", "DEBUG", "ERROR"});
         spnTempoRefreshDashboard = new JSpinner(new SpinnerNumberModel(60, 10, 3600, 10));
+        
+        // Novo Spinner: mínimo 1 dia, máximo 365, padrão 90
+        spnLogsDiasRetencao = new JSpinner(new SpinnerNumberModel(90, 1, 365, 1));
 
         panel.add(new JLabel("Ativar log do sistema:"), "cell 0 0");
         panel.add(chkLogSistemaAtivo, "cell 1 0, growx");
@@ -126,6 +130,10 @@ public class ParametroSistemaView extends JInternalFrame {
 
         panel.add(new JLabel("Tempo refresh dashboard (s):"), "cell 0 2");
         panel.add(spnTempoRefreshDashboard, "cell 1 2, growx");
+
+        // Adicionando o novo campo na interface
+        panel.add(new JLabel("Manter logs por (dias):"), "cell 0 3");
+        panel.add(spnLogsDiasRetencao, "cell 1 3, growx");
 
         return panel;
     }
