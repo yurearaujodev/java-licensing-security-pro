@@ -46,5 +46,14 @@ public final class UsuarioPolicy {
 	public static boolean podeAlterarStatusPrivilegiado(Usuario executor) {
 		return isPrivilegiado(executor);
 	}
+	
+	/**
+	 * Validação de hierarquia baseada em nível técnico.
+	 * Garante que um usuário não altere alguém com nível superior ao dele.
+	 */
+	public static boolean temHierarquiaParaAlterar(Usuario executor, int nivelExecutor, int nivelAlvo) {
+	    if (isPrivilegiado(executor)) return true;
+	    return nivelExecutor >= nivelAlvo;
+	}
 
 }

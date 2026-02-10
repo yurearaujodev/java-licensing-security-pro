@@ -26,6 +26,7 @@ public class UsuarioConsultaView extends JInternalFrame {
 	private JCheckBox chkVerExcluidos;
 	private JTextField txtBusca; // Alinhado com o nome na controller
 	private JButton btnPesquisar, btnEditar, btnNovo, btnExcluir;
+	private JButton btnResetarSenha;
 
 	public UsuarioConsultaView() {
 		super("Consulta de Usuários", true, true, true, true);
@@ -55,35 +56,42 @@ public class UsuarioConsultaView extends JInternalFrame {
 		// Base: Ações
 		JPanel pnlAcoes = new JPanel(new MigLayout("insets 10", "[left][grow][right]", "[]"));
 		btnNovo = ButtonFactory.createPrimaryButton("NOVO", IconFactory.novo());
-		btnEditar = ButtonFactory.createPrimaryButton("EDITAR", IconFactory.salvar()); // Mudei o ícone para editar
+
+		btnResetarSenha = ButtonFactory.createPrimaryButton("RESETAR SENHA", null);
+
+		btnEditar = ButtonFactory.createPrimaryButton("EDITAR", IconFactory.salvar());
 		btnExcluir = ButtonFactory.createPrimaryButton("EXCLUIR", IconFactory.cancelar());
+
 		pnlAcoes.add(btnNovo, "w 120!, h 35!");
+
+		pnlAcoes.add(btnResetarSenha, "cell 2 0, gapright 10, w 130!, h 35!");
 		pnlAcoes.add(btnExcluir, "cell 2 0, gapright 10, w 120!, h 35!");
 		pnlAcoes.add(btnEditar, "cell 2 0, w 120!, h 35!");
+
 		add(pnlAcoes, BorderLayout.SOUTH);
 
-		// Inicia desabilitado até selecionar algo
 		btnEditar.setEnabled(false);
 		btnExcluir.setEnabled(false);
+		btnResetarSenha.setEnabled(false);
 	}
-	
+
 	private void configurarColunas(JTable tabela) {
-	    // ID (Coluna 0) - Pequena e fixa
-	    tabela.getColumnModel().getColumn(0).setPreferredWidth(0);
-	    tabela.getColumnModel().getColumn(0).setMinWidth(0);
-	    tabela.getColumnModel().getColumn(0).setMaxWidth(0);
+		// ID (Coluna 0) - Pequena e fixa
+		tabela.getColumnModel().getColumn(0).setPreferredWidth(0);
+		tabela.getColumnModel().getColumn(0).setMinWidth(0);
+		tabela.getColumnModel().getColumn(0).setMaxWidth(0);
 
-	    // NOME (Coluna 1) - Espaço maior
-	    tabela.getColumnModel().getColumn(1).setPreferredWidth(250);
-	    tabela.getColumnModel().getColumn(1).setMinWidth(150);
+		// NOME (Coluna 1) - Espaço maior
+		tabela.getColumnModel().getColumn(1).setPreferredWidth(250);
+		tabela.getColumnModel().getColumn(1).setMinWidth(150);
 
-	    // E-MAIL (Coluna 2) - Espaço maior
-	    tabela.getColumnModel().getColumn(2).setPreferredWidth(250);
-	    tabela.getColumnModel().getColumn(2).setMinWidth(150);
+		// E-MAIL (Coluna 2) - Espaço maior
+		tabela.getColumnModel().getColumn(2).setPreferredWidth(250);
+		tabela.getColumnModel().getColumn(2).setMinWidth(150);
 
-	    // STATUS/PERMISSÃO (Coluna 3) - Médio
-	    tabela.getColumnModel().getColumn(3).setPreferredWidth(120);
-	    tabela.getColumnModel().getColumn(3).setMinWidth(100);
+		// STATUS/PERMISSÃO (Coluna 3) - Médio
+		tabela.getColumnModel().getColumn(3).setPreferredWidth(120);
+		tabela.getColumnModel().getColumn(3).setMinWidth(100);
 	}
 
 	// --- GETTERS PARA O CONTROLLER ---
@@ -101,6 +109,10 @@ public class UsuarioConsultaView extends JInternalFrame {
 
 	public JButton getBtnNovo() {
 		return btnNovo;
+	}
+
+	public JButton getBtnResetarSenha() {
+		return btnResetarSenha;
 	}
 
 	public JTable getTabela() {

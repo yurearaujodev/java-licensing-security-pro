@@ -9,6 +9,7 @@ import javax.swing.SwingUtilities;
 import com.br.yat.gerenciador.model.Sessao;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
+import com.br.yat.gerenciador.service.AutenticacaoService;
 import com.br.yat.gerenciador.service.UsuarioService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
@@ -22,6 +23,7 @@ public class UsuarioConsultaController extends BaseController {
 
 	private final UsuarioConsultaView view;
 	private final UsuarioService service;
+	private final AutenticacaoService authService = new AutenticacaoService();
 	private ScheduledFuture<?> debounceTask;
 
 	public UsuarioConsultaController(UsuarioConsultaView view, UsuarioService service) {
@@ -52,6 +54,7 @@ public class UsuarioConsultaController extends BaseController {
 	private void registrarAcoes() {
 		view.getBtnNovo().addActionListener(e -> abrirFormulario(null));
 		view.getBtnEditar().addActionListener(e -> editarSelecionado());
+		view.getBtnResetarSenha().addActionListener(e -> resetarSenhaSelecionado());
 		view.getBtnExcluir().addActionListener(e -> {
 			if (view.getChkVerExcluidos().isSelected()) {
 				restaurarSelecionado();
@@ -72,6 +75,7 @@ public class UsuarioConsultaController extends BaseController {
 			boolean modoLixeira = view.getChkVerExcluidos().isSelected();
 
 			view.getBtnEditar().setEnabled(temSelecao && !modoLixeira);
+			view.getBtnResetarSenha().setEnabled(temSelecao && !modoLixeira && Sessao.getUsuario().isMaster());
 			
 			if (modoLixeira) {
 				view.getBtnExcluir().setEnabled(temSelecao);
@@ -217,6 +221,25 @@ public class UsuarioConsultaController extends BaseController {
 		Usuario logado = Sessao.getUsuario();
 		return logado != null && (logado.isMaster()
 				|| service.carregarPermissoesAtivas(logado.getIdUsuario()).contains(MenuChave.CADASTROS_USUARIO));
+	}
+	
+	private void resetarSenhaSelecionado() {
+	    Usuario sel = view.getSelecionado();
+	    if (sel == null) return;
+
+	    String msg = "DESEJA REALMENTE RESETAR A SENHA DE: " + sel.getNome().toUpperCase() + "?\n" +
+	                 "A SENHA SERÁ VOLTADA PARA O PADRÃO DO SISTEMA E O USUÁRIO DEVERÁ TROCÁ-LA NO PRÓXIMO ACESSO.";
+
+	    if (DialogFactory.confirmacao(view, msg)) {
+	        // Usando o runAsync da sua BaseController para manter o loading
+	        runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+	            // Chama a service que já tem a Double Validation de Policy
+	            return authService.resetarSenha(sel.getIdUsuario(), Sessao.getUsuario());
+	        }, senhaPadrao -> {
+	            DialogFactory.informacao(view, "SENHA RESETADA COM SUCESSO!\nNOVA SENHA TEMPORÁRIA: " + senhaPadrao);
+	            carregarDados();
+	        });
+	    }
 	}
 
 }

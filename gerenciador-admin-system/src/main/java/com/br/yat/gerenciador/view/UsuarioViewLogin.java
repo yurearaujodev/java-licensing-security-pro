@@ -4,6 +4,8 @@ import javax.swing.JButton;
 import javax.swing.JInternalFrame;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+
 import com.br.yat.gerenciador.view.factory.FieldFactory;
 import com.br.yat.gerenciador.view.factory.ButtonFactory;
 import com.br.yat.gerenciador.view.factory.LabelFactory;
@@ -35,7 +37,18 @@ public class UsuarioViewLogin extends JInternalFrame {
 		// Botão secundário para recuperação
         btnEsqueciSenha = ButtonFactory.createPrimaryButton("ESQUECI MINHA SENHA", null);
         add(btnEsqueciSenha, "span 2, center, gapy 5");
+        configurarNavegacao();
 		pack();
+	}
+	
+	private void configurarNavegacao() {
+	    // Isso é comportamento da INTERFACE, por isso fica na VIEW
+	    SwingUtilities.invokeLater(() -> {
+	        if (getRootPane() != null) {
+	            getRootPane().setDefaultButton(btnEntrar);
+	        }
+	        txtEmail.requestFocusInWindow();
+	    });
 	}
 
 	// Getters
@@ -54,6 +67,10 @@ public class UsuarioViewLogin extends JInternalFrame {
 	public JButton getBtnEsqueciSenha() {
         return btnEsqueciSenha;
     }
+	
+	public void focarEmail() {
+	    txtEmail.requestFocusInWindow();
+	}
 	
 	public void limpar() {
 		txtSenha.setText("");

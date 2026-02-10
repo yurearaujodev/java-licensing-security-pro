@@ -71,14 +71,15 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		executeUpdate(sql, params);
 	}
 	public List<Usuario> listarPorPermissao(String chavePermissao) {
-		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa, p.nome AS nome_perfil " + "FROM " + tableName + " u "
-				+ "INNER JOIN usuario_permissoes up ON u.id_usuario = up.id_usuario "
-				+ "INNER JOIN permissoes perm ON up.id_permissoes = perm.id_permissoes "
-				+ "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa "
-				+ "LEFT JOIN perfil p ON u.id_perfil = p.id_perfil "
-				+ "WHERE perm.chave = ? AND up.ativa = 1 AND u.deletado_em IS NULL";
+	    String sql = "SELECT u.*, e.razao_social AS razao_social_empresa, p.nome AS nome_perfil FROM " + tableName + " u "
+	            + "INNER JOIN usuario_permissoes up ON u.id_usuario = up.id_usuario "
+	            + "INNER JOIN permissoes perm ON up.id_permissoes = perm.id_permissoes "
+	            + "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa "
+	            + "LEFT JOIN perfil p ON u.id_perfil = p.id_perfil "
+	            + "WHERE perm.chave = ? AND up.ativa = 1 AND u.deletado_em IS NULL "
+	            + "AND (up.expira_em IS NULL OR up.expira_em > NOW())"; // Garante apenas quem REALMENTE tem o acesso ativo agora
 
-		return executeQuery(sql, chavePermissao);
+	    return executeQuery(sql, chavePermissao);
 	}
 
 	public Usuario buscarPorEmail(String email) {
@@ -112,6 +113,26 @@ public class UsuarioDao extends GenericDao<Usuario> {
 	public void bloquearUsuario(int idUsuario) {
 		String sql = "UPDATE " + tableName + " SET status = 'BLOQUEADO', atualizado_em = NOW() WHERE id_usuario = ?";
 		executeUpdate(sql, idUsuario);
+	}
+	
+	public void atualizarSenha(int idUsuario, String novaSenhaHash) {
+	    // Além da senha, marcamos 'forcar_reset_senha' como 1 (true) por segurança
+	    String sql = "UPDATE " + tableName + 
+	                 " SET senha_hash = ?, forcar_reset_senha = 1, atualizado_em = NOW() " + 
+	                 " WHERE id_usuario = ?";
+	    
+	    executeUpdate(sql, novaSenhaHash, idUsuario);
+	}
+	
+	public void atualizarSenhaAposReset(int idUsuario, String novaSenhaHash, LocalDateTime novaDataExpiracao) {
+	    String sql = "UPDATE " + tableName + 
+	                 " SET senha_hash = ?, " +
+	                 "     forcar_reset_senha = 0, " + // Desativa a trava
+	                 "     senha_expira_em = ?, " +    // Define nova validade
+	                 "     atualizado_em = NOW() " + 
+	                 " WHERE id_usuario = ?";
+	    
+	    executeUpdate(sql, novaSenhaHash, novaDataExpiracao, idUsuario);
 	}
 
 	public List<Usuario> listarExcluidos() {

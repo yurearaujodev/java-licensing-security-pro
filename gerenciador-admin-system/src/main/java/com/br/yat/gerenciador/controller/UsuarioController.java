@@ -9,6 +9,7 @@ import java.util.Optional;
 
 import javax.swing.SwingUtilities;
 
+import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Empresa;
 import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.Permissao;
@@ -16,6 +17,7 @@ import com.br.yat.gerenciador.model.Sessao;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.StatusUsuario;
+import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.service.PerfilService;
 import com.br.yat.gerenciador.service.UsuarioService;
@@ -355,6 +357,13 @@ public class UsuarioController extends BaseController {
 	
 	private void aplicarPermissoesDaTela() {
 		Usuario logado = Sessao.getUsuario();
+		// 1. SE NÃO HÁ NINGUÉM LOGADO, É PRIMEIRO ACESSO: Liberamos a tela e saímos.
+		if (logado == null) {
+	        view.getBtnNovo().setVisible(true);
+	        view.getBtnSalvar().setVisible(true);
+	        return; 
+	    }
+		
 	    // Bypass para Master: ele sempre pode ver e escrever
 	    if (logado != null && logado.isMaster()) {
 	        view.getBtnNovo().setVisible(true);
@@ -391,11 +400,14 @@ public class UsuarioController extends BaseController {
 		view.bloquearStatus(true);
 		view.setTitle("CADASTRO INICIAL - ADMINISTRADOR MASTER");
 
-		runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
+		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
 			// USANDO O NOVO MÉTODO QUE NÃO EXIGE EXECUTOR
 			EmpresaService empresaService = new EmpresaService();
 			Empresa emp = empresaService.buscarFornecedoraParaSetup();
 
+			if (emp == null) {
+	            throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND, "CADASTRE A EMPRESA ANTES DO USUÁRIO!");
+	        }
 			// Perfil master (a service de perfil deve permitir null no executor
 			// ou ter lógica similar se for o primeiro)
 			Perfil perf = perfilService.buscarOuCriarPerfilMaster();
@@ -408,7 +420,7 @@ public class UsuarioController extends BaseController {
 			// Chama os novos métodos que criamos na View
 			view.setEmpresa(emp.getIdEmpresa(), emp.getRazaoSocialEmpresa());
 			view.setPerfil(perf);
-
+			
 			marcarTodasPermissoesNaGrade();
 		});
 	}

@@ -63,7 +63,7 @@ public class MenuPrincipalController extends BaseController {
 			IconFactory.limparCacheLogo();
 			carregarLogoSistema();
 		});
-
+		configurarMonitorGlobal();
 		verificarSequenciaDeAcesso();
 	}
 
@@ -87,29 +87,50 @@ public class MenuPrincipalController extends BaseController {
 		view.getBtnLogout().addActionListener(e -> processarLogout());
 	}
 
-	private void processarLogout() {
-		if (processandoLogout)
-			return;
-		processandoLogout = true;
-		try {
-			if (DialogFactory.confirmacao(view, "DESEJA REALMENTE SAIR E VOLTAR PARA A TELA DE LOGIN?")) {
-
-				Sessao.logout();
-
-				view.setNomeUsuario("CONECTANDO...");
-				view.setTempoAcesso("");
-				for (JInternalFrame frame : view.getDesktopPane().getAllFrames()) {
-					frame.dispose();
-				}
-
-				exibirLogin();
-
-				logger.info("USUÁRIO REALIZOU LOGOUT COM SUCESSO.");
+	private void configurarMonitorGlobal() {
+		java.awt.Toolkit.getDefaultToolkit().addAWTEventListener(event -> {
+			// Toda vez que o usuário interage, resetamos o cronômetro na Sessão
+			if (Sessao.getUsuario() != null) {
+				Sessao.registrarAtividade();
 			}
-		} finally {
-			processandoLogout = false;
-		}
+		}, java.awt.AWTEvent.MOUSE_EVENT_MASK | java.awt.AWTEvent.KEY_EVENT_MASK);
+	}
 
+	// Adicione este método ao seu MenuPrincipalController
+	public void executarLogout(boolean pedirConfirmacao) {
+	    if (processandoLogout) return;
+	    
+	    // Se for manual (pedirConfirmacao = true), abre o diálogo.
+	    // Se for automático (expiração), ignora a confirmação.
+	    if (pedirConfirmacao && !DialogFactory.confirmacao(view, "DESEJA REALMENTE SAIR?")) {
+	        return;
+	    }
+
+	    processandoLogout = true;
+	    try {
+	        // 1. Limpeza da Sessão (Memória)
+	        Sessao.logout();
+
+	        // 2. UI: Limpeza de Campos e Frames
+	        view.setNomeUsuario("SESSÃO ENCERRADA");
+	        view.setTempoAcesso("");
+	        
+	        for (JInternalFrame frame : view.getDesktopPane().getAllFrames()) {
+	            frame.dispose();
+	        }
+
+	        // 3. UI: Reset de Menus e volta ao Login
+	        exibirLogin();
+	        
+	        logger.info(pedirConfirmacao ? "LOGOUT MANUAL REALIZADO." : "SESSÃO EXPIRADA POR INATIVIDADE.");
+	    } finally {
+	        processandoLogout = false;
+	    }
+	}
+
+	// Atualize seu método processarLogout antigo para apenas uma linha:
+	private void processarLogout() {
+	    executarLogout(true);
 	}
 
 	private void carregarLogoSistema() {
@@ -207,18 +228,12 @@ public class MenuPrincipalController extends BaseController {
 				ViewFactory.showFrameWithCallback(view.getDesktopPane(), f, this::verificarSequenciaDeAcesso);
 			}
 			case 2 -> {
-			    // 1. Criamos a View e a Controller através da Factory
-			    // Supondo que sua ViewFactory já injete as Services e a Controller na View
-			    UsuarioView fUser = ViewFactory.createPrimeiroMasterView(); 
-			    
-			    // 2. Precisamos acessar a Controller da View para chamar o setup master
-			    // Se você seguiu o padrão de BaseController, deve ser algo assim:
-			    if (fUser.getClientProperty("controller") instanceof UsuarioController controller) {
-			        controller.prepararComoMaster();
-			    }
-			    
-			    // 3. Exibe com o callback para re-verificar quando fechar
-			    ViewFactory.showFrameWithCallback(view.getDesktopPane(), fUser, this::verificarSequenciaDeAcesso);
+				// 1. Criamos a View e a Controller através da Factory
+				// Supondo que sua ViewFactory já injete as Services e a Controller na View
+				UsuarioView fUser = ViewFactory.createPrimeiroMasterView();
+
+				// 3. Exibe com o callback para re-verificar quando fechar
+				ViewFactory.showFrameWithCallback(view.getDesktopPane(), fUser, this::verificarSequenciaDeAcesso);
 			}
 			case 3 -> {
 				carregarLogoSistema();
@@ -302,6 +317,30 @@ public class MenuPrincipalController extends BaseController {
 		UsuarioViewLogin login = ViewFactory.createLoginView();
 		DesktopUtils.showFrame(view.getDesktopPane(), login);
 	}
+	
+	/**
+	 * Finaliza a sessão atual, limpa a interface e força um novo login.
+	 * Útil para Logout manual e Expiração de Sessão.
+	 */
+	public void forcarLogoutExpiracao() {
+	    // 1. Garante a limpeza da sessão na memória
+	    Sessao.logout();
+
+	    // 2. UI: Limpa o DesktopPane (fecha todas as janelas internas de dados)
+	    for (JInternalFrame frame : view.getDesktopPane().getAllFrames()) {
+	        frame.dispose();
+	    }
+
+	    // 3. UI: Reseta os Menus e informações do usuário na barra de status
+	    MenuRegistry.disableAll();
+	    view.setNomeUsuario("SESSÃO EXPIRADA");
+	    view.setTempoAcesso("");
+
+	    // 4. UI: Abre a tela de login
+	    exibirLogin();
+	    
+	    logger.info("Sessão finalizada por expiração de inatividade.");
+	}
 
 	public void atualizarDadosUsuario() {
 		if (Sessao.getUsuario() != null) {
@@ -356,38 +395,38 @@ public class MenuPrincipalController extends BaseController {
 		ParametroSistemaView frame = ViewFactory.createParametroSistemaView();
 		DesktopUtils.showFrame(desk, frame);
 	}
-	
+
 	private void abrirPerfil() {
-	    JDesktopPane desk = view.getDesktopPane();
-	    if (DesktopUtils.reuseIfOpen(desk, "NOVO_PERFIL")) {
-	        return;
-	    }
-	    // Usa a Factory para criar a View + Controller
-	    var frame = ViewFactory.createPerfilView();
-	    frame.setName("NOVO_PERFIL");
-	    DesktopUtils.showFrame(desk, frame);
+		JDesktopPane desk = view.getDesktopPane();
+		if (DesktopUtils.reuseIfOpen(desk, "NOVO_PERFIL")) {
+			return;
+		}
+		// Usa a Factory para criar a View + Controller
+		var frame = ViewFactory.createPerfilView();
+		frame.setName("NOVO_PERFIL");
+		DesktopUtils.showFrame(desk, frame);
 	}
 
 	private void abrirConsultaPerfil() {
-	    JDesktopPane desk = view.getDesktopPane();
-	    // Reutiliza se já estiver aberta para evitar múltiplas instâncias
-	    if (DesktopUtils.reuseIfOpen(desk, PerfilConsultaView.class)) {
-	        return;
-	    }
-	    // Chama a Factory
-	    var frame = ViewFactory.createPerfilConsultaView();
-	    DesktopUtils.showFrame(desk, frame);
+		JDesktopPane desk = view.getDesktopPane();
+		// Reutiliza se já estiver aberta para evitar múltiplas instâncias
+		if (DesktopUtils.reuseIfOpen(desk, PerfilConsultaView.class)) {
+			return;
+		}
+		// Chama a Factory
+		var frame = ViewFactory.createPerfilConsultaView();
+		DesktopUtils.showFrame(desk, frame);
 	}
-	
+
 	private void abrirLogManutencao() {
-    JDesktopPane desk = view.getDesktopPane();
-    // Reutiliza se já estiver aberta para evitar múltiplas instâncias
-    if (DesktopUtils.reuseIfOpen(desk, LogManutencaoView.class)) {
-        return;
-    }
-    // Chama a Factory
-    var frame = ViewFactory.createLogManutencao();
-    DesktopUtils.showFrame(desk, frame);
-}
+		JDesktopPane desk = view.getDesktopPane();
+		// Reutiliza se já estiver aberta para evitar múltiplas instâncias
+		if (DesktopUtils.reuseIfOpen(desk, LogManutencaoView.class)) {
+			return;
+		}
+		// Chama a Factory
+		var frame = ViewFactory.createLogManutencao();
+		DesktopUtils.showFrame(desk, frame);
+	}
 
 }

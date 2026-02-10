@@ -53,7 +53,7 @@ public class LogSistemaService extends BaseService {
 			}
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			registrarLogErro("ERRO", "LIMPEZA_AUTOMATICA", "sistema", e);
 		}
 	}
 

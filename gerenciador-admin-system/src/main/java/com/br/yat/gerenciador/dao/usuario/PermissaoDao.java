@@ -20,9 +20,17 @@ public class PermissaoDao extends GenericDao<Permissao> {
 	}
 
 	public int save(Permissao p) {
-		String sql = "INSERT INTO " + tableName
-				+ " (chave, tipo, categoria,nivel, criado_em, atualizado_em) VALUES (?, ?, ?,?, NOW(), NOW())";
-		return executeInsert(sql, p.getChave(), p.getTipo(), p.getCategoria(), p.getNivel());
+	    String sql = "INSERT INTO " + tableName + 
+	                 " (chave, tipo, categoria, nivel, descricao, criado_em, atualizado_em) " +
+	                 " VALUES (?, ?, ?, ?, ?, NOW(), NOW())";
+	    return executeInsert(sql, p.getChave(), p.getTipo(), p.getCategoria(), p.getNivel(), p.getDescricao());
+	}
+	
+	public void update(Permissao p) {
+	    String sql = "UPDATE " + tableName + 
+	                 " SET chave = ?, tipo = ?, categoria = ?, nivel = ?, descricao = ?, atualizado_em = NOW() " +
+	                 " WHERE id_permissoes = ?";
+	    executeUpdate(sql, p.getChave(), p.getTipo(), p.getCategoria(), p.getNivel(), p.getDescricao(), p.getIdPermissoes());
 	}
 
 	public Permissao findByChave(String chave) {
@@ -94,6 +102,16 @@ public class PermissaoDao extends GenericDao<Permissao> {
 	            + "AND (up.expira_em IS NULL OR up.expira_em > NOW())"; // ADICIONADO PARA SEGURANÇA
 
 	    return executeQuery(sql, idUsuario);
+	}
+	
+	public Integer buscarMaiorNivelDoUsuario(int idUsuario) {
+	    String sql = "SELECT MAX(p.nivel) FROM permissoes p " +
+	                 "INNER JOIN usuario_permissoes up ON p.id_permissoes = up.id_permissoes " +
+	                 "WHERE up.id_usuario = ? AND up.ativa = 1 AND up.deletado_em IS NULL " +
+	                 "AND (up.expira_em IS NULL OR up.expira_em > NOW())";
+	    
+	    // O executeScalarInt já trata o ResultSet e retorna 0 se for nulo
+	    return executeScalarInt(sql, idUsuario);
 	}
 
 	@Override

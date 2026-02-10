@@ -13,6 +13,7 @@ public class ParametroSistemaView extends JInternalFrame {
     public JSpinner spnSenhaMinTamanho;
     public JSpinner spnForcarTrocaSenha;
     public JSpinner spnTempoSessaoMin;
+    public JTextField txtSenhaResetPadrao;
 
     // --- LICENÇA ---
     public JSpinner spnLicencaExpiracaoAlertaDias;
@@ -65,14 +66,15 @@ public class ParametroSistemaView extends JInternalFrame {
 
     // --- ABA LOGIN ---
     private JPanel criarPainelLogin() {
-        JPanel panel = new JPanel(new MigLayout("insets 15", "[right][grow]", "[]10[]10[]10[]10[]"));
+        JPanel panel = new JPanel(new MigLayout("insets 15", "[right][grow]", "[]10[]10[]10[]10[]10[]"));
 
         spnLoginMaxTentativas = new JSpinner(new SpinnerNumberModel(5, 1, 20, 1));
         spnLoginTempoBloqueio = new JSpinner(new SpinnerNumberModel(5, 1, 120, 1));
         spnSenhaMinTamanho = new JSpinner(new SpinnerNumberModel(6, 4, 32, 1));
         spnForcarTrocaSenha = new JSpinner(new SpinnerNumberModel(90, 0, 365, 1));
         spnTempoSessaoMin = new JSpinner(new SpinnerNumberModel(30, 1, 180, 1));
-
+        txtSenhaResetPadrao = new JTextField();
+        
         panel.add(new JLabel("Máx. tentativas de login:"), "cell 0 0");
         panel.add(spnLoginMaxTentativas, "cell 1 0, growx");
 
@@ -88,6 +90,9 @@ public class ParametroSistemaView extends JInternalFrame {
         panel.add(new JLabel("Tempo sessão (min):"), "cell 0 4");
         panel.add(spnTempoSessaoMin, "cell 1 4, growx");
 
+        panel.add(new JLabel("Senha padrão para reset:"), "cell 0 5");
+        panel.add(txtSenhaResetPadrao, "cell 1 5, growx");
+        
         return panel;
     }
 

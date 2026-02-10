@@ -26,6 +26,11 @@ public abstract class BaseController {
 	private LoadingDialog loadingDialog;
 
 	public void dispose() {
+		hideLoading(); // Garante que o loading não fique travado se a tela fechar
+		if (loadingDialog != null) {
+			loadingDialog.dispose();
+			loadingDialog = null;
+		}
 		if (!executor.isShutdown()) {
 			executor.shutdown();
 		}
@@ -92,47 +97,59 @@ public abstract class BaseController {
 
 	protected void showLoading(Window parent) {
 		SwingUtilities.invokeLater(() -> {
+			// Se o dialog já existe, mas o parent mudou ou o dialog antigo foi descartado
+			if (loadingDialog != null && loadingDialog.getOwner() != parent) {
+				loadingDialog.dispose(); // Limpa o antigo da memória
+				loadingDialog = null;
+			}
+
+			// Cria apenas se necessário para o parent atual
 			if (loadingDialog == null) {
 				loadingDialog = new LoadingDialog(parent);
 			}
-			loadingDialog.show();
+
+			if (!loadingDialog.isVisible()) {
+				loadingDialog.show();
+			}
 		});
 	}
 
 	protected void hideLoading() {
 		SwingUtilities.invokeLater(() -> {
-			if (loadingDialog != null) {
+			if (loadingDialog != null && loadingDialog.isVisible()) {
 				loadingDialog.hide();
 			}
 		});
 	}
-	
+
 	/**
-	 * Aplica o "cadeado visual" nos botões da view baseado nas permissões do usuário.
-	 * * @param permissoes Lista de strings ("READ", "WRITE", "DELETE")
-	 * @param btnNovo Botão de criação (opcional)
-	 * @param btnEditar Botão de edição (opcional)
+	 * Aplica o "cadeado visual" nos botões da view baseado nas permissões do
+	 * usuário. * @param permissoes Lista de strings ("READ", "WRITE", "DELETE")
+	 * 
+	 * @param btnNovo    Botão de criação (opcional)
+	 * @param btnEditar  Botão de edição (opcional)
 	 * @param btnExcluir Botão de exclusão (opcional)
 	 * @return true se tiver permissão de leitura, false caso contrário
 	 */
-	protected boolean aplicarRestricoesVisuais(List<String> permissoes, 
-	                                          AbstractButton btnNovo, 
-	                                          AbstractButton btnEditar, 
-	                                          AbstractButton btnExcluir) {
-	    
-	    // Se não tem leitura, avisa a Controller filha para fechar a tela
-	    if (!permissoes.contains("READ")) {
-	        return false;
-	    }
+	protected boolean aplicarRestricoesVisuais(List<String> permissoes, AbstractButton btnNovo,
+			AbstractButton btnEditar, AbstractButton btnExcluir) {
 
-	    boolean podeEscrever = permissoes.contains("WRITE");
-	    boolean podeExcluir = permissoes.contains("DELETE");
+		// Se não tem leitura, avisa a Controller filha para fechar a tela
+		if (!permissoes.contains("READ")) {
+			return false;
+		}
 
-	    if (btnNovo != null) btnNovo.setVisible(podeEscrever);
-	    if (btnEditar != null) btnEditar.setVisible(podeEscrever);
-	    if (btnExcluir != null) btnExcluir.setVisible(podeExcluir);
+		boolean podeEscrever = permissoes.contains("WRITE");
+		boolean podeExcluir = permissoes.contains("DELETE");
 
-	    return true;
+		if (btnNovo != null)
+			btnNovo.setVisible(podeEscrever);
+		if (btnEditar != null)
+			btnEditar.setVisible(podeEscrever);
+		if (btnExcluir != null)
+			btnExcluir.setVisible(podeExcluir);
+
+		return true;
 	}
 
 }

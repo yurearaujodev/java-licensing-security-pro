@@ -9,8 +9,6 @@ public class UsuarioPermissao extends BaseEntity {
 	private LocalDateTime expiraEm;
 	private boolean herdada;
 
-	private Usuario usuarioConcedeu; // Referência ao objeto Usuario
-
 	public UsuarioPermissao() {
 	}
 
@@ -44,14 +42,6 @@ public class UsuarioPermissao extends BaseEntity {
 
 	public void setExpiraEm(LocalDateTime expiraEm) {
 		this.expiraEm = expiraEm;
-	}
-
-	public Usuario getUsuarioConcedeu() {
-		return usuarioConcedeu;
-	}
-
-	public void setUsuarioConcedeu(Usuario usuarioConcedeu) {
-		this.usuarioConcedeu = usuarioConcedeu;
 	}
 
 	public boolean isHerdada() {

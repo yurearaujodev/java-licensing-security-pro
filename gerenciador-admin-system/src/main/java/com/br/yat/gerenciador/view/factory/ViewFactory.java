@@ -15,6 +15,7 @@ import com.br.yat.gerenciador.controller.ParametroSistemaController;
 import com.br.yat.gerenciador.controller.PerfilConsultaController;
 import com.br.yat.gerenciador.controller.PerfilController;
 import com.br.yat.gerenciador.controller.PermissaoConsultaController;
+import com.br.yat.gerenciador.controller.TrocaSenhaObrigatoriaController;
 import com.br.yat.gerenciador.controller.UsuarioConsultaController;
 import com.br.yat.gerenciador.controller.UsuarioController;
 import com.br.yat.gerenciador.controller.empresa.DadoBancarioController;
@@ -27,6 +28,7 @@ import com.br.yat.gerenciador.controller.empresa.DadoRepresentanteController;
 import com.br.yat.gerenciador.controller.empresa.EmpresaConsultaController;
 import com.br.yat.gerenciador.controller.empresa.EmpresaController;
 import com.br.yat.gerenciador.model.Perfil;
+import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.service.DatabaseConnectionService;
 import com.br.yat.gerenciador.service.DatabaseSetupService;
@@ -47,6 +49,7 @@ import com.br.yat.gerenciador.view.PermissaoConsultaView;
 import com.br.yat.gerenciador.view.UsuarioConsultaView;
 import com.br.yat.gerenciador.view.UsuarioView;
 import com.br.yat.gerenciador.view.UsuarioViewLogin;
+import com.br.yat.gerenciador.view.UsuarioViewTrocaSenha;
 import com.br.yat.gerenciador.view.empresa.EmpresaConsultaView;
 
 public final class ViewFactory {
@@ -180,6 +183,10 @@ public final class ViewFactory {
 
 		return view;
 	}
+	
+	public static MenuPrincipalController getMainController() {
+	    return mainController;
+	}
 
 	public static void showFrameWithCallback(JDesktopPane desk, JInternalFrame frame, Runnable onSchemaChange) {
 		frame.addInternalFrameListener(new InternalFrameAdapter() {
@@ -288,6 +295,15 @@ public final class ViewFactory {
 		new LogManutencaoController(view, service, parametro);
 		
 		return view;
+	}
+	
+	public static void abrirTrocaSenhaObrigatoria(Usuario user, Runnable callbackSucesso) {
+	    // Tenta encontrar a janela principal ativa para servir de "pai" para o modal
+	    java.awt.Window parent = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+	    
+	    UsuarioViewTrocaSenha view = new UsuarioViewTrocaSenha(parent instanceof javax.swing.JFrame ? (javax.swing.JFrame)parent : null); 
+	    new TrocaSenhaObrigatoriaController(view, user, callbackSucesso);
+	    view.setVisible(true);
 	}
 
 }

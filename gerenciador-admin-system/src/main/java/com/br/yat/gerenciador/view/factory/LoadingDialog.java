@@ -7,6 +7,7 @@ import java.awt.Window;
 import javax.swing.BorderFactory;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 public class LoadingDialog {
 
@@ -35,10 +36,34 @@ public class LoadingDialog {
 	}
 
 	public void show() {
-		Thread.ofVirtual().start(() -> dialog.setVisible(true));
-	}
+        // NUNCA use thread virtual para setVisible(true) em um diálogo modal
+        // O SwingUtilities garante que isso rode na thread certa sem travar o sistema
+        SwingUtilities.invokeLater(() -> {
+            if (!dialog.isVisible()) {
+                dialog.setLocationRelativeTo(dialog.getOwner());
+                dialog.setVisible(true);
+            }
+        });
+    }
 
-	public void hide() {
-		dialog.setVisible(false);
-	}
+    public void hide() {
+        SwingUtilities.invokeLater(() -> {
+            if (dialog.isVisible()) {
+                dialog.setVisible(false);
+            }
+        });
+    }
+    
+    // Para resolver o erro que você citou:
+    public boolean isVisible() {
+        return dialog.isVisible();
+    }
+    
+    public void dispose() {
+        dialog.dispose();
+    }
+
+    public Window getOwner() {
+        return dialog.getOwner();
+    }
 }

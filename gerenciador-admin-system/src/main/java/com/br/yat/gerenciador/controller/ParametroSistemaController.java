@@ -1,5 +1,8 @@
 package com.br.yat.gerenciador.controller;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.swing.SwingUtilities;
 
 import com.br.yat.gerenciador.exception.ValidationException;
@@ -7,6 +10,7 @@ import com.br.yat.gerenciador.model.ParametroSistema;
 import com.br.yat.gerenciador.model.Sessao;
 import com.br.yat.gerenciador.model.enums.ParametroChave;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
+import com.br.yat.gerenciador.service.AutenticacaoService;
 import com.br.yat.gerenciador.service.ParametroSistemaService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.view.ParametroSistemaView;
@@ -15,6 +19,7 @@ public class ParametroSistemaController extends BaseController {
 
 	private final ParametroSistemaView view;
 	private final ParametroSistemaService service;
+	private final AutenticacaoService authService = new AutenticacaoService();
 
 	public ParametroSistemaController(ParametroSistemaView view, ParametroSistemaService service) {
 		this.view = view;
@@ -38,6 +43,7 @@ public class ParametroSistemaController extends BaseController {
 					service.getInt(ParametroChave.SENHA_MIN_TAMANHO, 6),
 					service.getInt(ParametroChave.FORCAR_TROCA_SENHA_DIAS, 90),
 					service.getInt(ParametroChave.TEMPO_SESSAO_MIN, 30),
+					service.getString(ParametroChave.SENHA_RESET_PADRAO, "Mudar@123"),
 
 					// --- LICENÇA ---
 					service.getInt(ParametroChave.LICENCA_ALERTA_EXPIRACAO_DIAS, 7),
@@ -61,6 +67,7 @@ public class ParametroSistemaController extends BaseController {
 			view.spnSenhaMinTamanho.setValue(dto.senhaMin());
 			view.spnForcarTrocaSenha.setValue(dto.forcarTrocaSenhaDias());
 			view.spnTempoSessaoMin.setValue(dto.tempoSessaoMin());
+			view.txtSenhaResetPadrao.setText(dto.senhaResetPadrao());
 
 			// --- LICENÇA ---
 			view.spnLicencaExpiracaoAlertaDias.setValue(dto.licencaAlertaExpiracaoDias());
@@ -88,8 +95,11 @@ public class ParametroSistemaController extends BaseController {
 	// -------------------- SALVAR PARÂMETROS --------------------
 	private void salvar() {
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-			java.util.List<ParametroSistema> lista = new java.util.ArrayList<>();
-
+			List<ParametroSistema> lista = new ArrayList<>();
+			
+			String senhaPadrao = view.txtSenhaResetPadrao.getText();
+			authService.validarComplexidade(senhaPadrao.toCharArray());
+			
 			// Montamos a lista de objetos primeiro
 			lista.add(preparar(ParametroChave.LOGIN_MAX_TENTATIVAS, view.spnLoginMaxTentativas.getValue(),
 					"Máx. tentativas de login"));
@@ -119,7 +129,7 @@ public class ParametroSistemaController extends BaseController {
 					"Email notificações ativo"));
 			lista.add(preparar(ParametroChave.EMAIL_ALERTA_LICENCA, view.txtEmailAlertaLicenca.getText(),
 					"Email alerta licença"));
-
+			lista.add(preparar(ParametroChave.SENHA_RESET_PADRAO, senhaPadrao, "Senha padrão para reset"));
 			// CHAMADA ÚNICA: Se um falhar, a Service lança exceção, o rollback desfaz tudo
 			// e a BaseController mostra o erro sem ter salvo nada "metade".
 			service.salvarOuAtualizar(lista, Sessao.getUsuario());
@@ -146,7 +156,7 @@ public class ParametroSistemaController extends BaseController {
 
 	// -------------------- DTO PARA CARREGAMENTO --------------------
 	private record ParametrosDTO(int loginMaxTentativas, int loginTempoBloqueio, int senhaMin, int forcarTrocaSenhaDias,
-			int tempoSessaoMin,
+			int tempoSessaoMin,String senhaResetPadrao,
 
 			int licencaAlertaExpiracaoDias, int licencaMaxDispositivos, boolean licencaAtivaPadrao,
 
