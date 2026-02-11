@@ -23,12 +23,14 @@ public class UsuarioConsultaController extends BaseController {
 
 	private final UsuarioConsultaView view;
 	private final UsuarioService service;
-	private final AutenticacaoService authService = new AutenticacaoService();
+	private final AutenticacaoService authService;
 	private ScheduledFuture<?> debounceTask;
 
-	public UsuarioConsultaController(UsuarioConsultaView view, UsuarioService service) {
+	public UsuarioConsultaController(UsuarioConsultaView view, UsuarioService service,
+			AutenticacaoService authService) {
 		this.view = view;
 		this.service = service;
+		this.authService = authService;
 		configurar();
 		aplicarPermissoesEscopo();
 	}
@@ -76,7 +78,7 @@ public class UsuarioConsultaController extends BaseController {
 
 			view.getBtnEditar().setEnabled(temSelecao && !modoLixeira);
 			view.getBtnResetarSenha().setEnabled(temSelecao && !modoLixeira && Sessao.getUsuario().isMaster());
-			
+
 			if (modoLixeira) {
 				view.getBtnExcluir().setEnabled(temSelecao);
 			} else {
@@ -90,7 +92,7 @@ public class UsuarioConsultaController extends BaseController {
 
 		runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
 			List<Usuario> lista = verExcluidos ? service.listarExcluidos(Sessao.getUsuario())
-					: service.listarUsuarios("",Sessao.getUsuario());
+					: service.listarUsuarios("", Sessao.getUsuario());
 
 			Usuario logado = Sessao.getUsuario();
 			if (logado != null && !logado.isMaster()) {
@@ -147,7 +149,7 @@ public class UsuarioConsultaController extends BaseController {
 		debounceTask = scheduler.schedule(() -> {
 			runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
 				List<Usuario> lista = verExcluidos ? service.listarExcluidos(Sessao.getUsuario())
-						: service.listarUsuarios(termo,Sessao.getUsuario());
+						: service.listarUsuarios(termo, Sessao.getUsuario());
 
 				Usuario logado = Sessao.getUsuario();
 				if (logado != null && !logado.isMaster()) {
@@ -166,30 +168,26 @@ public class UsuarioConsultaController extends BaseController {
 			DialogFactory.aviso(view, "SELECIONE UM USUÁRIO PARA EDITAR.");
 		}
 	}
-	
+
 	private void aplicarPermissoesEscopo() {
-	    Usuario logado = Sessao.getUsuario();
-	    if (logado == null || logado.isMaster()) return;
+		Usuario logado = Sessao.getUsuario();
+		if (logado == null || logado.isMaster())
+			return;
 
-	    // Busca as permissões na service
-	    List<String> permissoes = service.listarPermissoesAtivasPorMenu(
-	        logado.getIdUsuario(), 
-	        MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES
-	    );
+		// Busca as permissões na service
+		List<String> permissoes = service.listarPermissoesAtivasPorMenu(logado.getIdUsuario(),
+				MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES);
 
-	    // Usa o método da BaseController
-	    boolean podeAcessar = aplicarRestricoesVisuais(
-	        permissoes, 
-	        view.getBtnNovo(), 
-	        view.getBtnEditar(), 
-	        view.getBtnExcluir()
-	    );
+		// Usa o método da BaseController
+		boolean podeAcessar = aplicarRestricoesVisuais(permissoes, view.getBtnNovo(), view.getBtnEditar(),
+				view.getBtnExcluir());
 
-	    if (!podeAcessar) {
-	        view.dispose();
-	        DialogFactory.aviso(null, "ACESSO NEGADO À GESTÃO DE USUÁRIOS.");
-	    }
+		if (!podeAcessar) {
+			view.dispose();
+			DialogFactory.aviso(null, "ACESSO NEGADO À GESTÃO DE USUÁRIOS.");
+		}
 	}
+
 	private void abrirFormulario(Usuario usuario) {
 		if (!podeAbrirCadastro()) {
 			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE USUÁRIOS.");
@@ -222,24 +220,25 @@ public class UsuarioConsultaController extends BaseController {
 		return logado != null && (logado.isMaster()
 				|| service.carregarPermissoesAtivas(logado.getIdUsuario()).contains(MenuChave.CADASTROS_USUARIO));
 	}
-	
+
 	private void resetarSenhaSelecionado() {
-	    Usuario sel = view.getSelecionado();
-	    if (sel == null) return;
+		Usuario sel = view.getSelecionado();
+		if (sel == null)
+			return;
 
-	    String msg = "DESEJA REALMENTE RESETAR A SENHA DE: " + sel.getNome().toUpperCase() + "?\n" +
-	                 "A SENHA SERÁ VOLTADA PARA O PADRÃO DO SISTEMA E O USUÁRIO DEVERÁ TROCÁ-LA NO PRÓXIMO ACESSO.";
+		String msg = "DESEJA REALMENTE RESETAR A SENHA DE: " + sel.getNome().toUpperCase() + "?\n"
+				+ "A SENHA SERÁ VOLTADA PARA O PADRÃO DO SISTEMA E O USUÁRIO DEVERÁ TROCÁ-LA NO PRÓXIMO ACESSO.";
 
-	    if (DialogFactory.confirmacao(view, msg)) {
-	        // Usando o runAsync da sua BaseController para manter o loading
-	        runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-	            // Chama a service que já tem a Double Validation de Policy
-	            return authService.resetarSenha(sel.getIdUsuario(), Sessao.getUsuario());
-	        }, senhaPadrao -> {
-	            DialogFactory.informacao(view, "SENHA RESETADA COM SUCESSO!\nNOVA SENHA TEMPORÁRIA: " + senhaPadrao);
-	            carregarDados();
-	        });
-	    }
+		if (DialogFactory.confirmacao(view, msg)) {
+			// Usando o runAsync da sua BaseController para manter o loading
+			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+				// Chama a service que já tem a Double Validation de Policy
+				return authService.resetarSenha(sel.getIdUsuario(), Sessao.getUsuario());
+			}, senhaPadrao -> {
+				DialogFactory.informacao(view, "SENHA RESETADA COM SUCESSO!\nNOVA SENHA TEMPORÁRIA: " + senhaPadrao);
+				carregarDados();
+			});
+		}
 	}
 
 }

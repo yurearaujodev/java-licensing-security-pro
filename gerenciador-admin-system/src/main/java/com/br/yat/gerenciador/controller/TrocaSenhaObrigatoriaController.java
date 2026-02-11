@@ -12,11 +12,11 @@ public class TrocaSenhaObrigatoriaController extends BaseController {
     private final Usuario usuarioAlvo;
     private final Runnable onSuccess;
 
-    public TrocaSenhaObrigatoriaController(UsuarioViewTrocaSenha view, Usuario usuario, Runnable onSuccess) {
+    public TrocaSenhaObrigatoriaController(UsuarioViewTrocaSenha view, Usuario usuario,AutenticacaoService authService, Runnable onSuccess) {
         this.view = view;
         this.usuarioAlvo = usuario;
         this.onSuccess = onSuccess;
-        this.authService = new AutenticacaoService();
+        this.authService = authService;
         init();
     }
 

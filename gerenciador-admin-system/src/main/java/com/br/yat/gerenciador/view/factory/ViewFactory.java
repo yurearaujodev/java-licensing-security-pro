@@ -30,12 +30,14 @@ import com.br.yat.gerenciador.controller.empresa.EmpresaController;
 import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
+import com.br.yat.gerenciador.service.AutenticacaoService;
 import com.br.yat.gerenciador.service.DatabaseConnectionService;
 import com.br.yat.gerenciador.service.DatabaseSetupService;
 import com.br.yat.gerenciador.service.EmpresaService;
 import com.br.yat.gerenciador.service.LogSistemaService;
 import com.br.yat.gerenciador.service.ParametroSistemaService;
 import com.br.yat.gerenciador.service.PerfilService;
+import com.br.yat.gerenciador.service.UsuarioPermissaoService;
 import com.br.yat.gerenciador.service.UsuarioService;
 import com.br.yat.gerenciador.view.ConfiguracaoBancoView;
 import com.br.yat.gerenciador.view.EmpresaView;
@@ -141,8 +143,11 @@ public final class ViewFactory {
 
 	public static UsuarioConsultaView createUsuarioConsultaView() {
 		UsuarioConsultaView view = new UsuarioConsultaView();
-		UsuarioService service = new UsuarioService();
-		UsuarioConsultaController controller = new UsuarioConsultaController(view, service);
+		ParametroSistemaService parametro = new ParametroSistemaService();
+		AutenticacaoService authService = new AutenticacaoService(parametro);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService();
+		UsuarioService service = new UsuarioService(authService, parametro, usuperservice);
+		UsuarioConsultaController controller = new UsuarioConsultaController(view, service, authService);
 
 		// Garante que o scheduler e recursos do controller sejam liberados
 		view.addInternalFrameListener(new InternalFrameAdapter() {
@@ -156,7 +161,11 @@ public final class ViewFactory {
 
 	public static UsuarioView createUsuarioView() {
 		UsuarioView view = new UsuarioView();
-		UsuarioService service = new UsuarioService();
+
+		ParametroSistemaService parametro = new ParametroSistemaService();
+		AutenticacaoService authService = new AutenticacaoService(parametro);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService();
+		UsuarioService service = new UsuarioService(authService, parametro, usuperservice);
 		PerfilService perfilService = new PerfilService();
 		UsuarioController controller = new UsuarioController(view, service, perfilService);
 		view.putClientProperty("controller", controller);
@@ -174,8 +183,11 @@ public final class ViewFactory {
 
 	public static UsuarioViewLogin createLoginView() {
 		UsuarioViewLogin view = new UsuarioViewLogin();
-
-		new LoginController(view);
+		ParametroSistemaService parametro = new ParametroSistemaService();
+		AutenticacaoService authService = new AutenticacaoService(parametro);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService();
+		UsuarioService service = new UsuarioService(authService, parametro, usuperservice);
+		new LoginController(view, authService, service);
 
 		view.setClosable(false);
 		view.setIconifiable(false);
@@ -183,9 +195,9 @@ public final class ViewFactory {
 
 		return view;
 	}
-	
+
 	public static MenuPrincipalController getMainController() {
-	    return mainController;
+		return mainController;
 	}
 
 	public static void showFrameWithCallback(JDesktopPane desk, JInternalFrame frame, Runnable onSchemaChange) {
@@ -231,7 +243,10 @@ public final class ViewFactory {
 
 	public static PermissaoConsultaView createPermissaoConsultaView() {
 		var view = new PermissaoConsultaView();
-		UsuarioService service = new UsuarioService();
+		ParametroSistemaService parametro = new ParametroSistemaService();
+		AutenticacaoService authService = new AutenticacaoService(parametro);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService();
+		UsuarioService service = new UsuarioService(authService, parametro, usuperservice);
 
 		new PermissaoConsultaController(view, service);
 
@@ -241,7 +256,8 @@ public final class ViewFactory {
 	public static ParametroSistemaView createParametroSistemaView() {
 		ParametroSistemaView view = new ParametroSistemaView();
 		ParametroSistemaService service = new ParametroSistemaService();
-		new ParametroSistemaController(view, service);
+		AutenticacaoService authService = new AutenticacaoService(service);
+		new ParametroSistemaController(view, service, authService);
 		return view;
 	}
 
@@ -265,19 +281,19 @@ public final class ViewFactory {
 	}
 
 	public static PerfilConsultaView createPerfilConsultaView() {
-	    PerfilConsultaView view = new PerfilConsultaView();
-	    PerfilService service = new PerfilService();
-	    // Instancia a controller de consulta vinculando-a à view e service
-	    PerfilConsultaController controller = new PerfilConsultaController(view, service);
+		PerfilConsultaView view = new PerfilConsultaView();
+		PerfilService service = new PerfilService();
+		// Instancia a controller de consulta vinculando-a à view e service
+		PerfilConsultaController controller = new PerfilConsultaController(view, service);
 
-	    // Garante limpeza de recursos ao fechar
-	    view.addInternalFrameListener(new InternalFrameAdapter() {
-	        @Override
-	        public void internalFrameClosed(InternalFrameEvent e) {
-	            controller.dispose();
-	        }
-	    });
-	    return view;
+		// Garante limpeza de recursos ao fechar
+		view.addInternalFrameListener(new InternalFrameAdapter() {
+			@Override
+			public void internalFrameClosed(InternalFrameEvent e) {
+				controller.dispose();
+			}
+		});
+		return view;
 	}
 
 	// Método para abrir o perfil já carregado para edição
@@ -287,23 +303,33 @@ public final class ViewFactory {
 		controller.carregarParaEdicao(perfil);
 		return view;
 	}
-	
+
 	public static LogManutencaoView createLogManutencao() {
 		LogManutencaoView view = new LogManutencaoView();
 		ParametroSistemaService parametro = new ParametroSistemaService();
 		LogSistemaService service = new LogSistemaService();
 		new LogManutencaoController(view, service, parametro);
-		
+
 		return view;
 	}
-	
+
 	public static void abrirTrocaSenhaObrigatoria(Usuario user, Runnable callbackSucesso) {
-	    // Tenta encontrar a janela principal ativa para servir de "pai" para o modal
-	    java.awt.Window parent = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
-	    
-	    UsuarioViewTrocaSenha view = new UsuarioViewTrocaSenha(parent instanceof javax.swing.JFrame ? (javax.swing.JFrame)parent : null); 
-	    new TrocaSenhaObrigatoriaController(view, user, callbackSucesso);
-	    view.setVisible(true);
+		// Tenta encontrar a janela principal ativa para servir de "pai" para o modal
+		java.awt.Window parent = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+
+		UsuarioViewTrocaSenha view = new UsuarioViewTrocaSenha(
+				parent instanceof javax.swing.JFrame ? (javax.swing.JFrame) parent : null);
+		ParametroSistemaService parametro = new ParametroSistemaService();
+		AutenticacaoService authService = new AutenticacaoService(parametro);
+		new TrocaSenhaObrigatoriaController(view, user, authService, callbackSucesso);
+		view.setVisible(true);
+	}
+	
+	private static UsuarioService createUsuarioServicePadrao() {
+	    ParametroSistemaService parametro = new ParametroSistemaService();
+	    AutenticacaoService authService = new AutenticacaoService(parametro);
+	    UsuarioPermissaoService usuperservice = new UsuarioPermissaoService();
+	    return new UsuarioService(authService, parametro, usuperservice);
 	}
 
 }

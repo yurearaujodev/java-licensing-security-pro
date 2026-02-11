@@ -58,7 +58,7 @@ public class UsuarioView extends JInternalFrame {
 	private final Map<MenuChave, Map<String, JCheckBox>> permissoesGranulares = new LinkedHashMap<>();
 
 	private final Map<MenuChave, JTextField> datasExpiracao = new LinkedHashMap<>();
-	
+
 	public UsuarioView() {
 		super("Cadastro de Usuário", true, true, true, true);
 
@@ -81,8 +81,6 @@ public class UsuarioView extends JInternalFrame {
 		panel.add(LabelFactory.createLabel("USUÁRIO: "), "cell 0 0, alignx trailing");
 		txtNome = FieldFactory.createTextField(20);
 		panel.add(txtNome, "cell 1 0,growx,h 25!");
-
-	
 
 		panel.add(LabelFactory.createLabel("E-MAIL: "), "cell 2 0, alignx trailing");
 		txtEmail = FieldFactory.createTextField(20);
@@ -115,7 +113,7 @@ public class UsuarioView extends JInternalFrame {
 		txtEmpresa = FieldFactory.createTextField(20);
 		txtEmpresa.setEnabled(false);
 		panel.add(txtEmpresa, "cell 1 4 3 1,growx,h 25!");
-		
+
 		panel.add(LabelFactory.createLabel("PERFIL: "), "cell 0 3, alignx trailing");
 		cbPerfil = new JComboBox<>(); // Aqui você vai carregar os perfis do banco
 		panel.add(cbPerfil, "cell 1 3, growx, h 25!");
@@ -133,116 +131,61 @@ public class UsuarioView extends JInternalFrame {
 
 	private JPanel pnlPermissoesContainer;
 
-//	public void construirGradePermissoes(Map<String, List<MenuChave>> grupos) {
-//		gruposPermissoes.clear();
-//		gruposPermissoes.putAll(grupos);
-//		pnlPermissoesContainer.removeAll();
-//		permissoesGranulares.clear();
-//
-//		for (var entry : gruposPermissoes.entrySet()) {
-//			String categoria = entry.getKey();
-//			List<MenuChave> chaves = entry.getValue();
-//
-//			JPanel categoriaPanel = new JPanel(new MigLayout("wrap 4", "[grow,fill][center][center][center]", "[]5[]"));
-//			categoriaPanel.setBorder(BorderFactory.createTitledBorder(categoria));
-//
-//			JCheckBox chkTodos = ButtonFactory.createCheckBox("MARCAR TODOS DA CATEGORIA");
-//			chkTodosPorCategoria.put(categoria, chkTodos);
-//			categoriaPanel.add(chkTodos, "span 4, left, wrap");
-//
-//			// Cabeçalho da tabela
-//			categoriaPanel.add(LabelFactory.createLabel("MENU"), "growx");
-//			categoriaPanel.add(LabelFactory.createLabel("VER (R)"), "w 60!");
-//			categoriaPanel.add(LabelFactory.createLabel("EDITAR (W)"), "w 60!");
-//			categoriaPanel.add(LabelFactory.createLabel("EXCLUIR (D)"), "w 60!");
-//			categoriaPanel.add(LabelFactory.createLabel("EXPIRA EM"), "w 100!");
-//			
-//			for (MenuChave chave : chaves) {
-//				categoriaPanel.add(LabelFactory.createLabel(formatarTexto(chave.name())), "growx");
-//
-//				Map<String, JCheckBox> tiposMap = new LinkedHashMap<>();
-//
-//				JCheckBox chkRead = new JCheckBox();
-//				JCheckBox chkWrite = new JCheckBox();
-//				JCheckBox chkDelete = new JCheckBox();
-//
-//				categoriaPanel.add(chkRead);
-//				categoriaPanel.add(chkWrite);
-//				categoriaPanel.add(chkDelete);
-//
-//				tiposMap.put("READ", chkRead);
-//				tiposMap.put("WRITE", chkWrite);
-//				tiposMap.put("DELETE", chkDelete);
-//
-//				permissoesGranulares.put(chave, tiposMap);
-//				
-//				JTextField txtData = FieldFactory.createTextField(10);
-//		        txtData.setToolTipText("dd/mm/aaaa hh:mm");
-//		        datasExpiracao.put(chave, txtData);
-//		        categoriaPanel.add(txtData, "w 100!");
-//			}
-//			pnlPermissoesContainer.add(categoriaPanel, "growx, wrap");
-//		}
-//		pnlPermissoesContainer.revalidate();
-//		pnlPermissoesContainer.repaint();
-//	}
-
 	public void construirGradePermissoes(Map<String, List<MenuChave>> grupos) {
-	    gruposPermissoes.clear();
-	    gruposPermissoes.putAll(grupos);
-	    pnlPermissoesContainer.removeAll();
-	    permissoesGranulares.clear();
-	    datasExpiracao.clear();
+		gruposPermissoes.clear();
+		gruposPermissoes.putAll(grupos);
+		pnlPermissoesContainer.removeAll();
+		permissoesGranulares.clear();
+		datasExpiracao.clear();
 
-	    for (var entry : gruposPermissoes.entrySet()) {
-	        String categoria = entry.getKey();
-	        List<MenuChave> chaves = entry.getValue();
+		for (var entry : gruposPermissoes.entrySet()) {
+			String categoria = entry.getKey();
+			List<MenuChave> chaves = entry.getValue();
 
-	        // Layout com larguras preferenciais: Menu[grow], R[50], W[50], D[50], Data[120]
-	        JPanel categoriaPanel = new JPanel(new MigLayout("fillx, insets 10", "[grow,fill][50!][50!][50!][120!]", "[]5[]"));
-	        categoriaPanel.setBorder(BorderFactory.createTitledBorder(categoria));
+			JPanel categoriaPanel = new JPanel(
+					new MigLayout("fillx, insets 10", "[grow,fill][50!][50!][50!][120!]", "[]5[]"));
+			categoriaPanel.setBorder(BorderFactory.createTitledBorder(categoria));
 
-	        JCheckBox chkTodos = ButtonFactory.createCheckBox("MARCAR TODOS DESTA CATEGORIA");
-	        chkTodosPorCategoria.put(categoria, chkTodos);
-	        categoriaPanel.add(chkTodos, "span 5, left, gapy 5 10, wrap");
+			JCheckBox chkTodos = ButtonFactory.createCheckBox("MARCAR TODOS DESTA CATEGORIA");
+			chkTodosPorCategoria.put(categoria, chkTodos);
+			categoriaPanel.add(chkTodos, "span 5, left, gapy 5 10, wrap");
 
-	        // Cabeçalho estilizado
-	        categoriaPanel.add(LabelFactory.createLabel("MÓDULO / MENU"), "center");
-	        categoriaPanel.add(LabelFactory.createLabel("VER"), "center");
-	        categoriaPanel.add(LabelFactory.createLabel("ADD"), "center");
-	        categoriaPanel.add(LabelFactory.createLabel("DEL"), "center");
-	        categoriaPanel.add(LabelFactory.createLabel("EXPIRA EM (OPCIONAL)"), "center, wrap");
+			categoriaPanel.add(LabelFactory.createLabel("MÓDULO / MENU"), "center");
+			categoriaPanel.add(LabelFactory.createLabel("VER"), "center");
+			categoriaPanel.add(LabelFactory.createLabel("ADD"), "center");
+			categoriaPanel.add(LabelFactory.createLabel("DEL"), "center");
+			categoriaPanel.add(LabelFactory.createLabel("EXPIRA EM (OPCIONAL)"), "center, wrap");
 
-	        for (MenuChave chave : chaves) {
-	            categoriaPanel.add(LabelFactory.createLabel(formatarTexto(chave.name())), "");
+			for (MenuChave chave : chaves) {
+				categoriaPanel.add(LabelFactory.createLabel(formatarTexto(chave.name())), "");
 
-	            Map<String, JCheckBox> tiposMap = new LinkedHashMap<>();
-	            JCheckBox chkRead = new JCheckBox();
-	            JCheckBox chkWrite = new JCheckBox();
-	            JCheckBox chkDelete = new JCheckBox();
+				Map<String, JCheckBox> tiposMap = new LinkedHashMap<>();
+				JCheckBox chkRead = new JCheckBox();
+				JCheckBox chkWrite = new JCheckBox();
+				JCheckBox chkDelete = new JCheckBox();
 
-	            categoriaPanel.add(chkRead, "center");
-	            categoriaPanel.add(chkWrite, "center");
-	            categoriaPanel.add(chkDelete, "center");
+				categoriaPanel.add(chkRead, "center");
+				categoriaPanel.add(chkWrite, "center");
+				categoriaPanel.add(chkDelete, "center");
 
-	            tiposMap.put("READ", chkRead);
-	            tiposMap.put("WRITE", chkWrite);
-	            tiposMap.put("DELETE", chkDelete);
-	            permissoesGranulares.put(chave, tiposMap);
-	            
-	            JFormattedTextField txtData = FieldFactory.createFormattedField();
-	            String mask = MaskFactory.createMask().get("DATA_HORA");
-	            FormatterUtils.applyDateMask(txtData, mask);
-	            txtData.setToolTipText("Ex: 31/12/2026 23:59");
-	            datasExpiracao.put(chave, txtData);
-	            categoriaPanel.add(txtData, "growx, h 20!, wrap");
-	        }
-	        pnlPermissoesContainer.add(categoriaPanel, "growx, wrap 10");
-	    }
-	    pnlPermissoesContainer.revalidate();
-	    pnlPermissoesContainer.repaint();
+				tiposMap.put("READ", chkRead);
+				tiposMap.put("WRITE", chkWrite);
+				tiposMap.put("DELETE", chkDelete);
+				permissoesGranulares.put(chave, tiposMap);
+
+				JFormattedTextField txtData = FieldFactory.createFormattedField();
+				String mask = MaskFactory.createMask().get("DATA_HORA");
+				FormatterUtils.applyDateMask(txtData, mask);
+				txtData.setToolTipText("Ex: 31/12/2026 23:59");
+				datasExpiracao.put(chave, txtData);
+				categoriaPanel.add(txtData, "growx, h 20!, wrap");
+			}
+			pnlPermissoesContainer.add(categoriaPanel, "growx, wrap 10");
+		}
+		pnlPermissoesContainer.revalidate();
+		pnlPermissoesContainer.repaint();
 	}
-	
+
 	private JPanel criarBotoes() {
 		JPanel panel = PanelFactory.createPanel("insets 5", "[left][grow][right]", "[]");
 
@@ -256,15 +199,15 @@ public class UsuarioView extends JInternalFrame {
 		panel.add(btnSalvar, "w 140!, h 35!, alignx center");
 		return panel;
 	}
-	
+
 	public Map<MenuChave, String> getDatasExpiracaoTexto() {
-	    Map<MenuChave, String> dados = new LinkedHashMap<>();
-	    datasExpiracao.forEach((chave, txtField) -> {
-	        dados.put(chave, txtField.getText());
-	    });
-	    return dados;
+		Map<MenuChave, String> dados = new LinkedHashMap<>();
+		datasExpiracao.forEach((chave, txtField) -> {
+			dados.put(chave, txtField.getText());
+		});
+		return dados;
 	}
-	
+
 	private String formatarTexto(String texto) {
 		return texto.replace("_", " ").toUpperCase();
 	}
@@ -305,44 +248,28 @@ public class UsuarioView extends JInternalFrame {
 	public Integer getEmpresa() {
 		return idEmpresa;
 	}
-	
+
 	public void setPerfil(Perfil perfil) {
-	    if (perfil == null) return;
-	    
-	    this.idPerfil = perfil.getIdPerfil();
-	    cbPerfil.removeAllItems();
-	    cbPerfil.addItem(perfil);
-	    cbPerfil.setSelectedItem(perfil);
+		if (perfil == null)
+			return;
+		this.idPerfil = perfil.getIdPerfil();
+		cbPerfil.setSelectedItem(perfil);
 	}
 
 	public Integer getPerfil() {
-	    return idPerfil;
+		return idPerfil;
 	}
-
-//	public Perfil getPerfilSelecionado() {
-//		return (Perfil) cbPerfil.getSelectedItem();
-//	}
 
 	public JComboBox<Perfil> getCbPerfil() {
 		return cbPerfil;
 	}
 
 	public void carregarCombosPerfil(List<Perfil> perfis) {
-		cbPerfil.removeAllItems();
 		for (Perfil p : perfis) {
+			System.out.println("  Adicionando: " + p.getNome() + " (ID: " + p.getIdPerfil() + ")");
 			cbPerfil.addItem(p);
 		}
 	}
-
-//	public void setPerfil(Integer idPerfil) {
-//		for (int i = 0; i < cbPerfil.getItemCount(); i++) {
-//			Perfil p = cbPerfil.getItemAt(i);
-//			if (p.getIdPerfil().equals(idPerfil)) {
-//				cbPerfil.setSelectedIndex(i);
-//				break;
-//			}
-//		}
-//	}
 
 	public StatusUsuario getStatus() {
 		return (StatusUsuario) cbStatus.getSelectedItem();
@@ -463,9 +390,7 @@ public class UsuarioView extends JInternalFrame {
 	}
 
 	public void desmarcarTodasPermissoes() {
-		// Limpa as granulares (READ, WRITE, DELETE)
 		permissoesGranulares.values().forEach(map -> map.values().forEach(chk -> chk.setSelected(false)));
-		// Limpa os seletores de categoria
 		chkTodosPorCategoria.values().forEach(chk -> chk.setSelected(false));
 	}
 
@@ -481,14 +406,10 @@ public class UsuarioView extends JInternalFrame {
 	}
 
 	public void bloquearGradePermissoes(boolean editavel) {
-		// Primeiro, entramos em cada MenuChave do Map principal
 		getPermissoesGranulares().values().forEach(tiposMap -> {
-			// Agora, para cada mapa de tipos (READ, WRITE, DELETE), desativamos os
-			// checkboxes
 			tiposMap.values().forEach(chk -> chk.setEnabled(editavel));
 		});
 
-		// Desativa também os seletores de "Marcar Todos" por categoria
 		getChkTodosPorCategoria().values().forEach(chk -> chk.setEnabled(editavel));
 	}
 

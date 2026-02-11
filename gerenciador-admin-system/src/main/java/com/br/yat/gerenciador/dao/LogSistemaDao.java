@@ -31,6 +31,13 @@ public class LogSistemaDao extends GenericDao<LogSistema> {
 		return id;
 	}
 
+	public int contarLogsBloqueioRecentes(int idUsuario, int horas) {
+		String sql = "SELECT COUNT(*) FROM " + tableName + " WHERE entidade = 'usuario' AND id_entidade = ? "
+				+ " AND acao = 'BLOQUEIO_TEMPORARIO' " + " AND data_hora > DATE_SUB(NOW(), INTERVAL ? HOUR)";
+
+		return executeScalarInt(sql, idUsuario, horas);
+	}
+
 	public List<LogSistema> listarComFiltros(String tipo, String acao, String usuarioNome) {
 		StringBuilder sql = new StringBuilder("SELECT l.*, IFNULL(u.nome, 'SISTEMA') AS nome_usuario " + "FROM "
 				+ tableName + " l " + "LEFT JOIN usuario u ON l.id_usuario = u.id_usuario WHERE 1=1 ");

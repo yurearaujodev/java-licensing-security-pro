@@ -27,11 +27,10 @@ public class AuditLogHelper {
 
 	private static String objetoParaJson(Object obj) {
         if (obj == null) return null;
-        if (obj instanceof String) return (String) obj; // Se já for string/resumo, não serializa
         try {
             return gson.toJson(obj);
         } catch (Exception e) {
-            return "Erro ao serializar: " + e.getMessage();
+        	return "{\"erro\":\"Erro ao serializar: " + e.getMessage() + "\"}";
         }
     }
 	
@@ -74,6 +73,15 @@ public class AuditLogHelper {
         log.setDataHora(LocalDateTime.now());
         log.setUsuario(Sessao.getUsuario());
         log.setIpOrigem(getNetworkInfo());
+        return log;
+    }
+    
+    public static LogSistema gerarLogErroComDetalhes(String tipo, String acao, String entidade, String erro, Object detalhes) {
+        LogSistema log = gerarLogErro(tipo, acao, entidade, erro);
+        if (detalhes != null) {
+            // Aproveita o método privado que você já tem para converter o Map em JSON
+            log.setDadosNovos(objetoParaJson(detalhes));
+        }
         return log;
     }
 

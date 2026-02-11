@@ -22,11 +22,12 @@ public class LoginController extends BaseController {
     private final UsuarioViewLogin view;
     private final UsuarioService userService;
     private final AutenticacaoService authService;
+    private Timer monitorInatividade;
 
-    public LoginController(UsuarioViewLogin view) {
+    public LoginController(UsuarioViewLogin view,AutenticacaoService authService,UsuarioService userService) {
         this.view = view;
-        this.userService = new UsuarioService();
-        this.authService = new AutenticacaoService();
+        this.userService = userService;
+        this.authService = authService;
         registrarAcoes();
         SwingUtilities.invokeLater(view::focarEmail);
     }
@@ -80,7 +81,9 @@ public class LoginController extends BaseController {
     	int tempoSessao = ps.getInt(ParametroChave.TEMPO_SESSAO_MIN, 30);
         
         Sessao.login(data.user(), data.permissoes(), tempoSessao);
-        
+        if (ViewFactory.getMainController() != null) {
+            ViewFactory.getMainController().iniciarMonitorSessao();
+        }
         // Double Validation: Verificação de privilégio para tarefas de infra
         if (UsuarioPolicy.isPrivilegiado(data.user())) {
             runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
@@ -88,29 +91,29 @@ public class LoginController extends BaseController {
                 return null;
             }, result -> { });
         }
-        iniciarMonitorInatividade();
+   //     iniciarMonitorInatividade();
         ViewFactory.atualizarAcoesMenuPrincipal();
         // Garante o fechamento da tela de login se ela ainda existir
         if (view != null) {
             view.dispose();
         }
     }
-    private void iniciarMonitorInatividade() {
-        Timer timer = new Timer(60000, e -> {
-            // Double Validation: Checa se a sessão expirou conforme o parâmetro do banco
-            if (Sessao.isExpirada()) {
-                ((Timer)e.getSource()).stop();
-                
-                SwingUtilities.invokeLater(() -> {
-                    DialogFactory.aviso(null, "Sua sessão expirou por inatividade. Por favor, faça login novamente.");
-                    
-                    // Recupera a instância da MainController via Factory para deslogar
-                    if (ViewFactory.getMainController() != null) {
-                        ViewFactory.getMainController().executarLogout(false);
-                    }
-                });
-            }
-        });
-        timer.start();
-    }
+//    private void iniciarMonitorInatividade() {
+//        Timer timer = new Timer(60000, e -> {
+//            // Double Validation: Checa se a sessão expirou conforme o parâmetro do banco
+//            if (Sessao.isExpirada()) {
+//                ((Timer)e.getSource()).stop();
+//                
+//                SwingUtilities.invokeLater(() -> {
+//                    DialogFactory.aviso(null, "Sua sessão expirou por inatividade. Por favor, faça login novamente.");
+//                    
+//                    // Recupera a instância da MainController via Factory para deslogar
+//                    if (ViewFactory.getMainController() != null) {
+//                        ViewFactory.getMainController().executarLogout(false);
+//                    }
+//                });
+//            }
+//        });
+//        timer.start();
+//    }
 }

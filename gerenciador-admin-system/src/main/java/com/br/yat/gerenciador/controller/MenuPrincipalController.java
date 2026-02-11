@@ -58,7 +58,7 @@ public class MenuPrincipalController extends BaseController {
 		this.view = view;
 		registrarAcoes();
 		iniciarRelogio();
-		iniciarMonitorDeConexao();
+	//	iniciarMonitorDeConexao();
 		AppEventManager.subscribeLogoChange(() -> {
 			IconFactory.limparCacheLogo();
 			carregarLogoSistema();
@@ -96,37 +96,31 @@ public class MenuPrincipalController extends BaseController {
 		}, java.awt.AWTEvent.MOUSE_EVENT_MASK | java.awt.AWTEvent.KEY_EVENT_MASK);
 	}
 
-	// Adicione este método ao seu MenuPrincipalController
 	public void executarLogout(boolean pedirConfirmacao) {
-	    if (processandoLogout) return;
-	    
-	    // Se for manual (pedirConfirmacao = true), abre o diálogo.
-	    // Se for automático (expiração), ignora a confirmação.
-	    if (pedirConfirmacao && !DialogFactory.confirmacao(view, "DESEJA REALMENTE SAIR?")) {
-	        return;
-	    }
+        if (processandoLogout) return;
 
-	    processandoLogout = true;
-	    try {
-	        // 1. Limpeza da Sessão (Memória)
-	        Sessao.logout();
+        if (pedirConfirmacao && !DialogFactory.confirmacao(view, "DESEJA REALMENTE SAIR?")) {
+            return;
+        }
 
-	        // 2. UI: Limpeza de Campos e Frames
-	        view.setNomeUsuario("SESSÃO ENCERRADA");
-	        view.setTempoAcesso("");
-	        
-	        for (JInternalFrame frame : view.getDesktopPane().getAllFrames()) {
-	            frame.dispose();
-	        }
+        processandoLogout = true;
+        try {
+            pararMonitorSessao();
+            Sessao.logout();
+            
+            view.setNomeUsuario("SESSÃO ENCERRADA");
+            view.setTempoAcesso("");
+            
+            for (JInternalFrame frame : view.getDesktopPane().getAllFrames()) {
+                frame.dispose();
+            }
 
-	        // 3. UI: Reset de Menus e volta ao Login
-	        exibirLogin();
-	        
-	        logger.info(pedirConfirmacao ? "LOGOUT MANUAL REALIZADO." : "SESSÃO EXPIRADA POR INATIVIDADE.");
-	    } finally {
-	        processandoLogout = false;
-	    }
-	}
+            exibirLogin();
+            logger.info(pedirConfirmacao ? "LOGOUT MANUAL REALIZADO." : "SESSÃO EXPIRADA POR INATIVIDADE.");
+        } finally {
+            processandoLogout = false;
+        }
+    }
 
 	// Atualize seu método processarLogout antigo para apenas uma linha:
 	private void processarLogout() {
@@ -162,28 +156,37 @@ public class MenuPrincipalController extends BaseController {
 			}
 		});
 	}
+	private Timer monitorInatividade;
+	public void iniciarMonitorSessao() {
+        // Se já houver um timer rodando (de um login anterior), para ele antes de começar
+        if (monitorInatividade != null && monitorInatividade.isRunning()) {
+            monitorInatividade.stop();
+        }
 
-	private void iniciarMonitorDeConexao() {
-		scheduler.scheduleAtFixedRate(() -> {
-			boolean estaValida = false;
-			try (Connection conn = ConnectionFactory.getConnection()) {
-				estaValida = (conn != null && conn.isValid(5));
-			} catch (Exception e) {
-				estaValida = false;
-			}
+        // Verifica a cada 60 segundos (ajuste se quiser mais precisão, ex: 30000 para 30s)
+        monitorInatividade = new Timer(60000, e -> {
+            if (Sessao.getUsuario() != null) {
+                if (Sessao.isExpirada()) {
+                    logger.warn("Sessão expirada para o usuário: {}", Sessao.getUsuario().getNome());
+                    pararMonitorSessao();
+                    executarLogout(false); // Logout automático (sem confirmação)
+                    DialogFactory.aviso(null, "Sua sessão expirou por inatividade.");
+                }
+            }
+        });
+        monitorInatividade.start();
+        logger.info("Monitor de inatividade iniciado.");
+    }
+	
+	public void pararMonitorSessao() {
+        if (monitorInatividade != null) {
+            monitorInatividade.stop();
+        }
+    }
 
-			final boolean status = estaValida;
-			SwingUtilities.invokeLater(() -> view.atualizarStatusBanco(status));
-
-			if (!status) {
-				dispararAlertaConexao();
-			}
-		}, 10, 30, TimeUnit.SECONDS);
-	}
-
-	private void dispararAlertaConexao() {
-		logger.error("CONEXÃO COM O BANCO DE DADOS PERDIDA!");
-	}
+//	private void dispararAlertaConexao() {
+//		logger.error("CONEXÃO COM O BANCO DE DADOS PERDIDA!");
+//	}
 
 	private void iniciarRelogio() {
 		relogioTimer = new Timer(1000, e -> atualizarHora());

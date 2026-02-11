@@ -3,21 +3,22 @@ package com.br.yat.gerenciador.model;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.util.MenuRegistry;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 public class Sessao {
-	private static Usuario usuarioLogado;
+    private static Usuario usuarioLogado;
     private static List<MenuChave> permissoesAtivas;
-    private static LocalDateTime ultimaAtividade;
-    private static int tempoExpiracaoMinutos; // Buscado do ParametroChave.TEMPO_SESSAO_MIN
+    private static long ultimaAtividadeMillis; 
+    private static int tempoExpiracaoMinutos;
 
     private Sessao() {}
 
     public static void login(Usuario usuario, List<MenuChave> permissoes, int minutosLimite) {
         usuarioLogado = usuario;
         permissoesAtivas = permissoes;
-        tempoExpiracaoMinutos = minutosLimite;
+        
+        tempoExpiracaoMinutos = (minutosLimite > 0) ? minutosLimite : 30;
+        
         registrarAtividade();
 
         MenuRegistry.disableAll();
@@ -34,17 +35,24 @@ public class Sessao {
     }
 
     public static void registrarAtividade() {
-        ultimaAtividade = LocalDateTime.now();
+        // Usa o tempo do sistema em milissegundos
+        ultimaAtividadeMillis = System.currentTimeMillis();
     }
 
     public static boolean isExpirada() {
         if (usuarioLogado == null) return true;
-        return LocalDateTime.now().isAfter(ultimaAtividade.plusMinutes(tempoExpiracaoMinutos));
+
+        long agora = System.currentTimeMillis();
+        long limiteMillis = (long) tempoExpiracaoMinutos * 60 * 1000;
+        
+        // Se a diferença entre agora e a última atividade for maior que o limite
+        return (agora - ultimaAtividadeMillis) > limiteMillis;
     }
 
     public static void logout() {
         usuarioLogado = null;
         permissoesAtivas = null;
+        ultimaAtividadeMillis = 0;
         MenuRegistry.disableAll();
     }
 
@@ -56,8 +64,8 @@ public class Sessao {
 		return permissoesAtivas;
 	}
 
-	public static LocalDateTime getUltimaAtividade() {
-		return ultimaAtividade;
+	public static long getUltimaAtividadeMillis() {
+	    return ultimaAtividadeMillis;
 	}
 
 	public static int getTempoExpiracaoMinutos() {

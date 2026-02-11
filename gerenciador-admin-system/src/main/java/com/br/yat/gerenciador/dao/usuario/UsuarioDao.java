@@ -145,19 +145,24 @@ public class UsuarioDao extends GenericDao<Usuario> {
 	}
 
 	public int incrementarERetornarTentativas(String email) {
-	    // 1. Incrementa no banco
 	    String sqlUpdate = "UPDATE " + tableName + " SET tentativas_falhas = COALESCE(tentativas_falhas, 0) + 1 WHERE email = ?";
 	    executeUpdate(sqlUpdate, email);
 
-	    // 2. Busca o novo valor usando o método da GenericDao
 	    String sqlSelect = "SELECT tentativas_falhas FROM " + tableName + " WHERE email = ?";
 	    
-	    // USANDO O MÉTODO QUE JÁ EXISTE NA SUA GENERICDAO
 	    return executeScalarInt(sqlSelect, email);
 	}
 
 	public void resetTentativasFalhas(int idUsuario) {
 		String sql = "UPDATE " + tableName + " SET tentativas_falhas = 0, bloqueado_ate = NULL WHERE id_usuario = ?";
+		executeUpdate(sql, idUsuario);
+	}
+	
+	//metodo para o futuro pra uam tela de usuarios bloqueados
+	public void desbloquearCompletamente(int idUsuario) {
+		String sql = "UPDATE " + tableName 
+			+ " SET tentativas_falhas = 0, bloqueado_ate = NULL, status = 'ATIVO', atualizado_em = NOW() "
+			+ " WHERE id_usuario = ?";
 		executeUpdate(sql, idUsuario);
 	}
 

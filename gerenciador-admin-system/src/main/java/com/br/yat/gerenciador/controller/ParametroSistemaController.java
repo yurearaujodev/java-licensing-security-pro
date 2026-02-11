@@ -19,11 +19,12 @@ public class ParametroSistemaController extends BaseController {
 
 	private final ParametroSistemaView view;
 	private final ParametroSistemaService service;
-	private final AutenticacaoService authService = new AutenticacaoService();
+	private final AutenticacaoService authService;
 
-	public ParametroSistemaController(ParametroSistemaView view, ParametroSistemaService service) {
+	public ParametroSistemaController(ParametroSistemaView view, ParametroSistemaService service,AutenticacaoService authService) {
 		this.view = view;
 		this.service = service;
+		this.authService=authService;
 		init();
 	}
 
