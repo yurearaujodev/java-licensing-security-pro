@@ -2,11 +2,14 @@ package com.br.yat.gerenciador.service;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+
+import com.br.yat.gerenciador.dao.usuario.UsuarioDao;
 import com.br.yat.gerenciador.dao.usuario.UsuarioPermissaoDao;
 import com.br.yat.gerenciador.configurations.ConnectionFactory;
 import com.br.yat.gerenciador.dao.LogSistemaDao;
 import com.br.yat.gerenciador.dao.empresa.EmpresaDao;
 import com.br.yat.gerenciador.exception.ValidationException;
+import com.br.yat.gerenciador.model.Sessao;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
@@ -19,7 +22,15 @@ public abstract class BaseService {
 	 */
 	protected void validarAcesso(Connection conn, Usuario executor, MenuChave chave, String tipoOperacao)
 			throws SQLException {
-		// 1. Setup inicial (Executor nulo)
+		// 1. Validação da Sessão (Camada de Aplicação)
+		// Checa se o Timer de inatividade ou o logout já invalidaram a sessão em
+		// memória
+		if (executor != null && Sessao.isExpirada()) {
+			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+					"SUA SESSÃO EXPIROU POR INATIVIDADE. OPERAÇÃO BLOQUEADA.");
+		}
+
+		// 2. Setup inicial (Executor nulo)
 		if (executor == null) {
 			EmpresaDao dao = new EmpresaDao(conn);
 			if (dao.buscarPorFornecedora() != null) {
@@ -28,11 +39,25 @@ public abstract class BaseService {
 			return;
 		}
 
-		// 2. Super usuário
+		// 3. Validação de Estado (Camada de Dados - Double Check)
+		// Verifica se o usuário não foi desativado ou excluído enquanto ele estava
+		// logado
+		UsuarioDao uDao = new UsuarioDao(conn);
+		Usuario atualNoBanco = uDao.searchById(executor.getIdUsuario());
+
+		if (atualNoBanco == null
+				|| atualNoBanco.getStatus() != com.br.yat.gerenciador.model.enums.StatusUsuario.ATIVO) {
+			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+					"USUÁRIO INATIVO OU REMOVIDO. ACESSO IMEDIATAMENTE REVOGADO.");
+		}
+
+		// --- FIM DA DOUBLE VALIDATION ---
+
+		// 4. Super usuário
 		if (executor.isMaster())
 			return;
 
-		// 3. Validação Granular (Perfil + Permissões Diretas)
+		// 5. Validação Granular (Perfil + Permissões Diretas)
 		UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
 		Integer idPerfil = (executor.getPerfil() != null) ? executor.getPerfil().getIdPerfil() : 0;
 

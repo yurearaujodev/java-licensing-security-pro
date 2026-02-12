@@ -224,6 +224,33 @@ public final class ViewFactory {
 
 		return view;
 	}
+	
+	
+	
+	public static UsuarioView criarUsuarioViewComController() {
+	    UsuarioView view = new UsuarioView();
+
+	    ParametroSistemaService parametro = new ParametroSistemaService();
+	    AutenticacaoService authService = new AutenticacaoService(parametro);
+	    UsuarioPermissaoService usuperservice = new UsuarioPermissaoService();
+	    UsuarioService service = new UsuarioService(authService, parametro, usuperservice);
+	    PerfilService perfilService = new PerfilService();
+
+	    UsuarioController controller = new UsuarioController(view, service, perfilService);
+	    view.putClientProperty("controller", controller);
+
+	    view.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+	    view.addInternalFrameListener(new InternalFrameAdapter() {
+	        @Override
+	        public void internalFrameClosing(InternalFrameEvent e) {
+	            controller.dispose();
+	            view.dispose();
+	        }
+	    });
+
+	    return view;
+	}
+
 
 	public static LogSistemaView createLogSistemaView() {
 		LogSistemaView view = new LogSistemaView();

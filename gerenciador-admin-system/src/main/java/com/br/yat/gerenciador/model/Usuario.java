@@ -180,4 +180,6 @@ public class Usuario extends BaseEntity {
         u.setBloqueadoAte(origem.getBloqueadoAte());
         return u;
     }
+    
+    
 }

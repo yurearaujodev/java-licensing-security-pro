@@ -187,33 +187,62 @@ public class UsuarioConsultaController extends BaseController {
 			DialogFactory.aviso(null, "ACESSO NEGADO À GESTÃO DE USUÁRIOS.");
 		}
 	}
-
+	
 	private void abrirFormulario(Usuario usuario) {
-		if (!podeAbrirCadastro()) {
-			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE USUÁRIOS.");
-			return;
-		}
+	    if (!podeAbrirCadastro()) {
+	        DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE USUÁRIOS.");
+	        return;
+	    }
 
-		JDesktopPane desk = view.getDesktopPane();
-		String idJanela = (usuario == null) ? "NOVO_USUARIO" : "EDIT_USUARIO_" + usuario.getIdUsuario();
+	    JDesktopPane desk = view.getDesktopPane();
 
-		if (DesktopUtils.reuseIfOpen(desk, idJanela))
-			return;
+	    // Sempre criamos uma nova view + controller, evitando problemas com clientProperty antigo
+	    UsuarioView cadastroView = ViewFactory.criarUsuarioViewComController();
 
-		UsuarioView cadastroView = ViewFactory.createUsuarioView();
-		cadastroView.setName(idJanela);
+	    // Recupera a controller recém-criada
+	    UsuarioController controller = (UsuarioController) cadastroView.getClientProperty("controller");
+	    controller.setRefreshCallback(this::carregarDados);
 
-		UsuarioController controller = (UsuarioController) cadastroView.getClientProperty("controller");
-		controller.setRefreshCallback(this::carregarDados);
+	    // Define título da janela de acordo com o contexto
+	    if (usuario != null) {
+	        cadastroView.setTitle("EDITANDO USUÁRIO: " + usuario.getNome().toUpperCase());
+	        controller.carregarUsuarioParaEdicao(usuario);
+	    } else {
+	        cadastroView.setTitle("NOVO USUÁRIO");
+	        controller.novoUsuario();
+	    }
 
-		if (usuario != null) {
-			controller.carregarUsuarioParaEdicao(usuario);
-		} else {
-			controller.novoUsuario();
-		}
-
-		DesktopUtils.showFrame(desk, cadastroView);
+	    // Garantimos que a janela seja exibida
+	    DesktopUtils.showFrame(desk, cadastroView);
 	}
+
+
+//	private void abrirFormulario(Usuario usuario) {
+//		if (!podeAbrirCadastro()) {
+//			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE USUÁRIOS.");
+//			return;
+//		}
+//
+//		JDesktopPane desk = view.getDesktopPane();
+//		String idJanela = (usuario == null) ? "NOVO_USUARIO" : "EDIT_USUARIO_" + usuario.getIdUsuario();
+//
+//		if (DesktopUtils.reuseIfOpen(desk, idJanela))
+//			return;
+//
+//		UsuarioView cadastroView = ViewFactory.createUsuarioView();
+//		cadastroView.setName(idJanela);
+//
+//		UsuarioController controller = (UsuarioController) cadastroView.getClientProperty("controller");
+//		controller.setRefreshCallback(this::carregarDados);
+//
+//		if (usuario != null) {
+//			controller.carregarUsuarioParaEdicao(usuario);
+//		} else {
+//			controller.novoUsuario();
+//		}
+//
+//		DesktopUtils.showFrame(desk, cadastroView);
+//	}
 
 	private boolean podeAbrirCadastro() {
 		Usuario logado = Sessao.getUsuario();

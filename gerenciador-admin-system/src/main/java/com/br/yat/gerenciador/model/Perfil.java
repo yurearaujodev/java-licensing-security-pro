@@ -52,4 +52,18 @@ public class Perfil extends BaseEntity {
 	public String toString() {
 	    return this.nome != null ? this.nome : "Selecione...";
 	}
+	
+	@Override
+	public boolean equals(Object o) {
+	    if (this == o) return true;
+	    if (o == null || getClass() != o.getClass()) return false;
+	    Perfil perfil = (Perfil) o;
+	    // Compara se os IDs são iguais. Isso resolve o problema do ComboBox!
+	    return idPerfil != null && idPerfil.equals(perfil.idPerfil);
+	}
+
+	@Override
+	public int hashCode() {
+	    return idPerfil != null ? idPerfil.hashCode() : 0;
+	}
 }

@@ -24,9 +24,10 @@ public abstract class BaseController {
 	protected final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 	protected final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 	private LoadingDialog loadingDialog;
+	 private int loadingCounter = 0;
 
 	public void dispose() {
-		hideLoading(); // Garante que o loading não fique travado se a tela fechar
+		hideLoading(true); // Garante que o loading não fique travado se a tela fechar
 		if (loadingDialog != null) {
 			loadingDialog.dispose();
 			loadingDialog = null;
@@ -73,7 +74,7 @@ public abstract class BaseController {
 	protected <T> void runAsync(Window view, TaskWithResult<T> task, Consumer<T> onSuccess) {
 		showLoading(view);
 		runAsyncSilent(view, task, result -> {
-			hideLoading();
+			hideLoading(false);
 			if (onSuccess != null) {
 				onSuccess.accept(result);
 			}
@@ -90,37 +91,36 @@ public abstract class BaseController {
 			} catch (Exception e) {
 				SwingUtilities.invokeLater(() -> handleException(e, view));
 			} finally {
-				SwingUtilities.invokeLater(this::hideLoading);
+				SwingUtilities.invokeLater(() -> hideLoading(false));
 			}
 		});
 	}
 
-	protected void showLoading(Window parent) {
-		SwingUtilities.invokeLater(() -> {
-			// Se o dialog já existe, mas o parent mudou ou o dialog antigo foi descartado
-			if (loadingDialog != null && loadingDialog.getOwner() != parent) {
-				loadingDialog.dispose(); // Limpa o antigo da memória
-				loadingDialog = null;
-			}
 
-			// Cria apenas se necessário para o parent atual
-			if (loadingDialog == null) {
-				loadingDialog = new LoadingDialog(parent);
-			}
+    protected synchronized void showLoading(Window parent) {
+        SwingUtilities.invokeLater(() -> {
+            if (loadingDialog == null || loadingDialog.getOwner() != parent) {
+                if (loadingDialog != null) loadingDialog.dispose();
+                loadingDialog = new LoadingDialog(parent);
+            }
+            loadingCounter++;
+            if (!loadingDialog.isVisible()) loadingDialog.show();
+        });
+    }
 
-			if (!loadingDialog.isVisible()) {
-				loadingDialog.show();
-			}
-		});
-	}
-
-	protected void hideLoading() {
-		SwingUtilities.invokeLater(() -> {
-			if (loadingDialog != null && loadingDialog.isVisible()) {
-				loadingDialog.hide();
-			}
-		});
-	}
+    protected synchronized void hideLoading(boolean force) {
+        SwingUtilities.invokeLater(() -> {
+            if (loadingDialog != null) {
+                if (force) {
+                    loadingCounter = 0;
+                    loadingDialog.hide();
+                } else if (loadingCounter > 0) {
+                    loadingCounter--;
+                    if (loadingCounter == 0) loadingDialog.hide();
+                }
+            }
+        });
+    }
 
 	/**
 	 * Aplica o "cadeado visual" nos botões da view baseado nas permissões do

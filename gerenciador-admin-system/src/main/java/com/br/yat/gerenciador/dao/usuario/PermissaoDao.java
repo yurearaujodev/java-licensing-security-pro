@@ -104,6 +104,25 @@ public class PermissaoDao extends GenericDao<Permissao> {
 	    return executeQuery(sql, idUsuario);
 	}
 	
+	public List<Permissao> buscarPermissoesGranularesNaoHerdadas(Integer idUsuario) {
+	    String sql = "SELECT p.* FROM usuario_permissoes up "
+	            + "INNER JOIN permissoes p ON up.id_permissoes = p.id_permissoes "
+	            + "WHERE up.id_usuario = ? AND up.ativa = 1 AND up.herdada = 0 " 
+	            + "AND up.deletado_em IS NULL "
+	            + "AND (up.expira_em IS NULL OR up.expira_em > NOW())";
+
+	    // A GenericDao faz o try-catch, o bind do idUsuario e o mapResultSetToEntity para você!
+	    return executeQuery(sql, idUsuario);
+	}
+
+	public List<Permissao> listarPermissoesDoPerfil(Integer idPerfil) {
+	    String sql = "SELECT p.* FROM permissoes p " +
+	                 "INNER JOIN perfil_permissoes pp ON p.id_permissoes = pp.id_permissoes " +
+	                 "WHERE pp.id_perfil = ? AND pp.deletado_em IS NULL";
+	    
+	    return executeQuery(sql, idPerfil);
+	}
+	
 	public Integer buscarMaiorNivelDoUsuario(int idUsuario) {
 	    String sql = "SELECT MAX(p.nivel) FROM permissoes p " +
 	                 "INNER JOIN usuario_permissoes up ON p.id_permissoes = up.id_permissoes " +

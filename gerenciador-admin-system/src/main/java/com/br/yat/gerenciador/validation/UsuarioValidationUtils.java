@@ -28,6 +28,10 @@ public final class UsuarioValidationUtils {
             validarSenha(usuario.getSenhaHash());
         }
         
+        if (!usuario.isMaster() && (usuario.getPerfil() == null || usuario.getPerfil().getIdPerfil() == null)) {
+            throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "TODO USUÁRIO COMUM DEVE TER UM PERFIL VINCULADO.");
+        }
+        
         if (usuario.getEmpresa() == null || usuario.getEmpresa().getIdEmpresa() == null || usuario.getEmpresa().getIdEmpresa() <= 0) {
             throw new ValidationException(ValidationErrorType.INVALID_FIELD, "USUÁRIO DEVE ESTAR VINCULADO A UMA EMPRESA.");
         }

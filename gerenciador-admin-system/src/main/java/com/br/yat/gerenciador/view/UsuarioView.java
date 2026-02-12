@@ -1,416 +1,285 @@
 package com.br.yat.gerenciador.view;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JFormattedTextField;
-import javax.swing.JInternalFrame;
-import javax.swing.JPanel;
-import javax.swing.JPasswordField;
-import javax.swing.JProgressBar;
-import javax.swing.JScrollPane;
-import javax.swing.JTextField;
+import javax.swing.*;
 
 import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.StatusUsuario;
+import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.util.IconFactory;
-import com.br.yat.gerenciador.view.factory.ButtonFactory;
-import com.br.yat.gerenciador.view.factory.ComboBoxFactory;
-import com.br.yat.gerenciador.view.factory.DesktopFactory;
-import com.br.yat.gerenciador.view.factory.FieldFactory;
-import com.br.yat.gerenciador.view.factory.FormatterUtils;
-import com.br.yat.gerenciador.view.factory.LabelFactory;
-import com.br.yat.gerenciador.view.factory.MaskFactory;
-import com.br.yat.gerenciador.view.factory.PanelFactory;
-
+import com.br.yat.gerenciador.view.factory.*;
 import net.miginfocom.swing.MigLayout;
 
 public class UsuarioView extends JInternalFrame {
 
-	private static final long serialVersionUID = 1L;
-	private JTextField txtNome;
-	private JTextField txtEmail;
-	private JTextField txtEmpresa;
-	private Integer idEmpresa;
-	private Integer idPerfil;
-	private JPasswordField txtSenhaNova;
-	private JPasswordField txtSenhaAntiga;
-	private JPasswordField txtConfirmarSenha;
-	private JProgressBar barraForcaSenha;
-
-	private JComboBox<StatusUsuario> cbStatus;
-	private JButton btnSalvar;
-	private JButton btnNovo;
-	private JButton btnCancelar;
-	private JCheckBox chkMaster;
-	private JComboBox<Perfil> cbPerfil;
-
-	private final Map<String, JCheckBox> chkTodosPorCategoria = new LinkedHashMap<>();
-
-	private final Map<String, List<MenuChave>> gruposPermissoes = new LinkedHashMap<>();
-
-	private final Map<MenuChave, Map<String, JCheckBox>> permissoesGranulares = new LinkedHashMap<>();
-
-	private final Map<MenuChave, JTextField> datasExpiracao = new LinkedHashMap<>();
-
-	public UsuarioView() {
-		super("Cadastro de Usuário", true, true, true, true);
-
-		setLayout(new MigLayout("gapx 15, gapy 15", "[grow,fill]", "[][grow][]"));
-
-		montarTela();
-		add(criarPermissoes(), "cell 0 1, grow");
-		add(criarBotoes(), "cell 0 2, right");
-		setSize(800, 600);
-	}
-
-	private void montarTela() {
-		JPanel panel = PanelFactory.createPanel("gapx 10, gapy 10", "[right][grow,fill][right][grow,fill]", "[][][]");
-		panel.setBorder(BorderFactory.createTitledBorder("Dados do Usuário"));
-		montarCampos(panel);
-		add(panel, "cell 0 0,grow");
-	}
-
-	private void montarCampos(JPanel panel) {
-		panel.add(LabelFactory.createLabel("USUÁRIO: "), "cell 0 0, alignx trailing");
-		txtNome = FieldFactory.createTextField(20);
-		panel.add(txtNome, "cell 1 0,growx,h 25!");
-
-		panel.add(LabelFactory.createLabel("E-MAIL: "), "cell 2 0, alignx trailing");
-		txtEmail = FieldFactory.createTextField(20);
-		panel.add(txtEmail, "cell 3 0,growx,h 25!");
-
-		panel.add(LabelFactory.createLabel("SENHA ANTIGA: "), "cell 0 1, alignx trailing");
-		txtSenhaAntiga = FieldFactory.createPasswordField(20);
-		panel.add(txtSenhaAntiga, "cell 1 1,growx,h 25!");
-
-		panel.add(LabelFactory.createLabel("STATUS: "), "cell 2 1, alignx trailing");
-		cbStatus = ComboBoxFactory.createEnumComboBox(StatusUsuario.class);
-		panel.add(cbStatus, "cell 3 1,growx,h 25!");
-
-		panel.add(LabelFactory.createLabel("NOVA SENHA: "), "cell 0 2, alignx trailing");
-		txtSenhaNova = FieldFactory.createPasswordField(20);
-		panel.add(txtSenhaNova, "cell 1 2,growx,h 25!");
-
-		barraForcaSenha = DesktopFactory.createPasswordStrengthBar();
-		panel.add(barraForcaSenha, "cell 1 2,growx,h 15!, wrap");
-
-		panel.add(LabelFactory.createLabel("CONFIRMAR SENHA: "), "cell 2 2, alignx trailing");
-		txtConfirmarSenha = FieldFactory.createPasswordField(20);
-		panel.add(txtConfirmarSenha, "cell 3 2,growx,h 25!");
-
-		panel.add(LabelFactory.createLabel("MASTER: "), "cell 2 3, alignx trailing");
-		chkMaster = ButtonFactory.createCheckBox("ESTE USUÁRIO É ADMINISTRADOR MASTER");
-		panel.add(chkMaster, "cell 3 3 3 1, growx");
-
-		panel.add(LabelFactory.createLabel("EMPRESA: "), "cell 0 4, alignx trailing");
-		txtEmpresa = FieldFactory.createTextField(20);
-		txtEmpresa.setEnabled(false);
-		panel.add(txtEmpresa, "cell 1 4 3 1,growx,h 25!");
-
-		panel.add(LabelFactory.createLabel("PERFIL: "), "cell 0 3, alignx trailing");
-		cbPerfil = new JComboBox<>(); // Aqui você vai carregar os perfis do banco
-		panel.add(cbPerfil, "cell 1 3, growx, h 25!");
-
-	}
-
-	private JScrollPane criarPermissoes() {
-		JPanel container = new JPanel(new MigLayout("wrap 1", "[grow]", "[]10[]"));
-		container.setBorder(BorderFactory.createTitledBorder("Permissões do Usuário"));
-
-		this.pnlPermissoesContainer = container;
-
-		return DesktopFactory.createScroll(container);
-	}
-
-	private JPanel pnlPermissoesContainer;
-
-	public void construirGradePermissoes(Map<String, List<MenuChave>> grupos) {
-		gruposPermissoes.clear();
-		gruposPermissoes.putAll(grupos);
-		pnlPermissoesContainer.removeAll();
-		permissoesGranulares.clear();
-		datasExpiracao.clear();
-
-		for (var entry : gruposPermissoes.entrySet()) {
-			String categoria = entry.getKey();
-			List<MenuChave> chaves = entry.getValue();
-
-			JPanel categoriaPanel = new JPanel(
-					new MigLayout("fillx, insets 10", "[grow,fill][50!][50!][50!][120!]", "[]5[]"));
-			categoriaPanel.setBorder(BorderFactory.createTitledBorder(categoria));
-
-			JCheckBox chkTodos = ButtonFactory.createCheckBox("MARCAR TODOS DESTA CATEGORIA");
-			chkTodosPorCategoria.put(categoria, chkTodos);
-			categoriaPanel.add(chkTodos, "span 5, left, gapy 5 10, wrap");
-
-			categoriaPanel.add(LabelFactory.createLabel("MÓDULO / MENU"), "center");
-			categoriaPanel.add(LabelFactory.createLabel("VER"), "center");
-			categoriaPanel.add(LabelFactory.createLabel("ADD"), "center");
-			categoriaPanel.add(LabelFactory.createLabel("DEL"), "center");
-			categoriaPanel.add(LabelFactory.createLabel("EXPIRA EM (OPCIONAL)"), "center, wrap");
-
-			for (MenuChave chave : chaves) {
-				categoriaPanel.add(LabelFactory.createLabel(formatarTexto(chave.name())), "");
-
-				Map<String, JCheckBox> tiposMap = new LinkedHashMap<>();
-				JCheckBox chkRead = new JCheckBox();
-				JCheckBox chkWrite = new JCheckBox();
-				JCheckBox chkDelete = new JCheckBox();
-
-				categoriaPanel.add(chkRead, "center");
-				categoriaPanel.add(chkWrite, "center");
-				categoriaPanel.add(chkDelete, "center");
-
-				tiposMap.put("READ", chkRead);
-				tiposMap.put("WRITE", chkWrite);
-				tiposMap.put("DELETE", chkDelete);
-				permissoesGranulares.put(chave, tiposMap);
-
-				JFormattedTextField txtData = FieldFactory.createFormattedField();
-				String mask = MaskFactory.createMask().get("DATA_HORA");
-				FormatterUtils.applyDateMask(txtData, mask);
-				txtData.setToolTipText("Ex: 31/12/2026 23:59");
-				datasExpiracao.put(chave, txtData);
-				categoriaPanel.add(txtData, "growx, h 20!, wrap");
-			}
-			pnlPermissoesContainer.add(categoriaPanel, "growx, wrap 10");
-		}
-		pnlPermissoesContainer.revalidate();
-		pnlPermissoesContainer.repaint();
-	}
-
-	private JPanel criarBotoes() {
-		JPanel panel = PanelFactory.createPanel("insets 5", "[left][grow][right]", "[]");
-
-		btnNovo = ButtonFactory.createPrimaryButton("NOVO", IconFactory.novo());
-		panel.add(btnNovo, "cell 0 0,h 35!,w 140!");
-
-		btnCancelar = ButtonFactory.createPrimaryButton("CANCELAR", IconFactory.cancelar());
-		panel.add(btnCancelar, "cell 2 0 2 1,split 2,alignx center,w 140!, h 35!");
-
-		btnSalvar = ButtonFactory.createPrimaryButton("SALVAR", IconFactory.salvar());
-		panel.add(btnSalvar, "w 140!, h 35!, alignx center");
-		return panel;
-	}
-
-	public Map<MenuChave, String> getDatasExpiracaoTexto() {
-		Map<MenuChave, String> dados = new LinkedHashMap<>();
-		datasExpiracao.forEach((chave, txtField) -> {
-			dados.put(chave, txtField.getText());
-		});
-		return dados;
-	}
-
-	private String formatarTexto(String texto) {
-		return texto.replace("_", " ").toUpperCase();
-	}
-
-	public String getNome() {
-		return txtNome.getText();
-	}
-
-	public void setNome(String nome) {
-		txtNome.setText(nome);
-	}
-
-	public String getEmail() {
-		return txtEmail.getText();
-	}
-
-	public void setEmail(String email) {
-		txtEmail.setText(email);
-	}
-
-	public char[] getSenhaNova() {
-		return txtSenhaNova.getPassword();
-	}
-
-	public char[] getSenhaAntiga() {
-		return txtSenhaAntiga.getPassword();
-	}
-
-	public char[] getConfirmarSenha() {
-		return txtConfirmarSenha.getPassword();
-	}
-
-	public void setEmpresa(Integer id, String nome) {
-		this.idEmpresa = id;
-		this.txtEmpresa.setText(nome);
-	}
-
-	public Integer getEmpresa() {
-		return idEmpresa;
-	}
-
-	public void setPerfil(Perfil perfil) {
-		if (perfil == null)
-			return;
-		this.idPerfil = perfil.getIdPerfil();
-		cbPerfil.setSelectedItem(perfil);
-	}
-
-	public Integer getPerfil() {
-		return idPerfil;
-	}
-
-	public JComboBox<Perfil> getCbPerfil() {
-		return cbPerfil;
-	}
-
-	public void carregarCombosPerfil(List<Perfil> perfis) {
-		for (Perfil p : perfis) {
-			System.out.println("  Adicionando: " + p.getNome() + " (ID: " + p.getIdPerfil() + ")");
-			cbPerfil.addItem(p);
-		}
-	}
-
-	public StatusUsuario getStatus() {
-		return (StatusUsuario) cbStatus.getSelectedItem();
-	}
-
-	public void setStatus(StatusUsuario status) {
-		cbStatus.setSelectedItem(status);
-	}
-
-	public Map<MenuChave, Map<String, JCheckBox>> getPermissoesGranulares() {
-		return permissoesGranulares;
-	}
-
-	public Map<String, JCheckBox> getChkTodosPorCategoria() {
-		return chkTodosPorCategoria;
-	}
-
-	public Map<String, List<MenuChave>> getGruposPermissoes() {
-		return gruposPermissoes;
-	}
-
-	public JTextField getTxtNome() {
-		return txtNome;
-	}
-
-	public JTextField getTxtEmail() {
-		return txtEmail;
-	}
-
-	public JTextField getTxtEmpresa() {
-		return txtEmpresa;
-	}
-
-	public JPasswordField getTxtSenha() {
-		return txtSenhaNova;
-	}
-
-	public JPasswordField getTxtSenhaAntiga() {
-		return txtSenhaAntiga;
-	}
-
-	public JComboBox<StatusUsuario> getCbStatus() {
-		return cbStatus;
-	}
-
-	public JButton getBtnSalvar() {
-		return btnSalvar;
-	}
-
-	public void setTextoBotaoSalvar(String texto) {
-		btnSalvar.setText(texto);
-	}
-
-	public JButton getBtnNovo() {
-		return btnNovo;
-	}
-
-	public JButton getBtnCancelar() {
-		return btnCancelar;
-	}
-
-	public boolean isMaster() {
-		return chkMaster.isSelected();
-	}
-
-	public void setMaster(boolean master) {
-		chkMaster.setSelected(master);
-		chkMaster.setEnabled(false);
-	}
-
-	public JCheckBox getChkMaster() {
-		return chkMaster;
-	}
-
-	public JProgressBar getBarraForcaSenha() {
-		return barraForcaSenha;
-	}
-
-	public void limpar() {
-		idEmpresa = null;
-		txtNome.setText("");
-		txtEmail.setText("");
-		txtSenhaNova.setText("");
-		txtSenhaAntiga.setText("");
-		txtConfirmarSenha.setText("");
-		cbStatus.setSelectedIndex(0);
-		txtEmpresa.setText("");
-
-		chkMaster.setSelected(false);
-		chkMaster.setEnabled(false);
-
-		permissoesGranulares.values().forEach(map -> map.values().forEach(chk -> chk.setSelected(false)));
-		chkTodosPorCategoria.values().forEach(cb -> cb.setSelected(false));
-
-	}
-
-	public void desativarAtivar(boolean ativa) {
-		txtNome.setEnabled(ativa);
-		txtEmail.setEnabled(ativa);
-		txtSenhaNova.setEnabled(ativa);
-		txtSenhaAntiga.setEnabled(ativa);
-		txtConfirmarSenha.setEnabled(ativa);
-		cbStatus.setEnabled(ativa);
-		chkMaster.setEnabled(ativa);
-
-		permissoesGranulares.values().forEach(map -> map.values().forEach(chk -> chk.setEnabled(ativa)));
-		chkTodosPorCategoria.values().forEach(cb -> cb.setEnabled(ativa));
-	}
-
-	public void setPermissaoSelecionada(MenuChave chave, String tipo, boolean selecionada) {
-		Map<String, JCheckBox> tiposMap = permissoesGranulares.get(chave);
-		if (tiposMap != null) {
-			JCheckBox chk = tiposMap.get(tipo); // tipo aqui é "READ", "WRITE" ou "DELETE"
-			if (chk != null) {
-				chk.setSelected(selecionada);
-			}
-		}
-	}
-
-	public void desmarcarTodasPermissoes() {
-		permissoesGranulares.values().forEach(map -> map.values().forEach(chk -> chk.setSelected(false)));
-		chkTodosPorCategoria.values().forEach(chk -> chk.setSelected(false));
-	}
-
-	public void atualizarStatusMarcarTodos(String categoria, boolean selecionado) {
-		JCheckBox chk = chkTodosPorCategoria.get(categoria);
-		if (chk != null) {
-			chk.setSelected(selecionado);
-		}
-	}
-
-	public void bloquearStatus(boolean editavel) {
-		this.cbStatus.setEnabled(editavel);
-	}
-
-	public void bloquearGradePermissoes(boolean editavel) {
-		getPermissoesGranulares().values().forEach(tiposMap -> {
-			tiposMap.values().forEach(chk -> chk.setEnabled(editavel));
-		});
-
-		getChkTodosPorCategoria().values().forEach(chk -> chk.setEnabled(editavel));
-	}
+    private static final long serialVersionUID = 1L;
+
+    // ===============================
+    // COMPONENTES DE DADOS
+    // ===============================
+    private final JTextField txtNome;
+    private final JTextField txtEmail;
+    private final JTextField txtEmpresa;
 
+    private final JPasswordField txtSenhaNova;
+    private final JPasswordField txtSenhaAntiga;
+    private final JPasswordField txtConfirmarSenha;
+
+    private final JProgressBar barraForcaSenha;
+
+    private final JComboBox<StatusUsuario> cbStatus;
+    private final JComboBox<Perfil> cbPerfil;
+
+    private final JCheckBox chkMaster;
+
+    private Integer idEmpresa;
+
+    // ===============================
+    // COMPONENTE DE PERMISSÕES
+    // ===============================
+    private final PainelPermissoes pnlPermissoes;
+
+    // ===============================
+    // BOTÕES
+    // ===============================
+    private final JButton btnSalvar;
+    private final JButton btnNovo;
+    private final JButton btnCancelar;
+
+    // ===============================
+    // CONSTRUTOR
+    // ===============================
+    public UsuarioView() {
+        super("Cadastro de Usuário", true, true, true, true);
+
+        setLayout(new MigLayout("gapx 15, gapy 15", "[grow,fill]", "[][grow][]"));
+
+        // Instancia componentes
+        txtNome = FieldFactory.createTextField(20);
+        txtEmail = FieldFactory.createTextField(20);
+        txtSenhaAntiga = FieldFactory.createPasswordField(20);
+        txtSenhaNova = FieldFactory.createPasswordField(20);
+        txtConfirmarSenha = FieldFactory.createPasswordField(20);
+        txtEmpresa = FieldFactory.createTextField(20);
+        txtEmpresa.setEnabled(false);
+
+        cbStatus = ComboBoxFactory.createEnumComboBox(StatusUsuario.class);
+        cbPerfil = new JComboBox<>();
+
+        chkMaster = ButtonFactory.createCheckBox("ESTE USUÁRIO É ADMINISTRADOR MASTER");
+        barraForcaSenha = DesktopFactory.createPasswordStrengthBar();
+
+        pnlPermissoes = new PainelPermissoes();
+
+        btnNovo = ButtonFactory.createPrimaryButton("NOVO", IconFactory.novo());
+        btnCancelar = ButtonFactory.createPrimaryButton("CANCELAR", IconFactory.cancelar());
+        btnSalvar = ButtonFactory.createPrimaryButton("SALVAR", IconFactory.salvar());
+
+        montarLayout();
+
+        setSize(850, 650);
+    }
+
+    // ===============================
+    // MONTAGEM DA TELA
+    // ===============================
+    private void montarLayout() {
+        add(montarPainelDadosBasicos(), "cell 0 0, growx");
+        add(DesktopFactory.createScroll(pnlPermissoes), "cell 0 1, grow");
+        add(montarPainelBotoes(), "cell 0 2, right");
+    }
+
+    private JPanel montarPainelDadosBasicos() {
+        JPanel panel = PanelFactory.createPanel(
+                "gapx 10, gapy 10",
+                "[right][grow,fill][right][grow,fill]",
+                "[][][][][]"
+        );
+
+        panel.setBorder(BorderFactory.createTitledBorder("Dados do Usuário"));
+
+        panel.add(LabelFactory.createLabel("USUÁRIO: "), "cell 0 0");
+        panel.add(txtNome, "cell 1 0");
+
+        panel.add(LabelFactory.createLabel("E-MAIL: "), "cell 2 0");
+        panel.add(txtEmail, "cell 3 0");
+
+        panel.add(LabelFactory.createLabel("SENHA ANTIGA: "), "cell 0 1");
+        panel.add(txtSenhaAntiga, "cell 1 1");
+
+        panel.add(LabelFactory.createLabel("STATUS: "), "cell 2 1");
+        panel.add(cbStatus, "cell 3 1");
+
+        panel.add(LabelFactory.createLabel("NOVA SENHA: "), "cell 0 2");
+        panel.add(txtSenhaNova, "cell 1 2");
+        panel.add(barraForcaSenha, "cell 1 2, growx, h 15!, gaptop 20");
+
+        panel.add(LabelFactory.createLabel("CONFIRMAR: "), "cell 2 2");
+        panel.add(txtConfirmarSenha, "cell 3 2");
+
+        panel.add(LabelFactory.createLabel("PERFIL: "), "cell 0 3");
+        panel.add(cbPerfil, "cell 1 3");
+
+        panel.add(LabelFactory.createLabel("MASTER: "), "cell 2 3");
+        panel.add(chkMaster, "cell 3 3");
+
+        panel.add(LabelFactory.createLabel("EMPRESA: "), "cell 0 4");
+        panel.add(txtEmpresa, "cell 1 4 3 1");
+
+        return panel;
+    }
+
+    private JPanel montarPainelBotoes() {
+        JPanel panel = new JPanel(new MigLayout("insets 5", "[left][grow][right]", "[]"));
+
+        panel.add(btnNovo, "w 140!, h 35!");
+        panel.add(btnCancelar, "gapleft push, w 140!, h 35!");
+        panel.add(btnSalvar, "w 140!, h 35!");
+
+        return panel;
+    }
+
+    // ===============================
+    // API DE PERMISSÕES (ENCAPSULADA)
+    // ===============================
+    public void construirGradePermissoes(Map<String, List<MenuChave>> grupos) {
+        pnlPermissoes.construirGrade(grupos);
+    }
+
+    public void setPermissao(MenuChave chave, TipoPermissao tipo, boolean valor) {
+        pnlPermissoes.setPermissao(chave, tipo, valor);
+    }
+
+    public boolean isPermissaoSelecionada(MenuChave chave, TipoPermissao tipo) {
+        return pnlPermissoes.isPermissaoSelecionada(chave, tipo);
+    }
+
+    public void setPermissoesHabilitadas(boolean habilitado) {
+        pnlPermissoes.setHabilitado(habilitado);
+    }
+    
+    public void setMasterHabilitado(boolean habilitado) {
+        chkMaster.setEnabled(habilitado);
+    }
+    
+    public void limparPermissoes() {
+        pnlPermissoes.resetarSelecoes(); // Agora usamos o novo método
+    }
+
+    public void limpar() {
+        txtNome.setText("");
+        txtEmail.setText("");
+        limparSenhas();
+        cbStatus.setSelectedIndex(0);
+        cbPerfil.setSelectedIndex(-1);
+        chkMaster.setSelected(false);
+        barraForcaSenha.setValue(0);
+        limparPermissoes(); // Apenas reseta os checks, não apaga a grade da tela
+    }
+
+//    public void limparPermissoes() {
+//        pnlPermissoes.limpar();
+//    }
+
+    // ===============================
+    // API DE DADOS
+    // ===============================
+    public String getNome() { return txtNome.getText(); }
+    public void setNome(String nome) { txtNome.setText(nome); }
+
+    public String getEmail() { return txtEmail.getText(); }
+    public void setEmail(String email) { txtEmail.setText(email); }
+
+    public char[] getSenhaNova() { return txtSenhaNova.getPassword(); }
+    public char[] getSenhaAntiga() { return txtSenhaAntiga.getPassword(); }
+    public char[] getConfirmarSenha() { return txtConfirmarSenha.getPassword(); }
+
+    public void limparSenhas() {
+        txtSenhaNova.setText("");
+        txtSenhaAntiga.setText("");
+        txtConfirmarSenha.setText("");
+    }
+
+    public StatusUsuario getStatus() {
+        return (StatusUsuario) cbStatus.getSelectedItem();
+    }
+
+    public void setStatus(StatusUsuario status) {
+        cbStatus.setSelectedItem(status);
+    }
+
+    public boolean isMaster() { return chkMaster.isSelected(); }
+    public void setMaster(boolean master) { chkMaster.setSelected(master); }
+
+    public void setEmpresa(Integer id, String nome) {
+        this.idEmpresa = id;
+        this.txtEmpresa.setText(nome);
+    }
+
+    public Integer getIdEmpresa() { return idEmpresa; }
+
+    public void carregarCombosPerfil(List<Perfil> lista) {
+        cbPerfil.removeAllItems();
+        if (lista != null) {
+            lista.forEach(cbPerfil::addItem);
+        }
+    }
+
+    public Perfil getPerfilSelecionado() {
+        return (Perfil) cbPerfil.getSelectedItem();
+    }
+    
+    public String getDataExpiracao(MenuChave chave) {
+        return pnlPermissoes.getDataExpiracao(chave);
+    }
+
+    public void setPerfil(Perfil perfil) {
+        cbPerfil.setSelectedItem(perfil);
+    }
+    
+    public Set<MenuChave> getChavesAtivas() {
+        return pnlPermissoes.getChavesAtivas();
+    }
+    
+    public PainelPermissoes getPainelPermissoes() {
+        return pnlPermissoes;
+    }
+    
+//    public Set<String> getCategoriasPermissoes() {
+//        return pnlPermissoes.getCategorias();
+//    }
+//
+//    public List<MenuChave> getChavesDaCategoria(String categoria) {
+//        return pnlPermissoes.getChavesDaCategoria(categoria);
+//    }
+//
+//    public JCheckBox getCheckBoxPermissao(MenuChave chave, TipoPermissao tipo) {
+//        return pnlPermissoes.getCheckBox(chave, tipo);
+//    }
+
+
+//    public void limpar() {
+//        txtNome.setText("");
+//        txtEmail.setText("");
+//        limparSenhas();
+//        cbStatus.setSelectedIndex(0);
+//        cbPerfil.setSelectedIndex(-1);
+//        chkMaster.setSelected(false);
+//        barraForcaSenha.setValue(0);
+//        limparPermissoes();
+//    }
+
+    // ===============================
+    // GETTERS DE AÇÃO (Controller)
+    // ===============================
+    public JButton getBtnSalvar() { return btnSalvar; }
+    public JButton getBtnNovo() { return btnNovo; }
+    public JButton getBtnCancelar() { return btnCancelar; }
+
+    public JPasswordField getCampoSenhaNova() { return txtSenhaNova; }
+    public JProgressBar getBarraForcaSenha() { return barraForcaSenha; }
 }

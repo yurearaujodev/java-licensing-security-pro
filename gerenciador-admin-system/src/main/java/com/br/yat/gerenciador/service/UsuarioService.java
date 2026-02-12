@@ -3,7 +3,7 @@ package com.br.yat.gerenciador.service;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -106,9 +106,37 @@ public class UsuarioService extends BaseService {
 
 			try {
 				UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
-//				LogSistemaDao logDao = new LogSistemaDao(conn);
-
 				validarRegrasPersistencia(usuarioDao, usuario);
+				if (usuario.getPerfil() != null) {
+				    PermissaoDao pDao = new PermissaoDao(conn);
+				    List<Permissao> permissoesDoPerfil = pDao.listarPermissoesDoPerfil(usuario.getPerfil().getIdPerfil());
+
+				    // 1. Criamos um novo mapa mutável para processamento
+				    Map<MenuChave, List<String>> novasPermissoes = new HashMap<>();
+
+				    permissoesGranulares.forEach((chave, tiposOriginais) -> {
+				        // 2. Criamos uma cópia mutável da lista (Resolve o UnsupportedOperationException)
+				        List<String> tiposMutaveis = new ArrayList<>(tiposOriginais);
+
+				        // 3. Removemos apenas o que o Perfil já possui (desde que não tenha data de expiração)
+				        tiposMutaveis.removeIf(tipo -> {
+				            boolean jaExisteNoPerfil = permissoesDoPerfil.stream()
+				                    .anyMatch(p -> p.getChave().equals(chave.name()) && p.getTipo().equalsIgnoreCase(tipo));
+				            
+				            boolean temDataEspecial = datasExpiracao.containsKey(chave);
+
+				            return jaExisteNoPerfil && !temDataEspecial;
+				        });
+
+				        // 4. Se restou algo (é uma permissão extra que você marcou), guardamos no novo mapa
+				        if (!tiposMutaveis.isEmpty()) {
+				            novasPermissoes.put(chave, tiposMutaveis);
+				        }
+				    });
+
+				    // 5. Substituímos a referência para o service seguir com os dados limpos
+				    permissoesGranulares = novasPermissoes;
+				}
 
 				Usuario estadoAnterior = null;
 				boolean isNovo = (usuario.getIdUsuario() == null || usuario.getIdUsuario() == 0);
@@ -143,8 +171,6 @@ public class UsuarioService extends BaseService {
 				salvarOuAtualizar(usuarioDao, usuario, estadoAnterior, isNovo, conn);
 
 				if (senhaAlterada && !isNovo) {
-//					logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "SENHA_ALTERADA", "usuario",
-//							usuario.getIdUsuario(), "O executor alterou a senha deste usuário.", null));
 					registrarLogSucesso(conn, "SEGURANCA", "SENHA_ALTERADA", "usuario", usuario.getIdUsuario(),
 							"O executor alterou a senha deste usuário.", null);
 				}
@@ -172,7 +198,6 @@ public class UsuarioService extends BaseService {
 		if (isNovo) {
 			int id = dao.save(usuario);
 			usuario.setIdUsuario(id);
-//			logDao.save(AuditLogHelper.gerarLogSucesso("CADASTRO", "INSERIR_USUARIO", "usuario", id, null, usuario));
 			registrarLogSucesso(conn, "CADASTRO", "INSERIR_USUARIO", "usuario", id, null, usuario);
 		} else {
 			if (anterior.getStatus() != StatusUsuario.ATIVO && usuario.getStatus() == StatusUsuario.ATIVO) {
@@ -183,8 +208,6 @@ public class UsuarioService extends BaseService {
 				alteracaoStatus.put("para", "ATIVO");
 				alteracaoStatus.put("motivo", "Reativação manual via service layer");
 
-//				logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "REATIVACAO_MANUAL", "usuario",
-//						usuario.getIdUsuario(), null, alteracaoStatus));
 				registrarLogSucesso(conn, "SEGURANCA", "REATIVACAO_MANUAL", "usuario", usuario.getIdUsuario(), null,
 						alteracaoStatus);
 			}
@@ -209,7 +232,6 @@ public class UsuarioService extends BaseService {
 			validarAcesso(conn, executor, MenuChave.CADASTROS_USUARIO, "DELETE");
 
 			UsuarioDao dao = new UsuarioDao(conn);
-			LogSistemaDao logDao = new LogSistemaDao(conn);
 			Usuario anterior = dao.searchById(idUsuario);
 
 			if (anterior == null) {
@@ -228,8 +250,7 @@ public class UsuarioService extends BaseService {
 			}
 
 			dao.softDeleteById(idUsuario);
-			logDao.save(AuditLogHelper.gerarLogSucesso("CADASTRO", "EXCLUIR_USUARIO", "usuario", idUsuario, anterior,
-					null));
+			registrarLogSucesso(conn, "CADASTRO", "EXCLUIR_USUARIO", "usuario", idUsuario, anterior, null);
 		} catch (SQLException e) {
 			registrarLogErro("ERRO", "EXCLUIR_USUARIO", "usuario", e);
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO ACESSAR BANCO", e);
@@ -248,8 +269,7 @@ public class UsuarioService extends BaseService {
 			detalhes.put("status_atual", "ATIVO");
 			detalhes.put("acao", "Restauração de registro via lixeira");
 
-			new LogSistemaDao(conn).save(AuditLogHelper.gerarLogSucesso("CADASTRO", "RESTAURAR_USUARIO", "usuario",
-					idUsuario, null, detalhes));
+			registrarLogSucesso(conn, "CADASTRO", "RESTAURAR_USUARIO", "usuario", idUsuario, null, detalhes);
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO RESTAURAR", e);
 		}
@@ -261,19 +281,25 @@ public class UsuarioService extends BaseService {
 		char[] senhaConfirmar = usuario.getConfirmarSenha();
 
 		try {
-			if (!isNovo && (senhaNova == null || senhaNova.length == 0)) {
-				return false;
-			}
 			if (isNovo && (senhaNova == null || senhaNova.length == 0))
 				throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "A SENHA É OBRIGATÓRIA.");
 			if (senhaNova == null || senhaNova.length == 0)
 				return false;
 
-			if (senhaConfirmar == null || !Arrays.equals(senhaNova, senhaConfirmar)) {
+			if (senhaConfirmar == null || senhaNova.length != senhaConfirmar.length) {
 				throw new ValidationException(ValidationErrorType.INVALID_FIELD, "A CONFIRMAÇÃO DE SENHA NÃO CONFERE.");
 			}
 
-			boolean alterandoPropriaSenha = !isNovo && executor != null
+			int diff = 0;
+			for (int i = 0; i < senhaNova.length; i++) {
+				diff |= senhaNova[i] ^ senhaConfirmar[i];
+			}
+
+			if (diff != 0) {
+				throw new ValidationException(ValidationErrorType.INVALID_FIELD, "A CONFIRMAÇÃO DE SENHA NÃO CONFERE.");
+			}
+
+			boolean alterandoPropriaSenha = !isNovo && executor != null && executor.getIdUsuario() != null
 					&& executor.getIdUsuario().equals(usuario.getIdUsuario());
 
 			if (alterandoPropriaSenha) {
@@ -292,6 +318,18 @@ public class UsuarioService extends BaseService {
 			SensitiveData.safeClear(senhaAntiga);
 			SensitiveData.safeClear(senhaConfirmar);
 		}
+	}
+	
+	public List<Permissao> carregarPermissoesEspeciais(Integer idUsuario) {
+	    // 1ª Validação (Input): Evita ida ao banco com dados inválidos
+	    if (idUsuario == null || idUsuario <= 0) return new ArrayList<>();
+
+	    try (Connection conn = ConnectionFactory.getConnection()) {
+	        // 2ª Validação (State): A GenericDao já valida se a conexão está aberta no construtor
+	        return new PermissaoDao(conn).buscarPermissoesGranularesNaoHerdadas(idUsuario);
+	    } catch (SQLException e) {
+	        throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "FALHA NA CONEXÃO AO CARREGAR PERMISSÕES", e);
+	    }
 	}
 
 	public Usuario buscarMasterUnico() {
@@ -411,7 +449,6 @@ public class UsuarioService extends BaseService {
 	}
 
 	private void registrarLogPermissoesFinal(Connection conn, Usuario usuario, List<UsuarioPermissao> finais) {
-		LogSistemaDao logDao = new LogSistemaDao(conn);
 		PermissaoDao pDao = new PermissaoDao(conn);
 
 		List<Permissao> todasPermissoes = pDao.listAll();
@@ -431,8 +468,8 @@ public class UsuarioService extends BaseService {
 			return nome + origem + expira;
 		}).collect(Collectors.joining(" | "));
 
-		logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "SINCRONIZAR_PERMISSOES", "usuario_permissao",
-				usuario.getIdUsuario(), "Sincronização de acessos realizada com sucesso.", resumo));
+		registrarLogSucesso(conn, "SEGURANCA", "SINCRONIZAR_PERMISSOES", "usuario_permissao", usuario.getIdUsuario(),
+				"Sincronização de acessos realizada com sucesso.", resumo);
 	}
 
 	public Empresa buscarEmpresaFornecedora() {

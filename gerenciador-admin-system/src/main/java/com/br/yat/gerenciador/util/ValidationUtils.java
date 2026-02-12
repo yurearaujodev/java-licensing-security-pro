@@ -341,17 +341,34 @@ public final class ValidationUtils {
 	    }
 	}
 	
-	public static int calcularForcaSenha(String senha) {
-	    if (isEmpty(senha)) return 0;
+	public static int calcularForcaSenha(char[] senha) {
+	    if (senha == null || senha.length == 0) return 0;
 
-	    int score = 0;
-	    if (senha.length() >= 6) score++;
-	    if (senha.matches(".*[A-Z].*")) score++;
-	    if (senha.matches(".*[0-9].*")) score++;
-	    if (senha.matches(".*[!@#$%^&*(),.?\":{}|<>].*")) score++;
+	    int score = senha.length >= 6 ? 1 : 0;
 
-	    return score; // varia de 0 a 4
+	    boolean temMaiuscula = false;
+	    boolean temNumero = false;
+	    boolean temEspecial = false;
+
+	    for (char c : senha) {
+	        temMaiuscula |= Character.isUpperCase(c);
+	        temNumero    |= Character.isDigit(c);
+	        temEspecial  |= isEspecial(c);
+
+	        if (temMaiuscula && temNumero && temEspecial) {
+	            break; // otimização
+	        }
+	    }
+
+	    score += (temMaiuscula ? 1 : 0)
+	           + (temNumero ? 1 : 0)
+	           + (temEspecial ? 1 : 0);
+
+	    return score; // 0 a 4
 	}
 
+	private static boolean isEspecial(char c) {
+	    return "!@#$%^&*(),.?\":{}|<>".indexOf(c) >= 0;
+	}
 
 }
