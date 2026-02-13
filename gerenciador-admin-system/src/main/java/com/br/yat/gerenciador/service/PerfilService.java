@@ -3,9 +3,11 @@ package com.br.yat.gerenciador.service;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.br.yat.gerenciador.configurations.ConnectionFactory;
@@ -22,6 +24,7 @@ import com.br.yat.gerenciador.model.Permissao;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 import com.br.yat.gerenciador.model.enums.MenuChave;
+import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.policy.UsuarioPolicy;
 import com.br.yat.gerenciador.util.AuditLogHelper;
@@ -32,199 +35,222 @@ public class PerfilService extends BaseService {
 	private static final MenuChave CHAVE_ACESSO = MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES;
 
 	public void salvarPerfil(Perfil perfil, Map<MenuChave, List<String>> permissoes, Usuario executor) {
-	    validarCampos(perfil);
+		validarCampos(perfil);
 
-	    try (Connection conn = ConnectionFactory.getConnection()) {
-	        validarAcesso(conn, executor, CHAVE_ACESSO, "WRITE");
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			validarAcesso(conn, executor, CHAVE_ACESSO, "WRITE");
 
-	        ConnectionFactory.beginTransaction(conn);
-	        try {
-	            PerfilDao perfilDao = new PerfilDao(conn);
-	            PerfilPermissoesDao ppDao = new PerfilPermissoesDao(conn);
-	            PermissaoDao pDao = new PermissaoDao(conn);
-	            LogSistemaDao logDao = new LogSistemaDao(conn);
+			ConnectionFactory.beginTransaction(conn);
+			try {
+				PerfilDao perfilDao = new PerfilDao(conn);
+				PerfilPermissoesDao ppDao = new PerfilPermissoesDao(conn);
+				PermissaoDao pDao = new PermissaoDao(conn);
+				LogSistemaDao logDao = new LogSistemaDao(conn);
 
-	            boolean isNovo = (perfil.getIdPerfil() == null || perfil.getIdPerfil() == 0);
+				boolean isNovo = isNovoPerfil(perfil);
 
-	            // 1. Proteção do Perfil Master
-	            if (!isNovo) {
-	                Perfil anterior = perfilDao.searchById(perfil.getIdPerfil());
-	                if (anterior != null && "MASTER".equalsIgnoreCase(anterior.getNome())) {
-	                    if (!"MASTER".equalsIgnoreCase(perfil.getNome())) {
-	                        throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "O NOME DO PERFIL MASTER É IMUTÁVEL.");
-	                    }
-	                }
-	            }
+				if (!isNovo) {
+					validarImutabilidadeMaster(perfilDao, perfil);
+				}
 
-	            // 2. Persistência do Perfil
-	            if (isNovo) {
-	                int id = perfilDao.save(perfil);
-	                perfil.setIdPerfil(id);
-	                logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "CRIAR_PERFIL", "perfil", id, null, perfil.getNome()));
-	            } else {
-	                perfilDao.update(perfil);
-	                logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "ALTERAR_PERFIL", "perfil", perfil.getIdPerfil(), "Update", perfil.getNome()));
-	                ppDao.desvincularTodasDoPerfil(perfil.getIdPerfil());
-	            }
+				// 2. Persistência do Perfil
+				if (isNovo) {
+					int id = perfilDao.save(perfil);
+					perfil.setIdPerfil(id);
+					logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "CRIAR_PERFIL", "perfil", id, null,
+							perfil.getNome()));
+				} else {
+					perfilDao.update(perfil);
+					logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "ALTERAR_PERFIL", "perfil",
+							perfil.getIdPerfil(), "Update", perfil.getNome()));
+					ppDao.desvincularTodasDoPerfil(perfil.getIdPerfil());
+				}
 
-	            // 3. Sincronização com Double Validation (Nível e Posse)
-	            sincronizarPermissoesPerfil(conn, ppDao, pDao, perfil.getIdPerfil(), permissoes, executor);
+				// 3. Sincronização com Double Validation (Nível e Posse)
+				sincronizarPermissoesPerfil(ppDao, pDao, perfil.getIdPerfil(), permissoes, executor);
 
-	            ConnectionFactory.commitTransaction(conn);
-	        } catch (Exception e) {
-	            ConnectionFactory.rollbackTransaction(conn);
-	            registrarLogErro("ERRO", "SALVAR_PERFIL", "perfil", e);
-	            throw e;
-	        }
-	    } catch (SQLException e) {
-	        throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
-	    }
+				ConnectionFactory.commitTransaction(conn);
+			} catch (Exception e) {
+				ConnectionFactory.rollbackTransaction(conn);
+				registrarLogErro("ERRO", "SALVAR_PERFIL", "perfil", e);
+				throw e;
+			}
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
+		}
 	}
 
-	private void sincronizarPermissoesPerfil(Connection conn, PerfilPermissoesDao ppDao, PermissaoDao pDao, 
-	                                       int idPerfil, Map<MenuChave, List<String>> permissoes, Usuario executor) {
+	private boolean isNovoPerfil(Perfil perfil) {
+		return perfil.getIdPerfil() == null || perfil.getIdPerfil() == 0;
+	}
 
-	    // Buscamos o teto de poder do executor uma única vez
-	    final Integer nivelTetoExecutor;
-	    final List<Integer> idsPermitidos;
+	private void validarImutabilidadeMaster(PerfilDao dao, Perfil perfil) {
+		Perfil anterior = dao.searchById(perfil.getIdPerfil());
 
-	    if (UsuarioPolicy.isPrivilegiado(executor)) {
-	        nivelTetoExecutor = null; // Master ignora travas
-	        idsPermitidos = null;
-	    } else {
-	        nivelTetoExecutor = pDao.buscarMaiorNivelDoUsuario(executor.getIdUsuario());
-	        idsPermitidos = pDao.listarPermissoesAtivasPorUsuario(executor.getIdUsuario())
-	                            .stream()
-	                            .map(Permissao::getIdPermissoes)
-	                            .collect(Collectors.toList());
-	    }
+		if (anterior != null && isMaster(anterior) && !isMaster(perfil)) {
+			throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "O NOME DO PERFIL MASTER É IMUTÁVEL.");
+		}
+	}
 
-	    permissoes.forEach((chave, tipos) -> {
-	        for (String tipo : tipos) {
-	            Permissao p = pDao.findByChaveETipo(chave.name(), tipo);
-	            if (p != null) {
-	                
-	                // --- DOUBLE VALIDATION ---
-	                if (!UsuarioPolicy.isPrivilegiado(executor)) {
-	                    // Trava 1: O executor possui essa permissão?
-	                    if (idsPermitidos != null && !idsPermitidos.contains(p.getIdPermissoes())) {
-	                        throw new ValidationException(ValidationErrorType.ACCESS_DENIED, 
-	                            "VOCÊ NÃO PODE ATRIBUIR [" + p.getChave() + "] POIS NÃO A POSSUI.");
-	                    }
+	private boolean isMaster(Perfil perfil) {
+		return "MASTER".equalsIgnoreCase(perfil.getNome());
+	}
 
-	                    // Trava 2: O nível da permissão é superior ao que o executor pode gerenciar?
-	                    int teto = (nivelTetoExecutor != null) ? nivelTetoExecutor : 0;
-	                    if (p.getNivel() > teto) {
-	                        throw new ValidationException(ValidationErrorType.ACCESS_DENIED, 
-	                            "NÍVEL INSUFICIENTE: A permissão [" + p.getChave() + "] exige nível " + p.getNivel() + 
-	                            " e seu teto é " + teto);
-	                    }
-	                }
+	private void sincronizarPermissoesPerfil(PerfilPermissoesDao ppDao, PermissaoDao pDao, int idPerfil,
+			Map<MenuChave, List<String>> permissoes, Usuario executor) {
+		if (permissoes == null || permissoes.isEmpty()) {
+			return;
+		}
+		// Buscamos o teto de poder do executor uma única vez
+		final Integer nivelTetoExecutor;
+		final Set<Integer> idsPermitidos;
+		boolean isPrivilegiado = UsuarioPolicy.isPrivilegiado(executor);
+		if (isPrivilegiado) {
+			nivelTetoExecutor = null;
+			idsPermitidos = null;
+		} else {
+			nivelTetoExecutor = pDao.buscarMaiorNivelDoUsuario(executor.getIdUsuario());
+			idsPermitidos = pDao.listarPermissoesAtivasPorUsuario(executor.getIdUsuario()).stream()
+					.map(Permissao::getIdPermissoes).collect(Collectors.toSet());
+		}
 
-	                ppDao.vincularPermissaoAoPerfil(idPerfil, p.getIdPermissoes(), true);
-	            }
-	        }
-	    });
+		permissoes.forEach((chave, tipos) -> {
+			for (String tipo : tipos) {
+				Permissao p = pDao.findByChaveETipo(chave.name(), tipo);
+				if (p != null) {
+
+					// --- DOUBLE VALIDATION ---
+					validarAtribuicaoPermissao(p, isPrivilegiado, idsPermitidos, nivelTetoExecutor);
+
+					ppDao.vincularPermissaoAoPerfil(idPerfil, p.getIdPermissoes(), true);
+				}
+			}
+		});
+	}
+
+	private void validarAtribuicaoPermissao(Permissao permissao, boolean isPrivilegiado, Set<Integer> idsPermitidos,
+			Integer nivelTetoExecutor) {
+
+		if (isPrivilegiado) {
+			return;
+		}
+
+		if (idsPermitidos == null || !idsPermitidos.contains(permissao.getIdPermissoes())) {
+			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+					"VOCÊ NÃO PODE ATRIBUIR [" + permissao.getChave() + "] POIS NÃO A POSSUI.");
+		}
+
+		int teto = nivelTetoExecutor != null ? nivelTetoExecutor : 0;
+
+		if (permissao.getNivel() > teto) {
+			throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "NÍVEL INSUFICIENTE: A permissão ["
+					+ permissao.getChave() + "] exige nível " + permissao.getNivel() + " e seu teto é " + teto);
+		}
 	}
 
 	public synchronized Perfil buscarOuCriarPerfilMaster() {
-	    // Usamos um bloco try-with-resources para garantir que a conexão feche
-	    try (Connection conn = ConnectionFactory.getConnection()) {
-	        PerfilDao dao = new PerfilDao(conn);
-	        
-	        // 1. Tenta buscar o perfil MASTER
-	        Optional<Perfil> perfilExistente = dao.buscarPorNome("MASTER");
-	        
-	        if (perfilExistente.isPresent()) {
-	            return perfilExistente.get();
-	        }
+		// Usamos um bloco try-with-resources para garantir que a conexão feche
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			PerfilDao dao = new PerfilDao(conn);
 
-	        // 2. Se não existir, inicia o processo de criação (Setup Inicial)
-	        PerfilPermissoesDao ppDao = new PerfilPermissoesDao(conn);
-	        ConnectionFactory.beginTransaction(conn);
-	        
-	        try {
-	            // 3. Cria o registro do Perfil
-	            Perfil novo = new Perfil();
-	            novo.setNome("MASTER");
-	            novo.setDescricao("PERFIL ADMINISTRADOR MASTER (SETUP INICIAL)");
-	            
-	            int idGerado = dao.save(novo);
-	            novo.setIdPerfil(idGerado);
+			// 1. Tenta buscar o perfil MASTER
+			Optional<Perfil> perfilExistente = dao.buscarPorNome("MASTER");
 
-	            // 4. DOUBLE VALIDATION: Popula a infra e vincula ao perfil
-	            // Isso garante que o Master sempre tenha acesso a TODAS as chaves do Enum
-	            for (MenuChave chave : MenuChave.values()) {
-	                List<Integer> idsPermissoes = garantirInfraestruturaMenu(conn, chave);
-	                for (Integer idPerm : idsPermissoes) {
-	                    ppDao.vincularPermissaoAoPerfil(idGerado, idPerm, true);
-	                }
-	            }
+			if (perfilExistente.isPresent()) {
+				return perfilExistente.get();
+			}
 
-	            ConnectionFactory.commitTransaction(conn);
-	            return novo;
-	            
-	        } catch (Exception e) {
-	            ConnectionFactory.rollbackTransaction(conn);
-	            registrarLogErro("ERRO", "SETUP_MASTER", "perfil", e);
-	            throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO NO SETUP DO MASTER", e);
-	        }
-	        
-	    } catch (SQLException e) {
-	        throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "FALHA NA CONEXÃO AO GERENCIAR PERFIL MASTER", e);
-	    }
+			// 2. Se não existir, inicia o processo de criação (Setup Inicial)
+			PerfilPermissoesDao ppDao = new PerfilPermissoesDao(conn);
+			ConnectionFactory.beginTransaction(conn);
+
+			try {
+				// 3. Cria o registro do Perfil
+				Perfil novo = new Perfil();
+				novo.setNome("MASTER");
+				novo.setDescricao("PERFIL ADMINISTRADOR MASTER (SETUP INICIAL)");
+
+				int idGerado = dao.save(novo);
+				novo.setIdPerfil(idGerado);
+
+				// 4. DOUBLE VALIDATION: Popula a infra e vincula ao perfil
+				// Isso garante que o Master sempre tenha acesso a TODAS as chaves do Enum
+				for (MenuChave chave : MenuChave.values()) {
+					List<Integer> idsPermissoes = garantirInfraestruturaMenu(conn, chave);
+					for (Integer idPerm : idsPermissoes) {
+						ppDao.vincularPermissaoAoPerfil(idGerado, idPerm, true);
+					}
+				}
+
+				ConnectionFactory.commitTransaction(conn);
+				return novo;
+
+			} catch (Exception e) {
+				ConnectionFactory.rollbackTransaction(conn);
+				registrarLogErro("ERRO", "SETUP_MASTER", "perfil", e);
+				throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO NO SETUP DO MASTER", e);
+			}
+
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR,
+					"FALHA NA CONEXÃO AO GERENCIAR PERFIL MASTER", e);
+		}
 	}
-	
+
 	public void excluirPerfil(int idPerfil, Usuario executor) {
-	    try (Connection conn = ConnectionFactory.getConnection()) {
-	        validarAcesso(conn, executor, CHAVE_ACESSO, "DELETE");
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			validarAcesso(conn, executor, CHAVE_ACESSO, "DELETE");
 
-	        PerfilDao perfilDao = new PerfilDao(conn);
-	        LogSistemaDao logDao = new LogSistemaDao(conn);
+			PerfilDao perfilDao = new PerfilDao(conn);
+			LogSistemaDao logDao = new LogSistemaDao(conn);
 
-	        // Ajustado para o seu searchById que retorna null se não encontrar
-	        Perfil perfil = perfilDao.searchById(idPerfil);
-	        
-	        if (perfil == null) {
-	            throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND, "PERFIL NÃO ENCONTRADO.");
-	        }
+			// Ajustado para o seu searchById que retorna null se não encontrar
+			Perfil perfil = perfilDao.searchById(idPerfil);
 
-	        // Double Validation: Bloqueia exclusão do MASTER
-	        if ("MASTER".equalsIgnoreCase(perfil.getNome())) {
-	            throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "O PERFIL MASTER NÃO PODE SER EXCLUÍDO OU DESATIVADO.");
-	        }
+			if (perfil == null) {
+				throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND, "PERFIL NÃO ENCONTRADO.");
+			}
 
-	        ConnectionFactory.beginTransaction(conn);
-	        try {
-	            perfilDao.softDeleteById(idPerfil);
+			// Double Validation: Bloqueia exclusão do MASTER
+			if ("MASTER".equalsIgnoreCase(perfil.getNome())) {
+				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+						"O PERFIL MASTER NÃO PODE SER EXCLUÍDO OU DESATIVADO.");
+			}
 
-	            logDao.save(AuditLogHelper.gerarLogSucesso(
-	                "SEGURANCA", "EXCLUIR_PERFIL", "perfil", idPerfil, 
-	                perfil.getNome(), "Perfil movido para lixeira (Soft Delete)"
-	            ));
+			ConnectionFactory.beginTransaction(conn);
+			try {
+				perfilDao.softDeleteById(idPerfil);
 
-	            ConnectionFactory.commitTransaction(conn);
-	        } catch (Exception e) {
-	            ConnectionFactory.rollbackTransaction(conn);
-	            registrarLogErro("ERRO", "EXCLUIR_PERFIL", "perfil", e);
-	            throw e;
-	        }
-	    } catch (SQLException e) {
-	        throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO DE CONEXÃO AO EXCLUIR PERFIL", e);
-	    }
+				logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "EXCLUIR_PERFIL", "perfil", idPerfil,
+						perfil.getNome(), "Perfil movido para lixeira (Soft Delete)"));
+
+				ConnectionFactory.commitTransaction(conn);
+			} catch (Exception e) {
+				ConnectionFactory.rollbackTransaction(conn);
+				registrarLogErro("ERRO", "EXCLUIR_PERFIL", "perfil", e);
+				throw e;
+			}
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO DE CONEXÃO AO EXCLUIR PERFIL", e);
+		}
 	}
-	
+
 	public List<String> listarPermissoesAtivasPorMenu(int idUsuario, MenuChave menu) {
-	    try (Connection conn = ConnectionFactory.getConnection()) {
-	        // Passamos a conexão para o DAO
-	        PermissaoDao pDao = new PermissaoDao(conn);
-	        return pDao.buscarTiposAtivosPorUsuarioEMenu(idUsuario, menu.name());
-	    } catch (SQLException e) {
-	        throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "FALHA NA CONEXÃO", e);
-	    }
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			// Passamos a conexão para o DAO
+			PermissaoDao pDao = new PermissaoDao(conn);
+			return pDao.buscarTiposAtivosPorUsuarioEMenu(idUsuario, menu.name());
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "FALHA NA CONEXÃO", e);
+		}
 	}
 
 	private void validarCampos(Perfil p) {
+
+		if (p == null) {
+			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "PERFIL NÃO PODE SER NULO.");
+		}
+
 		if (ValidationUtils.isEmpty(p.getNome())) {
 			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "NOME DO PERFIL É OBRIGATÓRIO.");
 		}
@@ -245,47 +271,55 @@ public class PerfilService extends BaseService {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO BUSCAR PERMISSÕES", e);
 		}
 	}
-	
+
 	// Dentro da PerfilService.java
-	public List<Integer> garantirInfraestruturaMenu(Connection conn, MenuChave chave) throws SQLException{
-	    PermissaoDao pDao = new PermissaoDao(conn);
-	    MenuSistemaDao menuDao = new MenuSistemaDao(conn);
-	    PermissaoMenuDao pmDao = new PermissaoMenuDao(conn);
+	public List<Integer> garantirInfraestruturaMenu(Connection conn, MenuChave chave) throws SQLException {
+		PermissaoDao pDao = new PermissaoDao(conn);
+		MenuSistemaDao menuDao = new MenuSistemaDao(conn);
+		PermissaoMenuDao pmDao = new PermissaoMenuDao(conn);
 
-	    String categoria = chave.getCategoria();
-	    String descricaoBase = chave.getDescricao();
-	    int nivel = chave.getNivel();
+		String categoria = chave.getCategoria();
+		String descricaoBase = chave.getDescricao();
+		int nivel = chave.getNivel();
 
-	    int idMenu = menuDao.save(chave.name(), categoria);
+		int idMenu = menuDao.save(chave.name(), categoria);
 
-	    List<Integer> idsGerados = new ArrayList<>();
-	    List<String> tiposOperacao = List.of("READ", "WRITE", "DELETE");
+		List<Integer> idsGerados = new ArrayList<>();
+		List<String> tiposOperacao = Arrays.stream(TipoPermissao.values()).map(Enum::name).toList();
 
-	    for (String tipo : tiposOperacao) {
-	        Permissao permissaoBanco = pDao.findByChaveETipo(chave.name(), tipo);
-	        int idPerm;
-	        
-	        if (permissaoBanco == null) {
-	            Permissao novaP = new Permissao();
-	            novaP.setChave(chave.name());
-	            novaP.setTipo(tipo);
-	            novaP.setCategoria(categoria);
-	            novaP.setNivel(nivel);
-	            novaP.setDescricao(descricaoBase + " [" + tipo + "]");
-	            idPerm = pDao.save(novaP);
-	            pmDao.vincular(idPerm, idMenu);
-	        } else {
-	            idPerm = permissaoBanco.getIdPermissoes();
-	            // Double Validation: Sincroniza nível/descrição se mudou no Enum
-	            if (permissaoBanco.getNivel() != nivel || !permissaoBanco.getDescricao().equals(descricaoBase + " [" + tipo + "]")) {
-	                permissaoBanco.setNivel(nivel);
-	                permissaoBanco.setDescricao(descricaoBase + " [" + tipo + "]");
-	                pDao.update(permissaoBanco);
-	            }
-	        }
-	        idsGerados.add(idPerm);
-	    }
-	    return idsGerados;
+		for (String tipo : tiposOperacao) {
+			Permissao permissaoBanco = pDao.findByChaveETipo(chave.name(), tipo);
+			int idPerm;
+			String descricaoFinal = montarDescricao(descricaoBase, tipo);
+
+			if (permissaoBanco == null) {
+				Permissao novaP = new Permissao();
+				novaP.setChave(chave.name());
+				novaP.setTipo(tipo);
+				novaP.setCategoria(categoria);
+				novaP.setNivel(nivel);
+				novaP.setDescricao(descricaoFinal);
+
+				idPerm = pDao.save(novaP);
+				pmDao.vincular(idPerm, idMenu);
+			} else {
+				idPerm = permissaoBanco.getIdPermissoes();
+				// Double Validation: Sincroniza nível/descrição se mudou no Enum
+				if (permissaoBanco.getNivel() != nivel || !permissaoBanco.getDescricao().equals(descricaoFinal)) {
+
+					permissaoBanco.setNivel(nivel);
+					permissaoBanco.setDescricao(descricaoFinal);
+					pDao.update(permissaoBanco);
+				}
+
+			}
+			idsGerados.add(idPerm);
+		}
+		return idsGerados;
 	}
-	
+
+	private String montarDescricao(String base, String tipo) {
+		return base + " [" + tipo + "]";
+	}
+
 }

@@ -21,6 +21,7 @@ import com.br.yat.gerenciador.model.Empresa;
 import com.br.yat.gerenciador.model.Permissao;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.UsuarioPermissao;
+import com.br.yat.gerenciador.model.dto.UsuarioPermissaoDetatlheDTO;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.ParametroChave;
@@ -93,7 +94,31 @@ public class UsuarioService extends BaseService {
 
 		validarDados(usuario, permissoesGranulares);
 		validarRestricoesMaster(usuario);
-
+		if (datasExpiracao != null && !datasExpiracao.isEmpty()) {
+	        datasExpiracao.forEach((menu, dataStr) -> {
+	            if (dataStr != null && !dataStr.isBlank()) {
+	                try {
+	                    LocalDateTime dataDigitada = TimeUtils.parseDataHora(dataStr);
+	                    
+	                    // Validação 1: Bloqueia datas retroativas
+	                    if (dataDigitada.isBefore(LocalDateTime.now().minusMinutes(1))) {
+	                        throw new ValidationException(ValidationErrorType.INVALID_FIELD, 
+	                            "A DATA DE EXPIRAÇÃO PARA [" + menu + "] NÃO PODE SER NO PASSADO.");
+	                    }
+	                    
+	                    // Validação 2: Bloqueia erros de digitação absurdos (ex: ano 2099)
+	                    if (dataDigitada.isAfter(LocalDateTime.now().plusYears(10))) {
+	                        throw new ValidationException(ValidationErrorType.INVALID_FIELD, 
+	                            "A DATA DE EXPIRAÇÃO PARA [" + menu + "] EXCEDEU O LIMITE (MÁX 10 ANOS).");
+	                    }
+	                } catch (Exception e) {
+	                    if (e instanceof ValidationException) throw e;
+	                    throw new ValidationException(ValidationErrorType.INVALID_FIELD, 
+	                        "FORMATO DE DATA INVÁLIDO PARA O MENU: " + menu);
+	                }
+	            }
+	        });
+	    }
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			UsuarioDao usuarioDao = new UsuarioDao(conn);
 			boolean isSetupInicial = (executor == null && !existeUsuarioMaster() && usuario.isMaster());
@@ -408,6 +433,38 @@ public class UsuarioService extends BaseService {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR,
 					"ERRO AO CARREGAR PERMISSÕES DETALHADAS", e);
 		}
+	}
+	
+	public List<UsuarioPermissaoDetatlheDTO> carregarDadosPermissoesEdicao(Integer idUsuario) {
+	    // 1ª Validação (Input): Double Validation
+	    if (idUsuario == null || idUsuario <= 0) return new ArrayList<>();
+
+	    try (Connection conn = ConnectionFactory.getConnection()) {
+	        PermissaoDao pDao = new PermissaoDao(conn);
+	        UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
+
+	        // 1. Pegamos as definições das permissões
+	        List<Permissao> listaPermissoes = pDao.listarPermissoesAtivasPorUsuario(idUsuario);
+	        
+	        // 2. Pegamos os vínculos reais (onde mora a data)
+	        List<UsuarioPermissao> listaVinculos = upDao.listarPorUsuario(idUsuario);
+
+	        // Criamos um mapa para de-para rápido: ID_PERMISSAO -> VINCULO
+	        Map<Integer, UsuarioPermissao> mapaVinculos = listaVinculos.stream()
+	            .collect(Collectors.toMap(UsuarioPermissao::getIdPermissoes, v -> v, (a, b) -> a));
+
+	        // 2ª Validação (State/Integridade): Double Validation
+	        // Montamos o DTO que o Controller vai usar
+	        return listaPermissoes.stream().map(p -> {
+	            UsuarioPermissao vinculo = mapaVinculos.get(p.getIdPermissoes());
+	            
+	            // Aqui você poderia validar se a data vinda do banco é coerente
+	            return new UsuarioPermissaoDetatlheDTO(p, vinculo);
+	        }).toList();
+
+	    } catch (SQLException e) {
+	        throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO CARREGAR DADOS PARA EDICAO", e);
+	    }
 	}
 
 	public boolean existeUsuarioMaster() {

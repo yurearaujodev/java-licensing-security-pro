@@ -2,17 +2,25 @@ package com.br.yat.gerenciador.controller;
 
 import java.util.*;
 import javax.swing.SwingUtilities;
-import com.br.yat.gerenciador.model.*;
+
+import com.br.yat.gerenciador.model.Perfil;
+import com.br.yat.gerenciador.model.Sessao;
+import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
+import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.service.PerfilService;
-import com.br.yat.gerenciador.util.*;
+import com.br.yat.gerenciador.util.DialogFactory;
+import com.br.yat.gerenciador.util.MenuChaveGrouper;
+import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.view.PerfilView;
 
 public class PerfilController extends BaseController {
+
 	private final PerfilView view;
 	private final PerfilService service;
 	private Perfil perfilAtual;
 	private RefreshCallback refreshCallback;
+	private static final TipoPermissao[] TIPOS = TipoPermissao.values();
 
 	public PerfilController(PerfilView view, PerfilService service) {
 		this.view = view;
@@ -21,131 +29,176 @@ public class PerfilController extends BaseController {
 	}
 
 	private void inicializar() {
-		// Carrega todas as chaves de menu disponíveis para configurar o perfil
-		view.construirGradePermissoes(MenuChaveGrouper.groupByCategoria());
+		Usuario logado = Objects.requireNonNull(Sessao.getUsuario(), "Usuário não encontrado na sessão.");
+
+		ValidationUtils.createDocumentFilter(view.getTxtNome());
+		view.getTxtNome().addFocusListener(ValidationUtils.createValidationListener(view.getTxtNome(), () -> {
+			if (ValidationUtils.isEmpty(view.getNome())) {
+				ValidationUtils.exibirErro(view.getTxtNome(), "NOME DO PERFIL É OBRIGATÓRIO.");
+			}
+		}));
+		Map<String, List<MenuChave>> grupos = logado.isMaster() ? MenuChaveGrouper.groupByCategoria()
+				: MenuChaveGrouper
+						.groupByCategoriaFiltrado(Optional.ofNullable(Sessao.getPermissoes()).orElse(List.of()));
+
+		view.construirGradePermissoes(grupos);
+
 		registrarAcoes();
+		configurarMarcarTodosPorCategoria();
+
+		view.getBtnNovo().setEnabled(true);
 		view.getBtnSalvar().setEnabled(false);
 	}
 
 	private void registrarAcoes() {
-		view.getBtnNovo().addActionListener(e -> novoPerfil());
 		view.getBtnSalvar().addActionListener(e -> salvar());
-		view.getBtnCancelar().addActionListener(e -> view.dispose());
-
-		// Lógica de "Marcar Todos" por categoria
-		view.getChkTodosPorCategoria().forEach((cat, chk) -> {
-			chk.addActionListener(e -> {
-				List<MenuChave> chaves = view.getGruposPermissoes().get(cat);
-				if (chaves != null) {
-                    chaves.forEach(c -> {
-                        view.setPermissao(c, "READ", chk.isSelected());
-                        view.setPermissao(c, "WRITE", chk.isSelected());
-                        view.setPermissao(c, "DELETE", chk.isSelected());
-                    });
-                }
-			});
+		view.getBtnCancelar().addActionListener(e -> {
+			view.getBtnNovo().setEnabled(true);
+			view.getBtnSalvar().setEnabled(false);
+			view.doDefaultCloseAction();
 		});
+		view.getBtnNovo().addActionListener(e -> novoPerfil());
+	}
+
+	private void configurarMarcarTodosPorCategoria() {
+
+		for (String categoria : view.getCategoriasPermissoes()) {
+
+			view.addListenerCategoria(categoria, marcado -> {
+				view.marcarCategoria(categoria, marcado);
+				atualizarEstadoCategorias();
+			});
+		}
+	}
+
+	private void atualizarEstadoCategorias() {
+		for (String categoria : view.getCategoriasPermissoes()) {
+			view.setCategoriaMarcada(categoria, view.isCategoriaTotalmenteMarcada(categoria));
+		}
 	}
 
 	public void carregarParaEdicao(Perfil perfil) {
 		this.perfilAtual = perfil;
 
-		// Trava o nome se for o perfil MASTER
-		boolean isMaster = "MASTER".equalsIgnoreCase(perfil.getNome());
+		view.limpar();
+		view.setNome(perfil.getNome());
+		view.setDescricao(perfil.getDescricao());
+
+		boolean isMaster = isMasterPerfil(perfil.getNome());
 		view.setEdicaoNomeHabilitada(!isMaster);
 
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> service.listarPermissoesDoPerfil(perfil.getIdPerfil()),
 				permissoes -> {
-					view.limpar(); // Limpa as checkboxes
-					view.setNome(perfil.getNome()); // Seta o nome após o limpar
-					
+
 					if (isMaster) {
-						marcarTodasAsPermissoes(true);
-					} else {
-						// Marca as checkboxes das permissões que o perfil já possui
+						marcarTodasPermissoesNaGrade();
+					} else if (permissoes != null) {
+
 						permissoes.forEach(p -> {
 							try {
-								view.setPermissao(MenuChave.valueOf(p.getChave()), p.getTipo(), true);
-							} catch (IllegalArgumentException e) {
-								// Ignora chaves que podem ter sido removidas do Enum
+								MenuChave chave = MenuChave.valueOf(p.getChave());
+								TipoPermissao tipo = TipoPermissao.valueOf(p.getTipo());
+								view.setPermissao(chave, tipo, true);
+							} catch (IllegalArgumentException ex) {
+								// ignora permissões obsoletas
 							}
 						});
 					}
+
+					atualizarEstadoCategorias();
+
+					view.getBtnNovo().setEnabled(false);
 					view.getBtnSalvar().setEnabled(true);
 				});
 	}
 
 	private void salvar() {
-		String nomePerfil = view.getNome().trim().toUpperCase();
-		if (nomePerfil.isBlank()) {
+
+		String nomePerfil = view.getNome();
+
+		if (ValidationUtils.isEmpty(nomePerfil)) {
+			ValidationUtils.exibirErro(view.getTxtNome(), "NOME DO PERFIL É OBRIGATÓRIO.");
 			DialogFactory.aviso(view, "NOME DO PERFIL É OBRIGATÓRIO!");
 			return;
 		}
 
-		if (perfilAtual == null) perfilAtual = new Perfil();
-        perfilAtual.setNome(nomePerfil);
+		nomePerfil = nomePerfil.trim();
 
-        // DOUBLE VALIDATION: Se for MASTER, ignoramos cliques da tela e enviamos o mapa total
-        Map<MenuChave, List<String>> permissoes = "MASTER".equals(nomePerfil) 
-                ? gerarMapaTotal() 
-                : coletarPermissoes();
+		if (perfilAtual == null) {
+			perfilAtual = new Perfil();
+		}
 
-        if (permissoes.isEmpty()) {
-            DialogFactory.aviso(view, "SELECIONE AO MENOS UMA PERMISSÃO!");
-            return;
-        }
+		perfilAtual.setNome(nomePerfil);
+		perfilAtual.setDescricao(Optional.ofNullable(view.getDescricao()).orElse("").trim());
 
-        Usuario executor = Sessao.getUsuario();
+		Map<MenuChave, List<String>> permissoes = isMasterPerfil(nomePerfil) ? gerarMapaTotal()
+				: coletarPermissoesMarcadas();
+
+		if (permissoes.isEmpty()) {
+			DialogFactory.aviso(view, "SELECIONE AO MENOS UMA PERMISSÃO!");
+			return;
+		}
 
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-			// Agora passando o executor (Sessao.getUsuario()) como pede a sua Service
+			Usuario executor = Objects.requireNonNull(Sessao.getUsuario(), "Usuário executor não encontrado.");
 			service.salvarPerfil(perfilAtual, permissoes, executor);
 			return true;
 		}, sucesso -> {
 			DialogFactory.informacao(view, "PERFIL SALVO COM SUCESSO!");
-			novoPerfil(); // Limpa a tela para o próximo
-
-			if (refreshCallback != null)
+			novoPerfil();
+			if (refreshCallback != null) {
 				refreshCallback.onSaveSuccess();
+			}
 		});
+	}
+
+	private Map<MenuChave, List<String>> coletarPermissoesMarcadas() {
+
+		Map<MenuChave, List<String>> selecionadas = new LinkedHashMap<>();
+		for (MenuChave chave : view.getChavesAtivas()) {
+			List<String> tipos = Arrays.stream(TIPOS).filter(tipo -> view.isPermissaoSelecionada(chave, tipo))
+					.map(Enum::name).toList();
+			if (!tipos.isEmpty()) {
+				selecionadas.put(chave, tipos);
+			}
+		}
+
+		return selecionadas;
+	}
+
+	private boolean isMasterPerfil(String nome) {
+		return "MASTER".equalsIgnoreCase(nome);
 	}
 
 	private Map<MenuChave, List<String>> gerarMapaTotal() {
-	    Map<MenuChave, List<String>> mapa = new LinkedHashMap<>();
-	    for (MenuChave chave : MenuChave.values()) {
-	        mapa.put(chave, Arrays.asList("READ", "WRITE", "DELETE"));
-	    }
-	    return mapa;
-	}
-	
-	private Map<MenuChave, List<String>> coletarPermissoes() {
 		Map<MenuChave, List<String>> mapa = new LinkedHashMap<>();
-		view.getPermissoesGranulares().forEach((chave, tipos) -> {
-			List<String> ativos = tipos.entrySet().stream().filter(e -> e.getValue().isSelected())
-					.map(Map.Entry::getKey).toList();
-			if (!ativos.isEmpty())
-				mapa.put(chave, ativos);
-		});
+		for (MenuChave chave : MenuChave.values()) {
+			mapa.put(chave, Arrays.stream(TIPOS).map(Enum::name).toList());
+		}
 		return mapa;
 	}
 
-	public void setRefreshCallback(RefreshCallback refreshCallback) {
-		this.refreshCallback = refreshCallback;
+	private void marcarTodasPermissoesNaGrade() {
+		for (MenuChave chave : MenuChave.values()) {
+			for (TipoPermissao tipo : TipoPermissao.values()) {
+				view.setPermissao(chave, tipo, true);
+			}
+		}
 	}
 
-	private void marcarTodasAsPermissoes(boolean selecionar) {
-        // Percorre todas as chaves do Enum MenuChave para garantir totalidade
-        for (MenuChave chave : MenuChave.values()) {
-            view.setPermissao(chave, "READ", selecionar);
-            view.setPermissao(chave, "WRITE", selecionar);
-            view.setPermissao(chave, "DELETE", selecionar);
-        }
-    }
-
 	private void novoPerfil() {
-		perfilAtual = null;
+		this.perfilAtual = null;
+
 		view.limpar();
 		view.setEdicaoNomeHabilitada(true);
+
+		atualizarEstadoCategorias();
+
+		view.getBtnNovo().setEnabled(false);
 		view.getBtnSalvar().setEnabled(true);
+	}
+
+	public void setRefreshCallback(RefreshCallback callback) {
+		this.refreshCallback = callback;
 	}
 }

@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.exception.ServiceOperationException;
 import com.br.yat.gerenciador.exception.ValidationException;
+import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.view.factory.LoadingDialog;
 
@@ -135,12 +136,12 @@ public abstract class BaseController {
 			AbstractButton btnEditar, AbstractButton btnExcluir) {
 
 		// Se não tem leitura, avisa a Controller filha para fechar a tela
-		if (!permissoes.contains("READ")) {
+		if (!permissoes.contains(TipoPermissao.READ.name())) {
 			return false;
 		}
 
-		boolean podeEscrever = permissoes.contains("WRITE");
-		boolean podeExcluir = permissoes.contains("DELETE");
+		boolean podeEscrever = permissoes.contains(TipoPermissao.WRITE.name());
+		boolean podeExcluir = permissoes.contains(TipoPermissao.DELETE.name());
 
 		if (btnNovo != null)
 			btnNovo.setVisible(podeEscrever);
