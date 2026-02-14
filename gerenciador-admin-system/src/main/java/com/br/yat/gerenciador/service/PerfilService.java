@@ -53,7 +53,6 @@ public class PerfilService extends BaseService {
 					validarImutabilidadeMaster(perfilDao, perfil);
 				}
 
-				// 2. Persistência do Perfil
 				if (isNovo) {
 					int id = perfilDao.save(perfil);
 					perfil.setIdPerfil(id);
@@ -66,7 +65,6 @@ public class PerfilService extends BaseService {
 					ppDao.desvincularTodasDoPerfil(perfil.getIdPerfil());
 				}
 
-				// 3. Sincronização com Double Validation (Nível e Posse)
 				sincronizarPermissoesPerfil(ppDao, pDao, perfil.getIdPerfil(), permissoes, executor);
 
 				ConnectionFactory.commitTransaction(conn);
@@ -101,7 +99,7 @@ public class PerfilService extends BaseService {
 		if (permissoes == null || permissoes.isEmpty()) {
 			return;
 		}
-		// Buscamos o teto de poder do executor uma única vez
+
 		final Integer nivelTetoExecutor;
 		final Set<Integer> idsPermitidos;
 		boolean isPrivilegiado = UsuarioPolicy.isPrivilegiado(executor);
@@ -119,7 +117,6 @@ public class PerfilService extends BaseService {
 				Permissao p = pDao.findByChaveETipo(chave.name(), tipo);
 				if (p != null) {
 
-					// --- DOUBLE VALIDATION ---
 					validarAtribuicaoPermissao(p, isPrivilegiado, idsPermitidos, nivelTetoExecutor);
 
 					ppDao.vincularPermissaoAoPerfil(idPerfil, p.getIdPermissoes(), true);
@@ -149,23 +146,19 @@ public class PerfilService extends BaseService {
 	}
 
 	public synchronized Perfil buscarOuCriarPerfilMaster() {
-		// Usamos um bloco try-with-resources para garantir que a conexão feche
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			PerfilDao dao = new PerfilDao(conn);
 
-			// 1. Tenta buscar o perfil MASTER
 			Optional<Perfil> perfilExistente = dao.buscarPorNome("MASTER");
 
 			if (perfilExistente.isPresent()) {
 				return perfilExistente.get();
 			}
 
-			// 2. Se não existir, inicia o processo de criação (Setup Inicial)
 			PerfilPermissoesDao ppDao = new PerfilPermissoesDao(conn);
 			ConnectionFactory.beginTransaction(conn);
 
 			try {
-				// 3. Cria o registro do Perfil
 				Perfil novo = new Perfil();
 				novo.setNome("MASTER");
 				novo.setDescricao("PERFIL ADMINISTRADOR MASTER (SETUP INICIAL)");
@@ -173,8 +166,6 @@ public class PerfilService extends BaseService {
 				int idGerado = dao.save(novo);
 				novo.setIdPerfil(idGerado);
 
-				// 4. DOUBLE VALIDATION: Popula a infra e vincula ao perfil
-				// Isso garante que o Master sempre tenha acesso a TODAS as chaves do Enum
 				for (MenuChave chave : MenuChave.values()) {
 					List<Integer> idsPermissoes = garantirInfraestruturaMenu(conn, chave);
 					for (Integer idPerm : idsPermissoes) {
@@ -204,14 +195,12 @@ public class PerfilService extends BaseService {
 			PerfilDao perfilDao = new PerfilDao(conn);
 			LogSistemaDao logDao = new LogSistemaDao(conn);
 
-			// Ajustado para o seu searchById que retorna null se não encontrar
 			Perfil perfil = perfilDao.searchById(idPerfil);
 
 			if (perfil == null) {
 				throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND, "PERFIL NÃO ENCONTRADO.");
 			}
 
-			// Double Validation: Bloqueia exclusão do MASTER
 			if ("MASTER".equalsIgnoreCase(perfil.getNome())) {
 				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
 						"O PERFIL MASTER NÃO PODE SER EXCLUÍDO OU DESATIVADO.");
@@ -237,7 +226,6 @@ public class PerfilService extends BaseService {
 
 	public List<String> listarPermissoesAtivasPorMenu(int idUsuario, MenuChave menu) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			// Passamos a conexão para o DAO
 			PermissaoDao pDao = new PermissaoDao(conn);
 			return pDao.buscarTiposAtivosPorUsuarioEMenu(idUsuario, menu.name());
 		} catch (SQLException e) {
@@ -272,7 +260,6 @@ public class PerfilService extends BaseService {
 		}
 	}
 
-	// Dentro da PerfilService.java
 	public List<Integer> garantirInfraestruturaMenu(Connection conn, MenuChave chave) throws SQLException {
 		PermissaoDao pDao = new PermissaoDao(conn);
 		MenuSistemaDao menuDao = new MenuSistemaDao(conn);
@@ -304,7 +291,6 @@ public class PerfilService extends BaseService {
 				pmDao.vincular(idPerm, idMenu);
 			} else {
 				idPerm = permissaoBanco.getIdPermissoes();
-				// Double Validation: Sincroniza nível/descrição se mudou no Enum
 				if (permissaoBanco.getNivel() != nivel || !permissaoBanco.getDescricao().equals(descricaoFinal)) {
 
 					permissaoBanco.setNivel(nivel);

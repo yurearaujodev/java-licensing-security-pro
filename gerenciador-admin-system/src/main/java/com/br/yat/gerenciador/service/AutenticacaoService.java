@@ -3,7 +3,6 @@ package com.br.yat.gerenciador.service;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -264,33 +263,22 @@ public class AutenticacaoService extends BaseService {
 			throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND, "USUÁRIO NÃO ENCONTRADO.");
 		}
 	}
-	
+
 	private void validarIgualdadeSenhas(char[] s1, char[] s2) {
-	    if (s1 == null || s2 == null || s1.length != s2.length) {
-	        throw new ValidationException(
-	                ValidationErrorType.INVALID_FIELD,
-	                "AS SENHAS DIGITADAS NÃO CONFEREM.");
-	    }
+		if (s1 == null || s2 == null || s1.length != s2.length) {
+			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "AS SENHAS DIGITADAS NÃO CONFEREM.");
+		}
 
-	    int result = 0;
+		int result = 0;
 
-	    for (int i = 0; i < s1.length; i++) {
-	        result |= s1[i] ^ s2[i];
-	    }
+		for (int i = 0; i < s1.length; i++) {
+			result |= s1[i] ^ s2[i];
+		}
 
-	    if (result != 0) {
-	        throw new ValidationException(
-	                ValidationErrorType.INVALID_FIELD,
-	                "AS SENHAS DIGITADAS NÃO CONFEREM.");
-	    }
+		if (result != 0) {
+			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "AS SENHAS DIGITADAS NÃO CONFEREM.");
+		}
 	}
-
-
-//	private void validarIgualdadeSenhas(char[] s1, char[] s2) {
-//		if (!Arrays.equals(s1, s2)) {
-//			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "AS SENHAS DIGITADAS NÃO CONFEREM.");
-//		}
-//	}
 
 	private void persistirResetSenha(Connection conn, UsuarioDao dao, int idAlvo, String hash, String nomeExec)
 			throws SQLException {

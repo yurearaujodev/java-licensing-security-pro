@@ -53,25 +53,21 @@ public class PainelPermissoes extends JPanel {
 		TipoPermissao[] tipos = TipoPermissao.values();
 
 		grupos.forEach((categoria, chaves) -> {
-			// Definição dinâmica das colunas:
-			// Descrição (grow) + 3 tipos (50!) + Opcional Data (130!)
 			StringBuilder colunas = new StringBuilder("[grow,fill]");
 			for (int i = 0; i < tipos.length; i++)
 				colunas.append("[50!]");
 			if (mostrarExpiracao)
-				colunas.append("[220!]");
+				colunas.append("[190!]");
 
-			JPanel pnlCat = new JPanel(new MigLayout("fillx, insets 10", colunas.toString(), "[]5[]"));
+			JPanel pnlCat = new JPanel(new MigLayout("fillx, insets 15", colunas.toString(), "[]5[]"));
 			pnlCat.setBorder(BorderFactory.createTitledBorder(categoria));
 
-			// Checkbox "Marcar Todos" da Categoria
 			JCheckBox chkTodos = ButtonFactory.createCheckBox("MARCAR TODOS DE: " + categoria);
 			chkTodosPorCategoria.put(categoria, chkTodos);
 			int totalColunasHeader = 1 + tipos.length + (mostrarExpiracao ? 1 : 0);
-			pnlCat.add(chkTodos, "span " + totalColunasHeader + ", left, gapy 5 10, wrap");
-
-			// Cabeçalho da Tabela Interna
+			pnlCat.add(chkTodos, "span " + totalColunasHeader + ", left, gapy 5 10, wrap");	
 			pnlCat.add(LabelFactory.createLabel("FUNCIONALIDADE / DESCRIÇÃO"), "center");
+
 			for (TipoPermissao tipo : tipos) {
 				pnlCat.add(LabelFactory.createLabel(tipo.name()), "center");
 			}
@@ -81,11 +77,11 @@ public class PainelPermissoes extends JPanel {
 				pnlCat.add(new JLabel(), "wrap");
 			}
 
-			// Linhas de Permissão
 			for (MenuChave chave : chaves) {
 				String labelHtml = "<html><b>" + chave.name().replace("_", " ") + "</b><br>"
 						+ "<font color='#666666' size='2'>" + chave.getDescricao() + "</font></html>";
 				pnlCat.add(LabelFactory.createLabel(labelHtml));
+
 
 				Map<TipoPermissao, JCheckBox> tiposMap = new LinkedHashMap<>();
 				for (TipoPermissao tipo : tipos) {
@@ -95,11 +91,10 @@ public class PainelPermissoes extends JPanel {
 				}
 				permissoesGranulares.put(chave, tiposMap);
 
-				// Campo de Data (Apenas se solicitado no construtor)
 				if (mostrarExpiracao) {
 					DateTimePicker dtPicker = criarConfigurarDateTimePicker();
 					datasExpiracao.put(chave, dtPicker);
-					pnlCat.add(dtPicker, "growx, h 26!, wrap");
+					pnlCat.add(dtPicker, "growx, h 24!, wrap");
 				} else {
 					pnlCat.add(new JLabel(), "wrap");
 				}

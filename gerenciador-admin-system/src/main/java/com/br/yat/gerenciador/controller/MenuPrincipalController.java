@@ -1,5 +1,7 @@
 package com.br.yat.gerenciador.controller;
 
+import java.awt.AWTEvent;
+import java.awt.Toolkit;
 import java.awt.event.ActionListener;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -58,7 +60,7 @@ public class MenuPrincipalController extends BaseController {
 		this.view = view;
 		registrarAcoes();
 		iniciarRelogio();
-	//	iniciarMonitorDeConexao();
+		iniciarMonitorDeConexao();
 		AppEventManager.subscribeLogoChange(() -> {
 			IconFactory.limparCacheLogo();
 			carregarLogoSistema();
@@ -88,12 +90,12 @@ public class MenuPrincipalController extends BaseController {
 	}
 
 	private void configurarMonitorGlobal() {
-		java.awt.Toolkit.getDefaultToolkit().addAWTEventListener(event -> {
+		Toolkit.getDefaultToolkit().addAWTEventListener(event -> {
 			// Toda vez que o usuário interage, resetamos o cronômetro na Sessão
 			if (Sessao.getUsuario() != null) {
 				Sessao.registrarAtividade();
 			}
-		}, java.awt.AWTEvent.MOUSE_EVENT_MASK | java.awt.AWTEvent.KEY_EVENT_MASK);
+		}, AWTEvent.MOUSE_EVENT_MASK | AWTEvent.KEY_EVENT_MASK);
 	}
 
 	public void executarLogout(boolean pedirConfirmacao) {
@@ -183,10 +185,28 @@ public class MenuPrincipalController extends BaseController {
             monitorInatividade.stop();
         }
     }
+	
+	private void iniciarMonitorDeConexao() {
+		scheduler.scheduleAtFixedRate(() -> {
+			boolean estaValida = false;
+			try (Connection conn = ConnectionFactory.getConnection()) {
+				estaValida = (conn != null && conn.isValid(5));
+			} catch (Exception e) {
+				estaValida = false;
+			}
 
-//	private void dispararAlertaConexao() {
-//		logger.error("CONEXÃO COM O BANCO DE DADOS PERDIDA!");
-//	}
+			final boolean status = estaValida;
+			SwingUtilities.invokeLater(() -> view.atualizarStatusBanco(status));
+
+			if (!status) {
+				dispararAlertaConexao();
+			}
+		}, 10, 30, TimeUnit.SECONDS);
+	}
+
+	private void dispararAlertaConexao() {
+		logger.error("CONEXÃO COM O BANCO DE DADOS PERDIDA!");
+	}
 
 	private void iniciarRelogio() {
 		relogioTimer = new Timer(1000, e -> atualizarHora());

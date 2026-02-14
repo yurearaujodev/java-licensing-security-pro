@@ -228,6 +228,21 @@ public final class ValidationUtils {
 			}
 		};
 	}
+	
+	public static DocumentListener createDocumentListener(Runnable validator) {
+	    if (validator == null) {
+	        throw new IllegalArgumentException("VALIDATOR NÃO PODE SER NULL");
+	    }
+
+	    return new DocumentListener() {
+	        @Override
+	        public void removeUpdate(DocumentEvent e) { validator.run(); }
+	        @Override
+	        public void insertUpdate(DocumentEvent e) { validator.run(); }
+	        @Override
+	        public void changedUpdate(DocumentEvent e) { validator.run(); }
+	    };
+	}
 
 	public static void createDocumentFilter(JTextComponent... campos) {
 		if (campos == null)

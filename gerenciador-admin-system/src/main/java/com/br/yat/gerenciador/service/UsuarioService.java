@@ -344,18 +344,18 @@ public class UsuarioService extends BaseService {
 			SensitiveData.safeClear(senhaConfirmar);
 		}
 	}
-	
-	public List<Permissao> carregarPermissoesEspeciais(Integer idUsuario) {
-	    // 1ª Validação (Input): Evita ida ao banco com dados inválidos
-	    if (idUsuario == null || idUsuario <= 0) return new ArrayList<>();
-
-	    try (Connection conn = ConnectionFactory.getConnection()) {
-	        // 2ª Validação (State): A GenericDao já valida se a conexão está aberta no construtor
-	        return new PermissaoDao(conn).buscarPermissoesGranularesNaoHerdadas(idUsuario);
-	    } catch (SQLException e) {
-	        throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "FALHA NA CONEXÃO AO CARREGAR PERMISSÕES", e);
-	    }
-	}
+//	
+//	public List<Permissao> carregarPermissoesEspeciais(Integer idUsuario) {
+//	    // 1ª Validação (Input): Evita ida ao banco com dados inválidos
+//	    if (idUsuario == null || idUsuario <= 0) return new ArrayList<>();
+//
+//	    try (Connection conn = ConnectionFactory.getConnection()) {
+//	        // 2ª Validação (State): A GenericDao já valida se a conexão está aberta no construtor
+//	        return new PermissaoDao(conn).buscarPermissoesGranularesNaoHerdadas(idUsuario);
+//	    } catch (SQLException e) {
+//	        throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "FALHA NA CONEXÃO AO CARREGAR PERMISSÕES", e);
+//	    }
+//	}
 
 	public Usuario buscarMasterUnico() {
 		try (Connection conn = ConnectionFactory.getConnection()) {

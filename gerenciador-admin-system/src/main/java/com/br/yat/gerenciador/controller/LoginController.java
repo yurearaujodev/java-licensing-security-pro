@@ -22,7 +22,7 @@ public class LoginController extends BaseController {
     private final UsuarioViewLogin view;
     private final UsuarioService userService;
     private final AutenticacaoService authService;
-    private Timer monitorInatividade;
+  //  private Timer monitorInatividade;
 
     public LoginController(UsuarioViewLogin view,AutenticacaoService authService,UsuarioService userService) {
         this.view = view;

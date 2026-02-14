@@ -93,7 +93,7 @@ public final class IconFactory {
 		return icon("/image/data.png", 60, 60);
 	}
 	public static Icon dataHora() {
-		return icon("/image/data.png", 26, 26);
+		return icon("/image/data.png", 24, 24);
 	}
 
 	public static Icon logout() {

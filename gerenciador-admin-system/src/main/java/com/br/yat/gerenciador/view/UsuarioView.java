@@ -1,209 +1,87 @@
 package com.br.yat.gerenciador.view;
 
+import java.awt.Color;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Consumer;
-
 import javax.swing.*;
+import javax.swing.event.DocumentListener;
 
 import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.StatusUsuario;
-import com.br.yat.gerenciador.model.enums.TipoPermissao;
-import com.br.yat.gerenciador.util.IconFactory;
 import com.br.yat.gerenciador.view.factory.*;
-import net.miginfocom.swing.MigLayout;
 
-public class UsuarioView extends JInternalFrame {
-
+public class UsuarioView extends BaseCadastroView {
 	private static final long serialVersionUID = 1L;
 
-	// ===============================
-	// COMPONENTES DE DADOS
-	// ===============================
-	private final JTextField txtNome;
-	private final JTextField txtEmail;
-	private final JTextField txtEmpresa;
-
-	private final JPasswordField txtSenhaNova;
-	private final JPasswordField txtSenhaAntiga;
-	private final JPasswordField txtConfirmarSenha;
-
-	private final JProgressBar barraForcaSenha;
-
-	private final JComboBox<StatusUsuario> cbStatus;
-	private final JComboBox<Perfil> cbPerfil;
-
-	private final JCheckBox chkMaster;
-
+	private final JTextField txtNome = FieldFactory.createTextField(20);
+	private final JTextField txtEmail = FieldFactory.createTextField(20);
+	private final JTextField txtEmpresa = FieldFactory.createTextField(20);
+	private final JPasswordField txtSenhaNova = FieldFactory.createPasswordField(20);
+	private final JPasswordField txtSenhaAntiga = FieldFactory.createPasswordField(20);
+	private final JPasswordField txtConfirmarSenha = FieldFactory.createPasswordField(20);
+	private final JProgressBar barraForcaSenha = DesktopFactory.createPasswordStrengthBar();
+	private final JComboBox<StatusUsuario> cbStatus = ComboBoxFactory.createEnumComboBox(StatusUsuario.class);
+	private final JComboBox<Perfil> cbPerfil = new JComboBox<>();
+	private final JCheckBox chkMaster = ButtonFactory.createCheckBox("ESTE USUÁRIO É ADMINISTRADOR MASTER");
 	private Integer idEmpresa;
 
-	// ===============================
-	// COMPONENTE DE PERMISSÕES
-	// ===============================
-	private final PainelPermissoes pnlPermissoes;
-
-	// ===============================
-	// BOTÕES
-	// ===============================
-	private final JButton btnSalvar;
-	private final JButton btnNovo;
-	private final JButton btnCancelar;
-
-	// ===============================
-	// CONSTRUTOR
-	// ===============================
 	public UsuarioView() {
-		super("Cadastro de Usuário", true, true, true, true);
-
-		setLayout(new MigLayout("gapx 15, gapy 15", "[grow,fill]", "[][grow][]"));
-
-		// Instancia componentes
-		txtNome = FieldFactory.createTextField(20);
-		txtEmail = FieldFactory.createTextField(20);
-		txtSenhaAntiga = FieldFactory.createPasswordField(20);
-		txtSenhaNova = FieldFactory.createPasswordField(20);
-		txtConfirmarSenha = FieldFactory.createPasswordField(20);
-		txtEmpresa = FieldFactory.createTextField(20);
+		super("Cadastro de Usuário", true);
 		txtEmpresa.setEnabled(false);
-
-		cbStatus = ComboBoxFactory.createEnumComboBox(StatusUsuario.class);
-		cbPerfil = new JComboBox<>();
-
-		chkMaster = ButtonFactory.createCheckBox("ESTE USUÁRIO É ADMINISTRADOR MASTER");
-		barraForcaSenha = DesktopFactory.createPasswordStrengthBar();
-
-		pnlPermissoes = new PainelPermissoes(true);
-
-		btnNovo = ButtonFactory.createPrimaryButton("NOVO", IconFactory.novo());
-		btnCancelar = ButtonFactory.createPrimaryButton("CANCELAR", IconFactory.cancelar());
-		btnSalvar = ButtonFactory.createPrimaryButton("SALVAR", IconFactory.salvar());
-
-		montarLayout();
-
+		chkMaster.setEnabled(false);
+		montarLayoutPrincipal(montarPainelDadosBasicos());
 		setSize(850, 650);
 	}
 
-	// ===============================
-	// MONTAGEM DA TELA
-	// ===============================
-	private void montarLayout() {
-		add(montarPainelDadosBasicos(), "cell 0 0, growx");
-		add(DesktopFactory.createScroll(pnlPermissoes), "cell 0 1, grow");
-		add(montarPainelBotoes(), "cell 0 2, right");
-	}
-
 	private JPanel montarPainelDadosBasicos() {
-		JPanel panel = PanelFactory.createPanel("gapx 10, gapy 10", "[right][grow,fill][right][grow,fill]",
-				"[][][][][]");
+	    JPanel p = PanelFactory.createPanel("gapx 10, gapy 10", 
+	                                        "[right][grow,fill][right][grow,fill]", 
+	                                        "[][][][][]");
+	    p.setBorder(BorderFactory.createTitledBorder("Dados do Usuário"));
 
-		panel.setBorder(BorderFactory.createTitledBorder("Dados do Usuário"));
+	    // Linha 0
+	    p.add(LabelFactory.createLabel("USUÁRIO: "), "cell 0 0, alignx trailing");
+	    p.add(txtNome, "cell 1 0, growx, h 25!");
+	    p.add(LabelFactory.createLabel("E-MAIL: "), "cell 2 0, alignx trailing");
+	    p.add(txtEmail, "cell 3 0, growx, h 25!");
 
-		panel.add(LabelFactory.createLabel("USUÁRIO: "), "cell 0 0");
-		panel.add(txtNome, "cell 1 0");
+	    // Linha 1
+	    p.add(LabelFactory.createLabel("SENHA ANTIGA: "), "cell 0 1, alignx trailing");
+	    p.add(txtSenhaAntiga, "cell 1 1, growx, h 25!");
+	    p.add(LabelFactory.createLabel("STATUS: "), "cell 2 1, alignx trailing");
+	    p.add(cbStatus, "cell 3 1, growx, h 25!");
 
-		panel.add(LabelFactory.createLabel("E-MAIL: "), "cell 2 0");
-		panel.add(txtEmail, "cell 3 0");
+	    // Linha 2
+	    p.add(LabelFactory.createLabel("NOVA SENHA: "), "cell 0 2, alignx trailing");
+	    p.add(txtSenhaNova, "cell 1 2, growx, h 25!");
+	    p.add(barraForcaSenha, "cell 1 2, growx, h 15!, wrap");
+	    p.add(LabelFactory.createLabel("CONFIRMAR SENHA: "), "cell 2 2, alignx trailing");
+	    p.add(txtConfirmarSenha, "cell 3 2, growx, h 25!");
 
-		panel.add(LabelFactory.createLabel("SENHA ANTIGA: "), "cell 0 1");
-		panel.add(txtSenhaAntiga, "cell 1 1");
+	    // Linha 3
+	    p.add(LabelFactory.createLabel("PERFIL: "), "cell 0 3, alignx trailing");
+	    p.add(cbPerfil, "cell 1 3, growx, h 25!");
+	    p.add(LabelFactory.createLabel("MASTER: "), "cell 2 3, alignx trailing");
+	    p.add(chkMaster, "cell 3 3, growx");
 
-		panel.add(LabelFactory.createLabel("STATUS: "), "cell 2 1");
-		panel.add(cbStatus, "cell 3 1");
+	    // Linha 4
+	    p.add(LabelFactory.createLabel("EMPRESA: "), "cell 0 4, alignx trailing");
+	    p.add(txtEmpresa, "cell 1 4 3 1, growx, h 25!");
 
-		panel.add(LabelFactory.createLabel("NOVA SENHA: "), "cell 0 2");
-		panel.add(txtSenhaNova, "cell 1 2");
-		panel.add(barraForcaSenha, "cell 1 2, growx, h 15!, gaptop 20");
-
-		panel.add(LabelFactory.createLabel("CONFIRMAR: "), "cell 2 2");
-		panel.add(txtConfirmarSenha, "cell 3 2");
-
-		panel.add(LabelFactory.createLabel("PERFIL: "), "cell 0 3");
-		panel.add(cbPerfil, "cell 1 3");
-
-		panel.add(LabelFactory.createLabel("MASTER: "), "cell 2 3");
-		panel.add(chkMaster, "cell 3 3");
-
-		panel.add(LabelFactory.createLabel("EMPRESA: "), "cell 0 4");
-		panel.add(txtEmpresa, "cell 1 4 3 1");
-
-		return panel;
+	    return p;
 	}
 
-	private JPanel montarPainelBotoes() {
-		JPanel panel = new JPanel(new MigLayout("insets 5", "[left][grow][right]", "[]"));
-
-		panel.add(btnNovo, "w 140!, h 35!");
-		panel.add(btnCancelar, "gapleft push, w 140!, h 35!");
-		panel.add(btnSalvar, "w 140!, h 35!");
-
-		return panel;
+	// Métodos específicos de Usuário (Expiração)
+	public String getDataExpiracao(MenuChave c) {
+		return pnlPermissoes.getDataExpiracao(c);
 	}
 
-	// ===============================
-	// API DE PERMISSÕES (ENCAPSULADA)
-	// ===============================
-	public void construirGradePermissoes(Map<String, List<MenuChave>> grupos) {
-		pnlPermissoes.construirGrade(grupos);
+	public void setDataExpiracao(MenuChave c, LocalDateTime d) {
+		pnlPermissoes.setDataExpiracao(c, d);
 	}
 
-	public void setPermissao(MenuChave chave, TipoPermissao tipo, boolean valor) {
-		pnlPermissoes.setPermissao(chave, tipo, valor);
-	}
-
-	public boolean isPermissaoSelecionada(MenuChave chave, TipoPermissao tipo) {
-		return pnlPermissoes.isPermissaoSelecionada(chave, tipo);
-	}
-
-	public void setPermissoesHabilitadas(boolean habilitado) {
-		pnlPermissoes.setHabilitado(habilitado);
-	}
-
-	public void setMasterHabilitado(boolean habilitado) {
-		chkMaster.setEnabled(habilitado);
-	}
-
-	public void limparPermissoes() {
-		pnlPermissoes.resetarSelecoes(); // Agora usamos o novo método
-	}
-
-	public void aplicarRestricaoPermissao(MenuChave chave, TipoPermissao tipo, boolean permitido) {
-		pnlPermissoes.aplicarRestricaoPermissao(chave, tipo, permitido);
-	}
-
-	public void setDataExpiracao(MenuChave chave, java.time.LocalDateTime data) {
-		pnlPermissoes.setDataExpiracao(chave, data);
-	}
-
-	// ===============================
-	// API DE CATEGORIAS (NOVO)
-	// ===============================
-
-	public Set<String> getCategoriasPermissoes() {
-		return pnlPermissoes.getCategorias();
-	}
-
-	public List<MenuChave> getChavesDaCategoria(String categoria) {
-		return pnlPermissoes.getChavesDaCategoria(categoria);
-	}
-
-	public void marcarCategoria(String categoria, boolean marcar) {
-		pnlPermissoes.marcarCategoria(categoria, marcar);
-	}
-
-	public boolean isCategoriaTotalmenteMarcada(String categoria) {
-		return pnlPermissoes.isCategoriaTotalmenteMarcada(categoria);
-	}
-
-	public void setCategoriaMarcada(String categoria, boolean marcada) {
-		pnlPermissoes.setCategoriaMarcada(categoria, marcada);
-	}
-
-	public void addListenerCategoria(String categoria, Consumer<Boolean> listener) {
-		pnlPermissoes.addListenerCategoria(categoria, listener);
-	}
-
+	@Override
 	public void limpar() {
 		txtNome.setText("");
 		txtEmail.setText("");
@@ -211,27 +89,45 @@ public class UsuarioView extends JInternalFrame {
 		cbStatus.setSelectedIndex(0);
 		cbPerfil.setSelectedItem(null);
 		chkMaster.setSelected(false);
-		barraForcaSenha.setValue(0);
-		limparPermissoes(); // Apenas reseta os checks, não apaga a grade da tela
+		limparPermissoes();
 	}
 
-	// ===============================
-	// API DE DADOS
-	// ===============================
+	public void limparSenhas() {
+		txtSenhaNova.setText("");
+		txtSenhaAntiga.setText("");
+		txtConfirmarSenha.setText("");
+		barraForcaSenha.setValue(0);
+	}
+	
+	@Override
+	public void setCamposHabilitados(boolean habilitado) {
+	    txtNome.setEnabled(habilitado);
+	    txtEmail.setEnabled(habilitado);
+	    txtSenhaNova.setEnabled(habilitado);
+	    txtSenhaAntiga.setEnabled(habilitado);
+	    txtConfirmarSenha.setEnabled(habilitado);
+	    cbStatus.setEnabled(habilitado);
+	    cbPerfil.setEnabled(habilitado);
+	    chkMaster.setEnabled(habilitado); 
+	    
+	    setPermissoesHabilitadas(habilitado);
+	}
+
+	// Getters/Setters necessários para a Controller
 	public String getNome() {
 		return txtNome.getText();
 	}
 
-	public void setNome(String nome) {
-		txtNome.setText(nome);
+	public void setNome(String n) {
+		txtNome.setText(n);
 	}
 
 	public String getEmail() {
 		return txtEmail.getText();
 	}
 
-	public void setEmail(String email) {
-		txtEmail.setText(email);
+	public void setEmail(String e) {
+		txtEmail.setText(e);
 	}
 
 	public char[] getSenhaNova() {
@@ -246,85 +142,71 @@ public class UsuarioView extends JInternalFrame {
 		return txtConfirmarSenha.getPassword();
 	}
 
-	public void limparSenhas() {
-		txtSenhaNova.setText("");
-		txtSenhaAntiga.setText("");
-		txtConfirmarSenha.setText("");
-		barraForcaSenha.setValue(0);
-	}
-
 	public StatusUsuario getStatus() {
 		return (StatusUsuario) cbStatus.getSelectedItem();
 	}
 
-	public void setStatus(StatusUsuario status) {
-		cbStatus.setSelectedItem(status);
+	public void setStatus(StatusUsuario s) {
+		cbStatus.setSelectedItem(s);
 	}
 
 	public boolean isMaster() {
 		return chkMaster.isSelected();
 	}
 
-	public void setMaster(boolean master) {
-		chkMaster.setSelected(master);
+	public void setMaster(boolean m) {
+		chkMaster.setSelected(m);
 	}
 
-	public void setEmpresa(Integer id, String nome) {
+	public void setMasterHabilitado(boolean h) {
+		chkMaster.setEnabled(h);
+	}
+
+	public void setEmpresa(Integer id, String n) {
 		this.idEmpresa = id;
-		this.txtEmpresa.setText(nome);
+		this.txtEmpresa.setText(n);
 	}
 
 	public Integer getIdEmpresa() {
 		return idEmpresa;
 	}
 
-	public void carregarCombosPerfil(List<Perfil> lista) {
+	public void carregarCombosPerfil(List<Perfil> l) {
 		cbPerfil.removeAllItems();
-		if (lista != null) {
-			lista.forEach(cbPerfil::addItem);
-		}
+		if (l != null)
+			l.forEach(cbPerfil::addItem);
 	}
 
 	public Perfil getPerfilSelecionado() {
 		return (Perfil) cbPerfil.getSelectedItem();
 	}
 
-	public String getDataExpiracao(MenuChave chave) {
-		return pnlPermissoes.getDataExpiracao(chave);
+	public void setPerfil(Perfil p) {
+		cbPerfil.setSelectedItem(p);
 	}
 
-	public void setPerfil(Perfil perfil) {
-		cbPerfil.setSelectedItem(perfil);
+	public void setPerfilHabilitado(boolean h) {
+		cbPerfil.setEnabled(h);
 	}
 
-	public void setPerfilHabilitado(boolean habilitado) {
-		cbPerfil.setEnabled(habilitado);
+	public void adicionarListenerSenhaNova(DocumentListener listener) {
+	    txtSenhaNova.getDocument().addDocumentListener(listener);
 	}
 
-	public Set<MenuChave> getChavesAtivas() {
-		return pnlPermissoes.getChavesConstruidas();
+	public void atualizarForcaSenha(int forca, Color cor, String texto) {
+	    barraForcaSenha.setValue(forca);
+	    barraForcaSenha.setForeground(cor);
+	    barraForcaSenha.setString(texto);
+	}
+	
+	public void configurarEstadoEdicao(boolean isMaster) {
+	    setCamposHabilitados(true);
+	    getBtnNovo().setEnabled(false);
+	    getBtnSalvar().setEnabled(true);
+	    setMasterHabilitado(false);
+	    setPerfilHabilitado(!isMaster);
+	    setPermissoesHabilitadas(!isMaster);
 	}
 
-	// ===============================
-	// GETTERS DE AÇÃO (Controller)
-	// ===============================
-	public JButton getBtnSalvar() {
-		return btnSalvar;
-	}
-
-	public JButton getBtnNovo() {
-		return btnNovo;
-	}
-
-	public JButton getBtnCancelar() {
-		return btnCancelar;
-	}
-
-	public JPasswordField getCampoSenhaNova() {
-		return txtSenhaNova;
-	}
-
-	public JProgressBar getBarraForcaSenha() {
-		return barraForcaSenha;
-	}
+	
 }
