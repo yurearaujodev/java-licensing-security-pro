@@ -39,8 +39,6 @@ public class UsuarioPermissaoService {
 		return finais;
 	}
 
-	/* ===== Métodos extraídos SEM ALTERAÇÃO DE REGRA ===== */
-
 	private List<UsuarioPermissao> carregarPermissoesDoPerfil(Connection conn, Usuario usuario) {
 		if (usuario.getPerfil() == null || usuario.getPerfil().getIdPerfil() == null) {
 			return List.of();
@@ -91,97 +89,49 @@ public class UsuarioPermissaoService {
 		up.setAtiva(true);
 		return up;
 	}
-	
+
 	private void validarHierarquiaUsuarioPermissao(Connection conn, Usuario executor,
-	        List<UsuarioPermissao> permissoes) {
+			List<UsuarioPermissao> permissoes) {
 
-	    if (executor == null || UsuarioPolicy.isPrivilegiado(executor))
-	        return;
+		if (executor == null || UsuarioPolicy.isPrivilegiado(executor))
+			return;
 
-	    UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
-	    PermissaoDao pDao = new PermissaoDao(conn);
+		UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
+		PermissaoDao pDao = new PermissaoDao(conn);
 
-	    Integer teto = pDao.buscarMaiorNivelDoUsuario(executor.getIdUsuario());
-	    int nivelTeto = teto != null ? teto : 0;
+		Integer teto = pDao.buscarMaiorNivelDoUsuario(executor.getIdUsuario());
+		int nivelTeto = teto != null ? teto : 0;
 
-	    Map<Integer, LocalDateTime> mapaExecutor =
-	            upDao.listarPorUsuario(executor.getIdUsuario()).stream()
-	                    .collect(Collectors.toMap(
-	                            UsuarioPermissao::getIdPermissoes,
-	                            up -> up.getExpiraEm() == null
-	                                    ? LocalDateTime.MAX
-	                                    : up.getExpiraEm(),
-	                            (a, b) -> a
-	                    ));
+		Map<Integer, LocalDateTime> mapaExecutor = upDao.listarPorUsuario(executor.getIdUsuario()).stream()
+				.collect(Collectors.toMap(UsuarioPermissao::getIdPermissoes,
+						up -> up.getExpiraEm() == null ? LocalDateTime.MAX : up.getExpiraEm(), (a, b) -> a));
 
-	    // 🔥 Carrega todas permissões uma única vez
-	    Map<Integer, Permissao> mapaPermissoes =
-	            pDao.listAll().stream()
-	                    .collect(Collectors.toMap(
-	                            Permissao::getIdPermissoes,
-	                            p -> p
-	                    ));
+		Map<Integer, Permissao> mapaPermissoes = pDao.listAll().stream()
+				.collect(Collectors.toMap(Permissao::getIdPermissoes, p -> p));
 
-	    for (UsuarioPermissao up : permissoes) {
+		for (UsuarioPermissao up : permissoes) {
 
-	        Permissao p = mapaPermissoes.get(up.getIdPermissoes());
-	        if (p == null)
-	            continue;
+			Permissao p = mapaPermissoes.get(up.getIdPermissoes());
+			if (p == null)
+				continue;
 
-	        if (!mapaExecutor.containsKey(up.getIdPermissoes())) {
-	            throw new ValidationException(
-	                    ValidationErrorType.ACCESS_DENIED,
-	                    "VOCÊ NÃO POSSUI ACESSO A [" + p.getChave() + "].");
-	        }
+			if (!mapaExecutor.containsKey(up.getIdPermissoes())) {
+				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+						"VOCÊ NÃO POSSUI ACESSO A [" + p.getChave() + "].");
+			}
 
-	        if (p.getNivel() > nivelTeto) {
-	            throw new ValidationException(
-	                    ValidationErrorType.ACCESS_DENIED,
-	                    "NÍVEL INSUFICIENTE PARA [" + p.getChave() + "].");
-	        }
+			if (p.getNivel() > nivelTeto) {
+				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+						"NÍVEL INSUFICIENTE PARA [" + p.getChave() + "].");
+			}
 
-	        LocalDateTime expExecutor = mapaExecutor.get(up.getIdPermissoes());
-	        LocalDateTime expAlvo =
-	                up.getExpiraEm() == null ? LocalDateTime.MAX : up.getExpiraEm();
+			LocalDateTime expExecutor = mapaExecutor.get(up.getIdPermissoes());
+			LocalDateTime expAlvo = up.getExpiraEm() == null ? LocalDateTime.MAX : up.getExpiraEm();
 
-	        if (expAlvo.isAfter(expExecutor)) {
-	            throw new ValidationException(
-	                    ValidationErrorType.ACCESS_DENIED,
-	                    "DATA INVÁLIDA PARA [" + p.getChave() + "].");
-	        }
-	    }
+			if (expAlvo.isAfter(expExecutor)) {
+				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+						"DATA INVÁLIDA PARA [" + p.getChave() + "].");
+			}
+		}
 	}
-
-
-//	private void validarHierarquiaUsuarioPermissao(Connection conn, Usuario executor,
-//			List<UsuarioPermissao> permissoes) {
-//		if (executor == null || UsuarioPolicy.isPrivilegiado(executor))
-//			return;
-//		UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
-//		PermissaoDao pDao = new PermissaoDao(conn);
-//		Integer teto = pDao.buscarMaiorNivelDoUsuario(executor.getIdUsuario());
-//		int nivelTeto = teto != null ? teto : 0;
-//		Map<Integer, LocalDateTime> mapaExecutor = upDao.listarPorUsuario(executor.getIdUsuario()).stream()
-//				.collect(Collectors.toMap(UsuarioPermissao::getIdPermissoes,
-//						up -> up.getExpiraEm() == null ? LocalDateTime.MAX : up.getExpiraEm(), (a, b) -> a));
-//		for (UsuarioPermissao up : permissoes) {
-//			Permissao p = pDao.findById(up.getIdPermissoes());
-//			if (p == null)
-//				continue;
-//			if (!mapaExecutor.containsKey(up.getIdPermissoes())) {
-//				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-//						"VOCÊ NÃO POSSUI ACESSO A [" + p.getChave() + "].");
-//			}
-//			if (p.getNivel() > nivelTeto) {
-//				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-//						"NÍVEL INSUFICIENTE PARA [" + p.getChave() + "].");
-//			}
-//			LocalDateTime expExecutor = mapaExecutor.get(up.getIdPermissoes());
-//			LocalDateTime expAlvo = up.getExpiraEm() == null ? LocalDateTime.MAX : up.getExpiraEm();
-//			if (expAlvo.isAfter(expExecutor)) {
-//				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-//						"DATA INVÁLIDA PARA [" + p.getChave() + "].");
-//			}
-//		}
-//	}
 }

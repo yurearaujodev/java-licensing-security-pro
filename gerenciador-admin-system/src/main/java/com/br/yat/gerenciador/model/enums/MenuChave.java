@@ -36,14 +36,14 @@ public enum MenuChave {
 
 	// === CADASTROS (Nível 2) ===
 	CADASTROS_EMPRESA_CLIENTE("CADASTROS", "Gestão de empresas clientes", 2),
-	CADASTROS_PERFIL("CADASTROS", "Gestão de perfis de acesso", 2),
-	CADASTROS_USUARIO("CADASTROS", "Gestão de usuários do sistema", 2),
+	//CADASTROS_PERFIL("CADASTROS", "Gestão de perfis de acesso", 2),
+//	CADASTROS_USUARIO("CADASTROS", "Gestão de usuários do sistema", 2),
 	CADASTROS_PLANO_DE_LICENCA("CADASTROS", "Configuração de planos de serviço", 2),
 
 	// === CONSULTAS (Nível 2) ===
 	CONSULTAS_EMPRESAS_CLIENTES("CONSULTAS", "Consulta rápida de empresas", 2),
-	CONSULTAS_USUARIOS("CONSULTAS", "Consulta de usuários cadastrados", 2),
-	CONSULTAS_PERFIL("CONSULTAS", "Consulta de perfis existentes", 2),
+//	CONSULTAS_USUARIOS("CONSULTAS", "Consulta de usuários cadastrados", 2),
+//	CONSULTAS_PERFIL("CONSULTAS", "Consulta de perfis existentes", 2),
 	CONSULTAS_PLANO_DE_LICENCA("CONSULTAS", "Consulta de planos disponíveis", 2),
 	CONSULTAS_LICENCAS("CONSULTAS", "Consulta global de licenças", 2),
 	CONSULTAS_DISPOSITIVOS("CONSULTAS", "Consulta de dispositivos ativos", 2),
@@ -77,6 +77,7 @@ public enum MenuChave {
 
 	// === CONFIGURAÇÃO (Nível 5) ===
 	CONFIGURACAO_EMPRESA_FORNECEDORA("CONFIGURAÇÃO", "Dados da empresa proprietária", 5),
+	CONFIGURACAO_PREFERENCIAS_DO_SISTEMA("CONFIGURAÇÃO", "Personalização visual e preferências do usuário", 5),
 	CONFIGURACAO_PARAMETRO_SISTEMA("CONFIGURAÇÃO", "Parâmetros globais do sistema", 5),
 	CONFIGURACAO_PARAMETRO_LICENCA("CONFIGURAÇÃO", "Regras de negócio das licenças", 5),
 	CONFIGURACAO_SEGURANCA("CONFIGURAÇÃO", "Políticas de senha e acesso", 5),

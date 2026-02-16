@@ -2,6 +2,7 @@ package com.br.yat.gerenciador.service;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -11,6 +12,7 @@ import com.br.yat.gerenciador.model.LogSistema;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.ParametroChave;
+import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.util.AuditLogHelper;
 
 public class LogSistemaService extends BaseService {
@@ -20,7 +22,7 @@ public class LogSistemaService extends BaseService {
 	public List<LogSistema> filtrarLogs(String tipo, String acao, String usuario, Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			// Apenas quem pode ver logs acessa aqui
-			validarAcesso(conn, executor, MenuChave.AUDITORIA_LOG_DO_SISTEMA, "READ");
+			validarAcesso(conn, executor, MenuChave.AUDITORIA_LOG_DO_SISTEMA, TipoPermissao.READ);
 			return new LogSistemaDao(conn).listarComFiltros(tipo, acao, usuario);
 		} catch (SQLException e) {
 			registrarLogErro("ERRO", "CONSULTAR_LOGS", "log_sistema", e);
@@ -36,7 +38,7 @@ public class LogSistemaService extends BaseService {
 	public void executarLimpezaAutomatica(Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			// 1. Double Validation: Só o Master ou quem tem permissão na chave de limpeza
-			validarAcesso(conn, executor, CHAVE_LIMPEZA, "DELETE");
+			validarAcesso(conn, executor, CHAVE_LIMPEZA, TipoPermissao.DELETE);
 
 			// 2. Busca quantos dias o Master configurou (usando sua
 			// ParametroSistemaService)
@@ -58,26 +60,19 @@ public class LogSistemaService extends BaseService {
 	}
 
 	private void registrarLogSucessoManual(Connection conn, Usuario executor, int total, int dias) throws SQLException {
-	    Map<String, Object> detalhes = new java.util.HashMap<>();
-	    detalhes.put("mensagem", "Limpeza de logs realizada");
-	    detalhes.put("registros_removidos", total);
-	    detalhes.put("politica_dias", dias);
+		Map<String, Object> detalhes = new HashMap<>();
+		detalhes.put("mensagem", "Limpeza de logs realizada");
+		detalhes.put("registros_removidos", total);
+		detalhes.put("politica_dias", dias);
 
-	    LogSistema log = AuditLogHelper.gerarLogSucesso(
-	        "MANUTENCAO", 
-	        "LIMPEZA_LOGS", 
-	        "sistema", 
-	        null, 
-	        null, 
-	        detalhes
-	    );
+		LogSistema log = AuditLogHelper.gerarLogSucesso("MANUTENCAO", "LIMPEZA_LOGS", "sistema", null, null, detalhes);
 
-	    if (executor != null && executor.getIdUsuario() != null && executor.getIdUsuario() > 0) {
-	        log.setUsuario(executor);
-	    } else {
-	        log.setUsuario(null);
-	    }
+		if (executor != null && executor.getIdUsuario() != null && executor.getIdUsuario() > 0) {
+			log.setUsuario(executor);
+		} else {
+			log.setUsuario(null);
+		}
 
-	   new LogSistemaDao(conn).save(log);
+		new LogSistemaDao(conn).save(log);
 	}
 }

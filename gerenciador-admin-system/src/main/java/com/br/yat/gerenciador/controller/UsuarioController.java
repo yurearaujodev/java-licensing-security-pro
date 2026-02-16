@@ -28,7 +28,8 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 
 	private void inicializar() {
 		Usuario logado = Sessao.getUsuario();
-		Map<String, List<MenuChave>> grupos = (logado != null && logado.isMaster())
+		boolean bancoVazio = !service.existeUsuarioMaster();
+		Map<String, List<MenuChave>> grupos = (bancoVazio || (logado != null && logado.isMaster()))
 				? MenuChaveGrouper.groupByCategoria()
 				: MenuChaveGrouper
 						.groupByCategoriaFiltrado(Optional.ofNullable(Sessao.getPermissoes()).orElse(List.of()));
@@ -63,9 +64,9 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 			};
 
 			String texto = switch (forca) {
-			case 0, 1 -> "Fraca";
-			case 2 -> "Média";
-			default -> "Forte";
+			case 0, 1 -> "FRACA";
+			case 2 -> "MÉDIA";
+			default -> "FORTE";
 			};
 
 			view.atualizarForcaSenha(forca, cor, texto);
@@ -83,35 +84,39 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 		preencherDadosBasicos();
 
 		char[] senha = view.getSenhaNova();
-		char[] senhaConfirmar = view.getConfirmarSenha(); // Faltava declarar esta!
+		char[] senhaConfirmar = view.getConfirmarSenha();
+		char[] senhaAntiga = view.getSenhaAntiga();
 
-		try {
-			if (!processarSenha(senha, senhaConfirmar, isNovo))
-				return;
+		if (!processarSenha(senha, senhaConfirmar, isNovo))
+			return;
 
-			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+			try {
 				service.salvarUsuario(usuarioAtual, coletarPermissoesMarcadas(), coletarDatasExpiracao(),
 						Sessao.getUsuario());
 				return true;
-			}, sucesso -> {
-				DialogFactory.informacao(view, isNovo ? "USUÁRIO SALVO!" : "ALTERAÇÃO REALIZADA!");
-				view.limparSenhas();
-				if (isNovo)
-					novoUsuario();
-				else
-					view.doDefaultCloseAction();
-				if (refreshCallback != null)
-					refreshCallback.onSaveSuccess();
+			} finally {
+				limparSenhas(senha, senhaConfirmar, senhaAntiga);
+			}
+		}, sucesso -> {
+			DialogFactory.informacao(view, isNovo ? "USUÁRIO SALVO!" : "ALTERAÇÃO REALIZADA!");
+			view.limparSenhas();
+			view.setCamposHabilitados(false);
+			if (isNovo)
+				novoUsuario();
+			else
+				view.doDefaultCloseAction();
+			if (refreshCallback != null)
+				refreshCallback.onSaveSuccess();
 
-			});
-		} finally {
-			limparSenhas(senha, senhaConfirmar);
-		}
+		});
+
 	}
 
-	private void limparSenhas(char[] senha, char[] confirmar) {
+	private void limparSenhas(char[] senha, char[] confirmar, char[] antiga) {
 		SensitiveData.safeClear(senha);
 		SensitiveData.safeClear(confirmar);
+		SensitiveData.safeClear(antiga);
 		view.limparSenhas();
 	}
 
@@ -141,7 +146,7 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 				DialogFactory.erro(view, "A SENHA É OBRIGATÓRIA PARA NOVOS USUÁRIOS.");
 				return false;
 			}
-			return true; // edição sem troca de senha
+			return true;
 		}
 
 		if (!validarSenha(senha, confirmar)) {
@@ -160,7 +165,7 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 			return false;
 		}
 		int forca = ValidationUtils.calcularForcaSenha(senha);
-		if (forca <4) {
+		if (forca < 2) {
 			DialogFactory.aviso(view, "A SENHA DEVE TER FORÇA MÍNIMA MÉDIA.");
 			return false;
 		}
@@ -187,26 +192,34 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 		if (u.getEmpresa() != null)
 			view.setEmpresa(u.getEmpresa().getIdEmpresa(), u.getEmpresa().getRazaoSocialEmpresa());
 
-		
 		view.entrarModoEdicao(u.isMaster());
 		view.setPerfilHabilitado(!u.isMaster());
 		view.setMasterHabilitado(false);
+		view.setSenhaAntigaHabilitado(true);
 		carregarListaPerfis(() -> {
 			if (u.getPerfil() != null)
 				view.setPerfil(u.getPerfil());
 		});
+		atualizarEstadoInterface();
+		if (u.isMaster()) {
+			view.limparPermissoes(); // Garante que a grade fique limpa
+			view.setPermissoesHabilitadas(false);
+			view.getBtnSalvar().setEnabled(true);
+			// Não chama a service para carregar permissões aqui!
+		} else {
 
-		runAsync(SwingUtilities.getWindowAncestor(view), () -> service.carregarDadosPermissoesEdicao(u.getIdUsuario()),
-				lista -> {
-					lista.forEach(dto -> {
-						view.setPermissao(MenuChave.valueOf(dto.permissao().getChave()),
-								TipoPermissao.valueOf(dto.permissao().getTipo()), true);
-						if (dto.getExpiraEm() != null)
-							view.setDataExpiracao(MenuChave.valueOf(dto.permissao().getChave()), dto.getExpiraEm());
+			runAsync(SwingUtilities.getWindowAncestor(view),
+					() -> service.carregarDadosPermissoesEdicao(u.getIdUsuario()), lista -> {
+						lista.forEach(dto -> {
+							view.setPermissao(MenuChave.valueOf(dto.permissao().getChave()),
+									TipoPermissao.valueOf(dto.permissao().getTipo()), true);
+							if (dto.getExpiraEm() != null)
+								view.setDataExpiracao(MenuChave.valueOf(dto.permissao().getChave()), dto.getExpiraEm());
+						});
+						atualizarEstadoCheckBoxesCategoria();
+						view.getBtnSalvar().setEnabled(true);
 					});
-					atualizarEstadoCheckBoxesCategoria();
-					view.getBtnSalvar().setEnabled(true);
-				});
+		}
 	}
 
 	private void aplicarRestricoesDoExecutor() {
@@ -238,6 +251,8 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 		view.getBtnNovo().setEnabled(false);
 		view.getBtnSalvar().setEnabled(true);
 		view.setCamposHabilitados(true);
+		atualizarEstadoInterface();
+		view.setSenhaAntigaHabilitado(false);
 
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> service.buscarMasterUnico(), masterExistente -> {
 			if (masterExistente == null) {
@@ -278,14 +293,34 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 		Usuario logado = Sessao.getUsuario();
 		if (logado == null || logado.isMaster())
 			return;
-		runAsync(SwingUtilities.getWindowAncestor(view),
-				() -> service.listarPermissoesAtivasPorMenu(logado.getIdUsuario(), MenuChave.CADASTROS_USUARIO), p -> {
+		runAsync(SwingUtilities.getWindowAncestor(view), () -> service
+				.listarPermissoesAtivasPorMenu(logado.getIdUsuario(), MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES),
+				p -> {
 					if (!aplicarRestricoesVisuais(p, view.getBtnNovo(), null, null))
 						view.doDefaultCloseAction();
 					view.getBtnSalvar().setVisible(p.contains(TipoPermissao.WRITE.name()));
 				});
 	}
 
+//	public void prepararComoMaster() {
+//		view.setMaster(true);
+//		view.setStatus(StatusUsuario.ATIVO);
+//
+//		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+//			Empresa emp = new EmpresaService().buscarFornecedoraParaSetup();
+//			if (emp == null)
+//				throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND, "CADASTRE A EMPRESA ANTES!");
+//			Perfil perf = perfilService.buscarOuCriarPerfilMaster();
+//			return new Object[] { emp, perf };
+//		}, result -> {
+//			view.setEmpresa(((Empresa) result[0]).getIdEmpresa(), ((Empresa) result[0]).getRazaoSocialEmpresa());
+//			// carregarListaPerfis(()->{});
+//			view.setPerfil((Perfil) result[1]);
+//			marcarTodasPermissoesNaGrade();
+//			view.setPermissoesHabilitadas(false);
+//		});
+//	}
+//	
 	public void prepararComoMaster() {
 		view.setMaster(true);
 		view.setStatus(StatusUsuario.ATIVO);
@@ -294,14 +329,40 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 			Empresa emp = new EmpresaService().buscarFornecedoraParaSetup();
 			if (emp == null)
 				throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND, "CADASTRE A EMPRESA ANTES!");
+
+			// 1. Cria ou busca o perfil no banco
 			Perfil perf = perfilService.buscarOuCriarPerfilMaster();
 			return new Object[] { emp, perf };
 		}, result -> {
-			view.setEmpresa(((Empresa) result[0]).getIdEmpresa(), ((Empresa) result[0]).getRazaoSocialEmpresa());
-			view.setPerfil((Perfil) result[1]);
-			marcarTodasPermissoesNaGrade();
-			view.setPermissoesHabilitadas(false);
+			Empresa emp = (Empresa) result[0];
+			Perfil perf = (Perfil) result[1];
+
+			view.setEmpresa(emp.getIdEmpresa(), emp.getRazaoSocialEmpresa());
+
+			// 2. FORÇA a recarga da lista de perfis para garantir que o novo perfil apareça
+			// no Combo
+			carregarListaPerfis(() -> {
+				// 3. Só agora seleciona o perfil, depois que ele já está carregado no ComboBox
+				view.setPerfil(perf);
+			});
+			view.limparPermissoes();
+			view.setCamposHabilitados(true); // Ativa Nome, Email, Senhas
+			view.getBtnNovo().setEnabled(false); // Desativa o botão NOVO
+			view.getBtnSalvar().setEnabled(true); // Ativa o botão SALVAR
+
+			// marcarTodasPermissoesNaGrade(); // Marca tudo
+			view.setPermissoesHabilitadas(false); // Trava os checks (Master não edita permissão manual)
+			view.setMasterHabilitado(false);
+			view.setPerfilHabilitado(false);
+			view.setStatusHabilitado(false);
+			view.setSenhaAntigaHabilitado(false);
+			atualizarEstadoInterface();
 		});
+	}
+
+	private void atualizarEstadoInterface() {
+		boolean isNovo = (usuarioAtual == null || usuarioAtual.getIdUsuario() == null);
+		view.setTextoBotaoSalvar(isNovo ? "SALVAR" : "ALTERAR");
 	}
 
 	public void setRefreshCallback(RefreshCallback callback) {

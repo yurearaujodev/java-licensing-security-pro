@@ -25,10 +25,10 @@ public abstract class BaseController {
 	protected final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 	protected final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 	private LoadingDialog loadingDialog;
-	 private int loadingCounter = 0;
+	private int loadingCounter = 0;
 
 	public void dispose() {
-		hideLoading(true); // Garante que o loading não fique travado se a tela fechar
+		hideLoading(true);
 		if (loadingDialog != null) {
 			loadingDialog.dispose();
 			loadingDialog = null;
@@ -74,13 +74,30 @@ public abstract class BaseController {
 
 	protected <T> void runAsync(Window view, TaskWithResult<T> task, Consumer<T> onSuccess) {
 		showLoading(view);
-		runAsyncSilent(view, task, result -> {
-			hideLoading(false);
-			if (onSuccess != null) {
-				onSuccess.accept(result);
-			}
-		});
 
+		executor.submit(() -> {
+			T result = null;
+			Exception error = null;
+
+			try {
+				result = task.execute();
+			} catch (Exception e) {
+				error = e;
+			}
+
+			final T res = result;
+			final Exception ex = error;
+
+			SwingUtilities.invokeLater(() -> {
+				hideLoading(false);
+
+				if (ex != null) {
+					handleException(ex, view);
+				} else if (onSuccess != null) {
+					onSuccess.accept(res);
+				}
+			});
+		});
 	}
 
 	protected <T> void runAsyncSilent(Window view, TaskWithResult<T> task, Consumer<T> onSuccess) {
@@ -97,31 +114,42 @@ public abstract class BaseController {
 		});
 	}
 
+	protected void showLoading(Window parent) {
+		synchronized (this) {
+			if (loadingDialog == null || loadingDialog.getOwner() != parent) {
+				if (loadingDialog != null)
+					loadingDialog.dispose();
+				loadingDialog = new LoadingDialog(parent);
+			}
+			loadingCounter++;
+			SwingUtilities.invokeLater(() -> {
+				if (!loadingDialog.isVisible())
+					loadingDialog.show();
+			});
+		}
+	}
 
-    protected synchronized void showLoading(Window parent) {
-        SwingUtilities.invokeLater(() -> {
-            if (loadingDialog == null || loadingDialog.getOwner() != parent) {
-                if (loadingDialog != null) loadingDialog.dispose();
-                loadingDialog = new LoadingDialog(parent);
-            }
-            loadingCounter++;
-            if (!loadingDialog.isVisible()) loadingDialog.show();
-        });
-    }
+	protected void hideLoading(boolean force) {
+	    final LoadingDialog dialogRef;
 
-    protected synchronized void hideLoading(boolean force) {
-        SwingUtilities.invokeLater(() -> {
-            if (loadingDialog != null) {
-                if (force) {
-                    loadingCounter = 0;
-                    loadingDialog.hide();
-                } else if (loadingCounter > 0) {
-                    loadingCounter--;
-                    if (loadingCounter == 0) loadingDialog.hide();
-                }
-            }
-        });
-    }
+	    synchronized (this) {
+
+	        if (loadingDialog == null)
+	            return;
+
+	        loadingCounter = force
+	                ? 0
+	                : Math.max(0, loadingCounter - 1);
+
+	        if (loadingCounter != 0)
+	            return;
+
+	        dialogRef = loadingDialog;
+	    }
+
+	    SwingUtilities.invokeLater(dialogRef::hide);
+	}
+
 
 	/**
 	 * Aplica o "cadeado visual" nos botões da view baseado nas permissões do
@@ -134,23 +162,22 @@ public abstract class BaseController {
 	 */
 	protected boolean aplicarRestricoesVisuais(List<String> permissoes, AbstractButton btnNovo,
 			AbstractButton btnEditar, AbstractButton btnExcluir) {
+		boolean temRead = permissoes.contains(TipoPermissao.READ.name());
 
-		// Se não tem leitura, avisa a Controller filha para fechar a tela
-		if (!permissoes.contains(TipoPermissao.READ.name())) {
-			return false;
-		}
-
+		// Sempre mostra a tela se houver permissão de leitura
 		boolean podeEscrever = permissoes.contains(TipoPermissao.WRITE.name());
 		boolean podeExcluir = permissoes.contains(TipoPermissao.DELETE.name());
 
-		if (btnNovo != null)
-			btnNovo.setVisible(podeEscrever);
-		if (btnEditar != null)
-			btnEditar.setVisible(podeEscrever);
-		if (btnExcluir != null)
-			btnExcluir.setVisible(podeExcluir);
+		SwingUtilities.invokeLater(() -> {
+			if (btnNovo != null)
+				btnNovo.setVisible(podeEscrever);
+			if (btnEditar != null)
+				btnEditar.setVisible(podeEscrever);
+			if (btnExcluir != null)
+				btnExcluir.setVisible(podeExcluir);
+		});
 
-		return true;
+		return temRead;
 	}
 
 }

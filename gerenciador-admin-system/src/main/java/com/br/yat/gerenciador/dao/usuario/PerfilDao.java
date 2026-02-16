@@ -7,7 +7,9 @@ import java.util.List;
 import java.util.Optional;
 
 import com.br.yat.gerenciador.dao.GenericDao;
+import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.model.Perfil;
+import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 
 public class PerfilDao extends GenericDao<Perfil> {
 
@@ -27,6 +29,42 @@ public class PerfilDao extends GenericDao<Perfil> {
         // Usa o executeUpdate da Generic
         executeUpdate(sql, p.getNome(), p.getDescricao(), p.getIdPerfil());
     }
+    
+    public List<Perfil> listarExcluidos() {
+        String sql = "SELECT * FROM " + tableName + " WHERE deletado_em IS NOT NULL ORDER BY nome ASC";
+        return executeQuery(sql);
+    }
+
+    public void restaurar(int idPerfil) {
+        String sql = "UPDATE " + tableName +
+                     " SET deletado_em = NULL, atualizado_em = NOW() " +
+                     " WHERE " + pkName + " = ?";
+        executeUpdate(sql, idPerfil);
+    }
+
+    @Override
+    public Perfil searchById(int id) {
+        String sql = "SELECT * FROM " + tableName +
+                     " WHERE " + pkName + " = ? AND deletado_em IS NULL";
+        List<Perfil> resultados = executeQuery(sql, id);
+        return resultados.isEmpty() ? null : resultados.get(0);
+    }
+
+    @Override
+    public void softDeleteById(int id) {
+        Perfil perfil = searchById(id);
+
+        if (perfil != null && "MASTER".equalsIgnoreCase(perfil.getNome())) {
+            throw new DataAccessException(
+                DataAccessErrorType.QUERY_FAILED,
+                "ERRO: O PERFIL MASTER NÃO PODE SER EXCLUÍDO.",
+                null
+            );
+        }
+
+        super.softDeleteById(id);
+    }
+
 
     /**
      * Retorna todos os perfis ativos.

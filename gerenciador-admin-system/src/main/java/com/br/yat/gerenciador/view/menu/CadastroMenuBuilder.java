@@ -20,14 +20,6 @@ public final class CadastroMenuBuilder {
 		MenuRegistry.register(MenuChave.CADASTROS_EMPRESA_CLIENTE, itemEmpCli);
 		menuCadastro.add(itemEmpCli);
 
-		JMenuItem itemUsu = MenuFactory.createMenuItem("USUÁRIO", null, null);
-		MenuRegistry.register(MenuChave.CADASTROS_USUARIO, itemUsu);
-		menuCadastro.add(itemUsu);
-
-		JMenuItem itemPer = MenuFactory.createMenuItem("PERFIL", null, null);
-		MenuRegistry.register(MenuChave.CADASTROS_PERFIL, itemPer);
-		menuCadastro.add(itemPer);
-
 		JMenuItem itemPlaLic = MenuFactory.createMenuItem("PLANO DE LICENÇA", null, null);
 		MenuRegistry.register(MenuChave.CADASTROS_PLANO_DE_LICENCA, itemPlaLic);
 		menuCadastro.add(itemPlaLic);

@@ -41,7 +41,6 @@ public abstract class BaseCadastroView extends JInternalFrame implements ICadast
 		add(pnlBotoes, "cell 0 2, right");
 	}
 
-	// === IMPLEMENTAÇÃO AUTOMÁTICA DA INTERFACE (DELEGAÇÃO) ===
 	@Override
 	public void construirGradePermissoes(Map<String, List<MenuChave>> g) {
 		pnlPermissoes.construirGrade(g);
@@ -121,19 +120,18 @@ public abstract class BaseCadastroView extends JInternalFrame implements ICadast
 	public JButton getBtnCancelar() {
 		return btnCancelar;
 	}
-	
+
 	public void entrarModoEdicao(boolean isMaster) {
-	    setCamposHabilitados(true);
-	    getBtnNovo().setEnabled(false);
-	    getBtnSalvar().setEnabled(true);
-	    // Permissões padrão
-	    setPermissoesHabilitadas(!isMaster);
+		setCamposHabilitados(true);
+		getBtnNovo().setEnabled(false);
+		getBtnSalvar().setEnabled(true);
+		setPermissoesHabilitadas(!isMaster);
 	}
 
 	public void entrarModoNovo() {
-	    setCamposHabilitados(true);
-	    getBtnNovo().setEnabled(false);
-	    getBtnSalvar().setEnabled(true);
-	    setPermissoesHabilitadas(true);
+		setCamposHabilitados(true);
+		getBtnNovo().setEnabled(false);
+		getBtnSalvar().setEnabled(true);
+		setPermissoesHabilitadas(true);
 	}
 }

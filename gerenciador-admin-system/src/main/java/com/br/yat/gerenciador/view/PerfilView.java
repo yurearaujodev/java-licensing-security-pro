@@ -1,6 +1,8 @@
 package com.br.yat.gerenciador.view;
 
 import javax.swing.*;
+
+import com.br.yat.gerenciador.util.IconFactory;
 import com.br.yat.gerenciador.view.factory.*;
 
 public class PerfilView extends BaseCadastroView {
@@ -9,7 +11,7 @@ public class PerfilView extends BaseCadastroView {
 	private final JTextField txtDescricao = FieldFactory.createTextField(30);
 
 	public PerfilView() {
-		super("Cadastro de Perfil de Acesso", false);
+		super("CADASTRO DE PERFIL DE ACESSO", false);
 		montarLayoutPrincipal(montarPainelIdentificacao());
 		setSize(800, 600);
 	}
@@ -30,12 +32,12 @@ public class PerfilView extends BaseCadastroView {
 		txtDescricao.setText("");
 		limparPermissoes();
 	}
-	
+
 	@Override
 	public void setCamposHabilitados(boolean habilitado) {
-		 txtNome.setEnabled(habilitado);
-		 txtDescricao.setEnabled(habilitado);
-		setPermissoesHabilitadas(habilitado);	
+		txtNome.setEnabled(habilitado);
+		txtDescricao.setEnabled(habilitado);
+		setPermissoesHabilitadas(habilitado);
 	}
 
 	public String getNome() {
@@ -61,5 +63,15 @@ public class PerfilView extends BaseCadastroView {
 
 	public JTextField getTxtNome() {
 		return txtNome;
+	}
+
+	@Override
+	public void setTextoBotaoSalvar(String texto) {
+		this.btnSalvar.setText(texto);
+		if ("ALTERAR".equals(texto)) {
+			this.btnSalvar.setIcon(IconFactory.cancelar());
+		} else {
+			this.btnSalvar.setIcon(IconFactory.salvar());
+		}
 	}
 }

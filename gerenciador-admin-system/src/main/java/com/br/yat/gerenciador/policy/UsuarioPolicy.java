@@ -10,23 +10,18 @@ public final class UsuarioPolicy {
 	private UsuarioPolicy() {
 	}
 
-	/** Quem é considerado usuário privilegiado */
 	public static boolean isPrivilegiado(Usuario u) {
 		return u != null && u.isMaster();
-		// amanhã pode virar: u.isAdmin() || u.isMaster()
 	}
 
-	/** Usuário privilegiado pode tudo */
 	public static boolean ignoraValidacaoPermissao(Usuario u) {
 		return isPrivilegiado(u);
 	}
 
-	/** Usuário privilegiado sempre tem todas as permissões */
 	public static List<MenuChave> permissoesCompletas() {
 		return List.of(MenuChave.values());
 	}
 
-	/** Pode excluir outro usuário? */
 	public static boolean podeExcluir(Usuario executor, Usuario alvo) {
 		if (executor == null || alvo == null)
 			return false;
@@ -37,23 +32,18 @@ public final class UsuarioPolicy {
 		return isPrivilegiado(executor);
 	}
 
-	/** Pode editar permissões? */
 	public static boolean podeEditarPermissoes(Usuario executor) {
 		return isPrivilegiado(executor);
 	}
 
-	/** Pode alterar status de usuário privilegiado? */
 	public static boolean podeAlterarStatusPrivilegiado(Usuario executor) {
 		return isPrivilegiado(executor);
 	}
-	
-	/**
-	 * Validação de hierarquia baseada em nível técnico.
-	 * Garante que um usuário não altere alguém com nível superior ao dele.
-	 */
+
 	public static boolean temHierarquiaParaAlterar(Usuario executor, int nivelExecutor, int nivelAlvo) {
-	    if (isPrivilegiado(executor)) return true;
-	    return nivelExecutor >= nivelAlvo;
+		if (isPrivilegiado(executor))
+			return true;
+		return nivelExecutor >= nivelAlvo;
 	}
 
 }

@@ -27,7 +27,9 @@ import com.br.yat.gerenciador.model.dto.EmpresaDTO;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
+import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
+import com.br.yat.gerenciador.policy.EmpresaPolicy;
 import com.br.yat.gerenciador.util.AuditLogHelper;
 import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
@@ -39,7 +41,7 @@ public class EmpresaService extends BaseService {
 
 	public EmpresaDTO carregarEmpresaCompleta(int id, TipoCadastro tipo, Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, CHAVE_CONSULTA, "READ");
+			validarAcesso(conn, executor, CHAVE_CONSULTA, TipoPermissao.READ);
 			EmpresaDao empDao = new EmpresaDao(conn);
 
 			Empresa emp = (tipo == TipoCadastro.FORNECEDORA) ? empDao.buscarPorFornecedora() : empDao.searchById(id);
@@ -64,7 +66,7 @@ public class EmpresaService extends BaseService {
 
 	public List<Empresa> listarClientesParaTabela(boolean inativos, Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, CHAVE_CONSULTA, "READ");
+			validarAcesso(conn, executor, CHAVE_CONSULTA, TipoPermissao.READ);
 			return new EmpresaDao(conn).listarTodosClientes(inativos);
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
@@ -73,7 +75,7 @@ public class EmpresaService extends BaseService {
 
 	public List<Empresa> filtrarClientes(String termo, boolean inativos, Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, CHAVE_CONSULTA, "READ");
+			validarAcesso(conn, executor, CHAVE_CONSULTA, TipoPermissao.READ);
 			return new EmpresaDao(conn).filtrarClientes(termo, inativos);
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
@@ -85,9 +87,20 @@ public class EmpresaService extends BaseService {
 			List<Documento> documentos, Usuario executor) {
 
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, CHAVE_SALVAR, "WRITE");
-
+			validarAcesso(conn, executor, CHAVE_SALVAR, TipoPermissao.WRITE);
 			EmpresaDao empDao = new EmpresaDao(conn);
+
+			boolean existeEmpresaFornecedora = empDao.buscarPorFornecedora() != null;
+
+			// Valida criação ou alteração considerando setup inicial
+			if (empresa.getIdEmpresa() == 0) {
+				// Nova empresa → valida criação
+				EmpresaPolicy.validarCriacaoFornecedora(empresa, executor, existeEmpresaFornecedora);
+			} else {
+				// Alteração → valida alteração
+				EmpresaPolicy.validarAlteracao(empresa, executor);
+			}
+
 			Empresa anterior = (empresa.getIdEmpresa() > 0) ? empDao.searchById(empresa.getIdEmpresa()) : null;
 
 			boolean houveMudanca = (anterior == null || !empresa.equals(anterior));
@@ -95,10 +108,10 @@ public class EmpresaService extends BaseService {
 			if (houveMudanca) {
 				validarDados(endereco, empresa, contatos, representantes, bancos, complementar, documentos);
 			}
+
 			ConnectionFactory.beginTransaction(conn);
 			try {
 				validarDuplicidadeDocumento(empDao, empresa);
-				validarProtecaoFornecedora(empresa, executor);
 
 				Endereco end = salvarEndereco(conn, endereco);
 				empresa.setEndereco(end);
@@ -133,13 +146,6 @@ public class EmpresaService extends BaseService {
 		}
 	}
 
-	private void validarProtecaoFornecedora(Empresa e, Usuario executor) {
-		if (e.getTipoEmpresa() == TipoCadastro.FORNECEDORA && (executor != null && !executor.isMaster())) {
-			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-					"APENAS UM USUÁRIO MASTER PODE ALTERAR OS DADOS DA EMPRESA FORNECEDORA.");
-		}
-	}
-
 	private void validarExistenciaParaUpdate(Empresa atual, Empresa anterior) {
 		if (atual.getIdEmpresa() > 0 && anterior == null) {
 			throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND,
@@ -166,14 +172,17 @@ public class EmpresaService extends BaseService {
 			List<Banco> bancos, Complementar comp, List<Documento> docs) {
 
 		int id = emp.getIdEmpresa();
+
 		if (reps != null) {
 			reps.forEach(r -> r.setEmpresa(emp));
 			new RepresentanteDao(conn).syncByEmpresa(id, reps);
 		}
+
 		if (bancos != null) {
 			bancos.forEach(b -> b.setEmpresa(emp));
 			new BancoDao(conn).syncByEmpresa(id, bancos);
 		}
+
 		if (docs != null) {
 			docs.forEach(d -> d.setEmpresa(emp));
 			new DocumentoDao(conn).syncByEmpresa(id, docs);
@@ -225,52 +234,72 @@ public class EmpresaService extends BaseService {
 	public void restaurarEmpresa(int idEmpresa, Usuario executor) {
 
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, CHAVE_SALVAR, "DELETE");
-			EmpresaDao dao = new EmpresaDao(conn);
 
-			dao.restaurar(idEmpresa);
+			validarAcesso(conn, executor, CHAVE_SALVAR, TipoPermissao.DELETE);
 
-			new LogSistemaDao(conn).save(AuditLogHelper.gerarLogSucesso("CADASTRO", "RESTAURAR_EMPRESA", "empresa",
-					idEmpresa, "Status: INATIVO", "Status: ATIVO"));
+			ConnectionFactory.beginTransaction(conn);
+
+			try {
+				EmpresaDao dao = new EmpresaDao(conn);
+				LogSistemaDao logDao = new LogSistemaDao(conn);
+
+				Empresa empresa = dao.searchById(idEmpresa);
+
+				EmpresaPolicy.validarRestauracao(empresa, executor);
+
+				dao.restaurar(idEmpresa);
+
+				logDao.save(AuditLogHelper.gerarLogSucesso("CADASTRO", "RESTAURAR_EMPRESA", "empresa", idEmpresa,
+						empresa, null));
+
+				ConnectionFactory.commitTransaction(conn);
+
+			} catch (Exception e) {
+				ConnectionFactory.rollbackTransaction(conn);
+				registrarLogErro("ERRO", "RESTAURAR_EMPRESA", "empresa", e);
+				throw e;
+			}
 
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO RESTAURAR EMPRESA", e);
 		}
 	}
 
-	public void ExcluirEmpresa(int idEmpresa, Usuario executor) {
+	public void excluirEmpresa(int idEmpresa, Usuario executor) {
+
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, CHAVE_SALVAR, "DELETE");
 
-			EmpresaDao dao = new EmpresaDao(conn);
-			LogSistemaDao logDao = new LogSistemaDao(conn);
+			validarAcesso(conn, executor, CHAVE_SALVAR, TipoPermissao.DELETE);
 
-			Empresa empresa = dao.searchById(idEmpresa);
-			if (empresa == null) {
-				throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "EMPRESA NÃO ENCONTRADA.");
+			ConnectionFactory.beginTransaction(conn);
+
+			try {
+				EmpresaDao dao = new EmpresaDao(conn);
+				LogSistemaDao logDao = new LogSistemaDao(conn);
+
+				Empresa empresa = dao.searchById(idEmpresa);
+
+				EmpresaPolicy.validarExclusao(empresa, executor);
+
+				dao.softDeleteById(idEmpresa);
+
+				logDao.save(AuditLogHelper.gerarLogSucesso("CADASTRO", "INATIVAR_EMPRESA", "empresa", idEmpresa,
+						empresa, null));
+
+				ConnectionFactory.commitTransaction(conn);
+
+			} catch (Exception e) {
+				ConnectionFactory.rollbackTransaction(conn);
+				registrarLogErro("ERRO", "EXCLUIR_EMPRESA", "empresa", e);
+				throw e;
 			}
 
-			if (empresa.getTipoEmpresa() == TipoCadastro.FORNECEDORA) {
-				throw new ValidationException(ValidationErrorType.INVALID_FIELD,
-						"A EMPRESA FORNECEDORA NÃO PODE SER INATIVADA.");
-			}
-
-			if (!empresa.isAtivo()) {
-				throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "EMPRESA JÁ ESTÁ INATIVA.");
-			}
-
-			dao.softDeleteById(idEmpresa);
-			logDao.save(AuditLogHelper.gerarLogSucesso("CADASTRO", "INATIVAR_EMPRESA", "empresa", idEmpresa, empresa,
-					null));
 		} catch (SQLException e) {
-			registrarLogErro("ERRO", "EXCLUIR_EMPRESA", "empresa", e);
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
 		}
 	}
 
 	public Empresa buscarFornecedoraParaSetup() {
-		// Note que não chamamos validarAcesso aqui, pois é para o primeiro uso do
-		// sistema
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			Empresa fornecedora = new EmpresaDao(conn).buscarPorFornecedora();
 			if (fornecedora == null) {
@@ -282,5 +311,4 @@ public class EmpresaService extends BaseService {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
 		}
 	}
-
 }

@@ -20,14 +20,6 @@ public final class ConsultaMenuBuilder {
 		MenuRegistry.register(MenuChave.CONSULTAS_EMPRESAS_CLIENTES, itemEmpCliCon);
 		menuConsulta.add(itemEmpCliCon);
 
-		JMenuItem itemUsuCon = MenuFactory.createMenuItem("USUÁRIOS", null, null);
-		MenuRegistry.register(MenuChave.CONSULTAS_USUARIOS, itemUsuCon);
-		menuConsulta.add(itemUsuCon);
-
-		JMenuItem itemPerCon = MenuFactory.createMenuItem("PERFIL", null, null);
-		MenuRegistry.register(MenuChave.CONSULTAS_PERFIL, itemPerCon);
-		menuConsulta.add(itemPerCon);
-
 		JMenuItem itemPlaLicCon = MenuFactory.createMenuItem("PLANO DE LICENÇA", null, null);
 		MenuRegistry.register(MenuChave.CONSULTAS_PLANO_DE_LICENCA, itemPlaLicCon);
 		menuConsulta.add(itemPlaLicCon);

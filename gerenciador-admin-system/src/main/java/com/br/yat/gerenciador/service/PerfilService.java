@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,15 +33,17 @@ import com.br.yat.gerenciador.util.ValidationUtils;
 
 public class PerfilService extends BaseService {
 
-	private static final MenuChave CHAVE_ACESSO = MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES;
+	private static final MenuChave CHAVE_ACESSO = MenuChave.CONFIGURACAO_PERMISSAO;
 
 	public void salvarPerfil(Perfil perfil, Map<MenuChave, List<String>> permissoes, Usuario executor) {
 		validarCampos(perfil);
 
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, CHAVE_ACESSO, "WRITE");
+
+			validarAcesso(conn, executor, CHAVE_ACESSO, TipoPermissao.WRITE);
 
 			ConnectionFactory.beginTransaction(conn);
+
 			try {
 				PerfilDao perfilDao = new PerfilDao(conn);
 				PerfilPermissoesDao ppDao = new PerfilPermissoesDao(conn);
@@ -48,34 +51,45 @@ public class PerfilService extends BaseService {
 				LogSistemaDao logDao = new LogSistemaDao(conn);
 
 				boolean isNovo = isNovoPerfil(perfil);
-
-				if (!isNovo) {
-					validarImutabilidadeMaster(perfilDao, perfil);
-				}
-
 				if (isNovo) {
-					int id = perfilDao.save(perfil);
-					perfil.setIdPerfil(id);
-					logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "CRIAR_PERFIL", "perfil", id, null,
-							perfil.getNome()));
+					criarPerfil(perfilDao, logDao, perfil);
 				} else {
-					perfilDao.update(perfil);
-					logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "ALTERAR_PERFIL", "perfil",
-							perfil.getIdPerfil(), "Update", perfil.getNome()));
-					ppDao.desvincularTodasDoPerfil(perfil.getIdPerfil());
+					atualizarPerfil(perfilDao, ppDao, logDao, perfil);
 				}
 
 				sincronizarPermissoesPerfil(ppDao, pDao, perfil.getIdPerfil(), permissoes, executor);
 
 				ConnectionFactory.commitTransaction(conn);
+
 			} catch (Exception e) {
 				ConnectionFactory.rollbackTransaction(conn);
 				registrarLogErro("ERRO", "SALVAR_PERFIL", "perfil", e);
 				throw e;
 			}
+
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
 		}
+	}
+
+	private void criarPerfil(PerfilDao perfilDao, LogSistemaDao logDao, Perfil perfil) {
+
+		int id = perfilDao.save(perfil);
+		perfil.setIdPerfil(id);
+
+		logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "CRIAR_PERFIL", "perfil", id, null, perfil.getNome()));
+	}
+
+	private void atualizarPerfil(PerfilDao perfilDao, PerfilPermissoesDao ppDao, LogSistemaDao logDao, Perfil perfil) {
+
+		validarImutabilidadeMaster(perfilDao, perfil);
+
+		perfilDao.update(perfil);
+
+		logDao.save(AuditLogHelper.gerarLogSucesso("SEGURANCA", "ALTERAR_PERFIL", "perfil", perfil.getIdPerfil(),
+				"Update", perfil.getNome()));
+
+		ppDao.desvincularTodasDoPerfil(perfil.getIdPerfil());
 	}
 
 	private boolean isNovoPerfil(Perfil perfil) {
@@ -145,7 +159,7 @@ public class PerfilService extends BaseService {
 		}
 	}
 
-	public synchronized Perfil buscarOuCriarPerfilMaster() {
+	public Perfil buscarOuCriarPerfilMaster() {
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			PerfilDao dao = new PerfilDao(conn);
 
@@ -190,7 +204,7 @@ public class PerfilService extends BaseService {
 
 	public void excluirPerfil(int idPerfil, Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, CHAVE_ACESSO, "DELETE");
+			validarAcesso(conn, executor, CHAVE_ACESSO, TipoPermissao.DELETE);
 
 			PerfilDao perfilDao = new PerfilDao(conn);
 			LogSistemaDao logDao = new LogSistemaDao(conn);
@@ -221,6 +235,62 @@ public class PerfilService extends BaseService {
 			}
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO DE CONEXÃO AO EXCLUIR PERFIL", e);
+		}
+	}
+	
+	public List<Perfil> listarExcluidos(Usuario executor) {
+	    try (Connection conn = ConnectionFactory.getConnection()) {
+
+	        validarAcesso(conn, executor, CHAVE_ACESSO, TipoPermissao.DELETE);
+
+	        return new PerfilDao(conn).listarExcluidos();
+
+	    } catch (SQLException e) {
+	        throw new DataAccessException(
+	            DataAccessErrorType.CONNECTION_ERROR,
+	            "ERRO AO LISTAR PERFIS EXCLUÍDOS",
+	            e
+	        );
+	    }
+	}
+
+	public void restaurarPerfil(int idPerfil, Usuario executor) {
+
+	    try (Connection conn = ConnectionFactory.getConnection()) {
+
+	        validarAcesso(conn, executor, CHAVE_ACESSO, TipoPermissao.DELETE);
+
+	        PerfilDao dao = new PerfilDao(conn);
+
+	        dao.restaurar(idPerfil);
+
+	        Map<String, String> detalhes = new HashMap<>();
+	        detalhes.put("acao", "Restauração de perfil via lixeira");
+
+	        registrarLogSucesso(conn,
+	                "SEGURANCA",
+	                "RESTAURAR_PERFIL",
+	                "perfil",
+	                idPerfil,
+	                null,
+	                detalhes);
+
+	    } catch (SQLException e) {
+	        throw new DataAccessException(
+	            DataAccessErrorType.CONNECTION_ERROR,
+	            "ERRO AO RESTAURAR PERFIL",
+	            e
+	        );
+	    }
+	}
+
+	public List<Permissao> carregarPermissoesDetalhadas(Integer idUsuario) {
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			PermissaoDao pDao = new PermissaoDao(conn);
+			return pDao.listarPermissoesAtivasPorUsuario(idUsuario);
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR,
+					"ERRO AO CARREGAR PERMISSÕES DETALHADAS", e);
 		}
 	}
 

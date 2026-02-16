@@ -1,5 +1,7 @@
 package com.br.yat.gerenciador.view;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -65,7 +67,7 @@ public class PainelPermissoes extends JPanel {
 			JCheckBox chkTodos = ButtonFactory.createCheckBox("MARCAR TODOS DE: " + categoria);
 			chkTodosPorCategoria.put(categoria, chkTodos);
 			int totalColunasHeader = 1 + tipos.length + (mostrarExpiracao ? 1 : 0);
-			pnlCat.add(chkTodos, "span " + totalColunasHeader + ", left, gapy 5 10, wrap");	
+			pnlCat.add(chkTodos, "span " + totalColunasHeader + ", left, gapy 5 10, wrap");
 			pnlCat.add(LabelFactory.createLabel("FUNCIONALIDADE / DESCRIÇÃO"), "center");
 
 			for (TipoPermissao tipo : tipos) {
@@ -81,7 +83,6 @@ public class PainelPermissoes extends JPanel {
 				String labelHtml = "<html><b>" + chave.name().replace("_", " ") + "</b><br>"
 						+ "<font color='#666666' size='2'>" + chave.getDescricao() + "</font></html>";
 				pnlCat.add(LabelFactory.createLabel(labelHtml));
-
 
 				Map<TipoPermissao, JCheckBox> tiposMap = new LinkedHashMap<>();
 				for (TipoPermissao tipo : tipos) {
@@ -107,13 +108,11 @@ public class PainelPermissoes extends JPanel {
 	}
 
 	private DateTimePicker criarConfigurarDateTimePicker() {
-		// Configurações de Data
 		DatePickerSettings dateSettings = new DatePickerSettings();
 		dateSettings.setFormatForDatesCommonEra("dd/MM/yyyy");
 		dateSettings.setAllowKeyboardEditing(false);
 		dateSettings.setAllowEmptyDates(true);
 
-		// Configurações de Hora
 		TimePickerSettings timeSettings = new TimePickerSettings();
 		timeSettings.setFormatForDisplayTime("HH:mm");
 		timeSettings.setFormatForMenuTimes("HH:mm");
@@ -122,7 +121,6 @@ public class PainelPermissoes extends JPanel {
 
 		DateTimePicker dtPicker = new DateTimePicker(dateSettings, timeSettings);
 
-		// Estilização do Botão conforme seu pedido
 		JButton btnCalendar = dtPicker.getDatePicker().getComponentToggleCalendarButton();
 		btnCalendar.setText("");
 		btnCalendar.setIcon(IconFactory.dataHora());
@@ -147,8 +145,6 @@ public class PainelPermissoes extends JPanel {
 		chkTodosPorCategoria.values().forEach(chk -> chk.setSelected(false));
 	}
 
-	// --- Getters e Setters de Alta Performance ---
-
 	public void setPermissao(MenuChave chave, TipoPermissao tipo, boolean valor) {
 		Map<TipoPermissao, JCheckBox> mapa = permissoesGranulares.get(chave);
 		if (mapa != null) {
@@ -171,16 +167,14 @@ public class PainelPermissoes extends JPanel {
 
 	public String getDataExpiracao(MenuChave chave) {
 		DateTimePicker picker = datasExpiracao.get(chave);
-		// Retorna no formato String esperado pela sua Service ou null
 		return (picker != null && picker.getDateTimePermissive() != null)
-				? picker.getDateTimeStrict().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+				? picker.getDateTimeStrict().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
 				: "";
 	}
 
-	public void setDataExpiracao(MenuChave chave, java.time.LocalDateTime data) {
+	public void setDataExpiracao(MenuChave chave, LocalDateTime data) {
 		DateTimePicker picker = datasExpiracao.get(chave);
 		if (picker != null) {
-			// Seta o LocalDateTime direto, sem conversão de String
 			picker.setDateTimeStrict(data);
 		}
 	}
@@ -215,12 +209,11 @@ public class PainelPermissoes extends JPanel {
 		if (chk == null)
 			return;
 
-		// Respeita o estado global do painel
 		chk.setEnabled(permitido && painelHabilitado);
 
 		if (!permitido) {
 			chk.setSelected(false);
-			chk.setToolTipText("Você não possui essa permissão.");
+			chk.setToolTipText("VOCÊ NÃO POSSUI ESSA PERMISSÃO.");
 		} else {
 			chk.setToolTipText(null);
 		}

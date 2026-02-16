@@ -9,6 +9,7 @@ import javax.swing.event.DocumentListener;
 import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.StatusUsuario;
+import com.br.yat.gerenciador.util.IconFactory;
 import com.br.yat.gerenciador.view.factory.*;
 
 public class UsuarioView extends BaseCadastroView {
@@ -35,44 +36,36 @@ public class UsuarioView extends BaseCadastroView {
 	}
 
 	private JPanel montarPainelDadosBasicos() {
-	    JPanel p = PanelFactory.createPanel("gapx 10, gapy 10", 
-	                                        "[right][grow,fill][right][grow,fill]", 
-	                                        "[][][][][]");
-	    p.setBorder(BorderFactory.createTitledBorder("Dados do Usuário"));
+		JPanel p = PanelFactory.createPanel("gapx 10, gapy 10", "[right][grow,fill][right][grow,fill]", "[][][][][]");
+		p.setBorder(BorderFactory.createTitledBorder("Dados do Usuário"));
 
-	    // Linha 0
-	    p.add(LabelFactory.createLabel("USUÁRIO: "), "cell 0 0, alignx trailing");
-	    p.add(txtNome, "cell 1 0, growx, h 25!");
-	    p.add(LabelFactory.createLabel("E-MAIL: "), "cell 2 0, alignx trailing");
-	    p.add(txtEmail, "cell 3 0, growx, h 25!");
+		p.add(LabelFactory.createLabel("USUÁRIO: "), "cell 0 0, alignx trailing");
+		p.add(txtNome, "cell 1 0, growx, h 25!");
+		p.add(LabelFactory.createLabel("E-MAIL: "), "cell 2 0, alignx trailing");
+		p.add(txtEmail, "cell 3 0, growx, h 25!");
 
-	    // Linha 1
-	    p.add(LabelFactory.createLabel("SENHA ANTIGA: "), "cell 0 1, alignx trailing");
-	    p.add(txtSenhaAntiga, "cell 1 1, growx, h 25!");
-	    p.add(LabelFactory.createLabel("STATUS: "), "cell 2 1, alignx trailing");
-	    p.add(cbStatus, "cell 3 1, growx, h 25!");
+		p.add(LabelFactory.createLabel("SENHA ANTIGA: "), "cell 0 1, alignx trailing");
+		p.add(txtSenhaAntiga, "cell 1 1, growx, h 25!");
+		p.add(LabelFactory.createLabel("STATUS: "), "cell 2 1, alignx trailing");
+		p.add(cbStatus, "cell 3 1, growx, h 25!");
 
-	    // Linha 2
-	    p.add(LabelFactory.createLabel("NOVA SENHA: "), "cell 0 2, alignx trailing");
-	    p.add(txtSenhaNova, "cell 1 2, growx, h 25!");
-	    p.add(barraForcaSenha, "cell 1 2, growx, h 15!, wrap");
-	    p.add(LabelFactory.createLabel("CONFIRMAR SENHA: "), "cell 2 2, alignx trailing");
-	    p.add(txtConfirmarSenha, "cell 3 2, growx, h 25!");
+		p.add(LabelFactory.createLabel("NOVA SENHA: "), "cell 0 2, alignx trailing");
+		p.add(txtSenhaNova, "cell 1 2, growx, h 25!");
+		p.add(barraForcaSenha, "cell 1 2, growx, h 15!, wrap");
+		p.add(LabelFactory.createLabel("CONFIRMAR SENHA: "), "cell 2 2, alignx trailing");
+		p.add(txtConfirmarSenha, "cell 3 2, growx, h 25!");
 
-	    // Linha 3
-	    p.add(LabelFactory.createLabel("PERFIL: "), "cell 0 3, alignx trailing");
-	    p.add(cbPerfil, "cell 1 3, growx, h 25!");
-	    p.add(LabelFactory.createLabel("MASTER: "), "cell 2 3, alignx trailing");
-	    p.add(chkMaster, "cell 3 3, growx");
+		p.add(LabelFactory.createLabel("PERFIL: "), "cell 0 3, alignx trailing");
+		p.add(cbPerfil, "cell 1 3, growx, h 25!");
+		p.add(LabelFactory.createLabel("MASTER: "), "cell 2 3, alignx trailing");
+		p.add(chkMaster, "cell 3 3, growx");
 
-	    // Linha 4
-	    p.add(LabelFactory.createLabel("EMPRESA: "), "cell 0 4, alignx trailing");
-	    p.add(txtEmpresa, "cell 1 4 3 1, growx, h 25!");
+		p.add(LabelFactory.createLabel("EMPRESA: "), "cell 0 4, alignx trailing");
+		p.add(txtEmpresa, "cell 1 4 3 1, growx, h 25!");
 
-	    return p;
+		return p;
 	}
 
-	// Métodos específicos de Usuário (Expiração)
 	public String getDataExpiracao(MenuChave c) {
 		return pnlPermissoes.getDataExpiracao(c);
 	}
@@ -98,22 +91,21 @@ public class UsuarioView extends BaseCadastroView {
 		txtConfirmarSenha.setText("");
 		barraForcaSenha.setValue(0);
 	}
-	
+
 	@Override
 	public void setCamposHabilitados(boolean habilitado) {
-	    txtNome.setEnabled(habilitado);
-	    txtEmail.setEnabled(habilitado);
-	    txtSenhaNova.setEnabled(habilitado);
-	    txtSenhaAntiga.setEnabled(habilitado);
-	    txtConfirmarSenha.setEnabled(habilitado);
-	    cbStatus.setEnabled(habilitado);
-	    cbPerfil.setEnabled(habilitado);
-	    chkMaster.setEnabled(habilitado); 
-	    
-	    setPermissoesHabilitadas(habilitado);
+		txtNome.setEnabled(habilitado);
+		txtEmail.setEnabled(habilitado);
+		txtSenhaNova.setEnabled(habilitado);
+		txtSenhaAntiga.setEnabled(habilitado);
+		txtConfirmarSenha.setEnabled(habilitado);
+		cbStatus.setEnabled(habilitado);
+		cbPerfil.setEnabled(habilitado);
+		chkMaster.setEnabled(habilitado);
+
+		setPermissoesHabilitadas(habilitado);
 	}
 
-	// Getters/Setters necessários para a Controller
 	public String getNome() {
 		return txtNome.getText();
 	}
@@ -137,6 +129,11 @@ public class UsuarioView extends BaseCadastroView {
 	public char[] getSenhaAntiga() {
 		return txtSenhaAntiga.getPassword();
 	}
+	
+	
+	public void setSenhaAntigaHabilitado(boolean h) {
+		txtSenhaAntiga.setEnabled(h);
+	}
 
 	public char[] getConfirmarSenha() {
 		return txtConfirmarSenha.getPassword();
@@ -149,6 +146,11 @@ public class UsuarioView extends BaseCadastroView {
 	public void setStatus(StatusUsuario s) {
 		cbStatus.setSelectedItem(s);
 	}
+	
+	public void setStatusHabilitado(boolean h) {
+		cbStatus.setEnabled(h);
+	}
+
 
 	public boolean isMaster() {
 		return chkMaster.isSelected();
@@ -190,23 +192,22 @@ public class UsuarioView extends BaseCadastroView {
 	}
 
 	public void adicionarListenerSenhaNova(DocumentListener listener) {
-	    txtSenhaNova.getDocument().addDocumentListener(listener);
+		txtSenhaNova.getDocument().addDocumentListener(listener);
 	}
 
 	public void atualizarForcaSenha(int forca, Color cor, String texto) {
-	    barraForcaSenha.setValue(forca);
-	    barraForcaSenha.setForeground(cor);
-	    barraForcaSenha.setString(texto);
-	}
-	
-	public void configurarEstadoEdicao(boolean isMaster) {
-	    setCamposHabilitados(true);
-	    getBtnNovo().setEnabled(false);
-	    getBtnSalvar().setEnabled(true);
-	    setMasterHabilitado(false);
-	    setPerfilHabilitado(!isMaster);
-	    setPermissoesHabilitadas(!isMaster);
+		barraForcaSenha.setValue(forca);
+		barraForcaSenha.setForeground(cor);
+		barraForcaSenha.setString(texto);
 	}
 
-	
+	@Override
+	public void setTextoBotaoSalvar(String texto) {
+		this.btnSalvar.setText(texto);
+		if ("ALTERAR".equals(texto)) {
+			this.btnSalvar.setIcon(IconFactory.cancelar());
+		} else {
+			this.btnSalvar.setIcon(IconFactory.salvar());
+		}
+	}
 }

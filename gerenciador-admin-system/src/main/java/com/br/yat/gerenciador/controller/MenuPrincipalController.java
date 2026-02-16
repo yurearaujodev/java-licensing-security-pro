@@ -41,7 +41,7 @@ import com.br.yat.gerenciador.view.LogSistemaView;
 import com.br.yat.gerenciador.view.MenuPrincipal;
 import com.br.yat.gerenciador.view.ParametroSistemaView;
 import com.br.yat.gerenciador.view.PerfilConsultaView;
-import com.br.yat.gerenciador.view.PermissaoConsultaView;
+import com.br.yat.gerenciador.view.PreferenciasSistemaView;
 import com.br.yat.gerenciador.view.UsuarioConsultaView;
 import com.br.yat.gerenciador.view.UsuarioView;
 import com.br.yat.gerenciador.view.UsuarioViewLogin;
@@ -71,18 +71,22 @@ public class MenuPrincipalController extends BaseController {
 
 	public void registrarAcoes() {
 		configurarAcaoMenu(MenuChave.CADASTROS_EMPRESA_CLIENTE, e -> abrirEmpresaCliente());
-		configurarAcaoMenu(MenuChave.CADASTROS_PERFIL, e -> abrirPerfil());
-		configurarAcaoMenu(MenuChave.CONSULTAS_PERFIL, e -> abrirConsultaPerfil());
-		configurarAcaoMenu(MenuChave.CONFIGURACAO_EMPRESA_FORNECEDORA, e -> abrirEmpresaFornecedora());
+//		configurarAcaoMenu(MenuChave.CADASTROS_PERFIL, e -> abrirPerfil());
+//		configurarAcaoMenu(MenuChave.CADASTROS_USUARIO, e -> abrirUsuario());
+//		
+//		configurarAcaoMenu(MenuChave.CONSULTAS_PERFIL, e -> abrirConsultaPerfil());
 		configurarAcaoMenu(MenuChave.CONSULTAS_EMPRESAS_CLIENTES, e -> abrirEmpresaConsulta());
-		configurarAcaoMenu(MenuChave.CADASTROS_USUARIO, e -> abrirUsuario());
-		configurarAcaoMenu(MenuChave.CONSULTAS_USUARIOS, e -> abrirConsultaUsuario());
-		configurarAcaoMenu(MenuChave.CONFIGURACAO_CONEXAO_BANCO_DADOS, e -> abrirConfiguracaoBanco());
-		configurarAcaoMenu(MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES, e -> abrirConsultaUsuario());
-		configurarAcaoMenu(MenuChave.CONFIGURACAO_PERMISSAO, e -> abrirConsultaPermissoes());
+//		configurarAcaoMenu(MenuChave.CONSULTAS_USUARIOS, e -> abrirConsultaUsuario());
+
+		configurarAcaoMenu(MenuChave.CONFIGURACAO_EMPRESA_FORNECEDORA, e -> abrirEmpresaFornecedora());
+		configurarAcaoMenu(MenuChave.CONFIGURACAO_PREFERENCIAS_DO_SISTEMA, e -> abrirConfiguracaoPreferencias());
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_PARAMETRO_SISTEMA, e -> abrirParametroSistema());
-		configurarAcaoMenu(MenuChave.AUDITORIA_LOG_DO_SISTEMA, e -> abrirConsultaLogs());
+		configurarAcaoMenu(MenuChave.CONFIGURACAO_PERMISSAO, e -> abrirConsultaPerfil());
+		configurarAcaoMenu(MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES, e -> abrirConsultaUsuario());
+		configurarAcaoMenu(MenuChave.CONFIGURACAO_CONEXAO_BANCO_DADOS, e -> abrirConfiguracaoBanco());
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_LIMPEZA_DE_LOGS, e -> abrirLogManutencao());
+
+		configurarAcaoMenu(MenuChave.AUDITORIA_LOG_DO_SISTEMA, e -> abrirConsultaLogs());
 		for (var al : view.getBtnLogout().getActionListeners()) {
 			view.getBtnLogout().removeActionListener(al);
 		}
@@ -91,7 +95,6 @@ public class MenuPrincipalController extends BaseController {
 
 	private void configurarMonitorGlobal() {
 		Toolkit.getDefaultToolkit().addAWTEventListener(event -> {
-			// Toda vez que o usuário interage, resetamos o cronômetro na Sessão
 			if (Sessao.getUsuario() != null) {
 				Sessao.registrarAtividade();
 			}
@@ -99,34 +102,34 @@ public class MenuPrincipalController extends BaseController {
 	}
 
 	public void executarLogout(boolean pedirConfirmacao) {
-        if (processandoLogout) return;
+		if (processandoLogout)
+			return;
 
-        if (pedirConfirmacao && !DialogFactory.confirmacao(view, "DESEJA REALMENTE SAIR?")) {
-            return;
-        }
+		if (pedirConfirmacao && !DialogFactory.confirmacao(view, "DESEJA REALMENTE SAIR?")) {
+			return;
+		}
 
-        processandoLogout = true;
-        try {
-            pararMonitorSessao();
-            Sessao.logout();
-            
-            view.setNomeUsuario("SESSÃO ENCERRADA");
-            view.setTempoAcesso("");
-            
-            for (JInternalFrame frame : view.getDesktopPane().getAllFrames()) {
-                frame.dispose();
-            }
+		processandoLogout = true;
+		try {
+			pararMonitorSessao();
+			Sessao.logout();
 
-            exibirLogin();
-            logger.info(pedirConfirmacao ? "LOGOUT MANUAL REALIZADO." : "SESSÃO EXPIRADA POR INATIVIDADE.");
-        } finally {
-            processandoLogout = false;
-        }
-    }
+			view.setNomeUsuario("SESSÃO ENCERRADA");
+			view.setTempoAcesso("");
 
-	// Atualize seu método processarLogout antigo para apenas uma linha:
+			for (JInternalFrame frame : view.getDesktopPane().getAllFrames()) {
+				frame.dispose();
+			}
+
+			exibirLogin();
+			logger.info(pedirConfirmacao ? "LOGOUT MANUAL REALIZADO." : "SESSÃO EXPIRADA POR INATIVIDADE.");
+		} finally {
+			processandoLogout = false;
+		}
+	}
+
 	private void processarLogout() {
-	    executarLogout(true);
+		executarLogout(true);
 	}
 
 	private void carregarLogoSistema() {
@@ -158,34 +161,34 @@ public class MenuPrincipalController extends BaseController {
 			}
 		});
 	}
-	private Timer monitorInatividade;
-	public void iniciarMonitorSessao() {
-        // Se já houver um timer rodando (de um login anterior), para ele antes de começar
-        if (monitorInatividade != null && monitorInatividade.isRunning()) {
-            monitorInatividade.stop();
-        }
 
-        // Verifica a cada 60 segundos (ajuste se quiser mais precisão, ex: 30000 para 30s)
-        monitorInatividade = new Timer(60000, e -> {
-            if (Sessao.getUsuario() != null) {
-                if (Sessao.isExpirada()) {
-                    logger.warn("Sessão expirada para o usuário: {}", Sessao.getUsuario().getNome());
-                    pararMonitorSessao();
-                    executarLogout(false); // Logout automático (sem confirmação)
-                    DialogFactory.aviso(null, "Sua sessão expirou por inatividade.");
-                }
-            }
-        });
-        monitorInatividade.start();
-        logger.info("Monitor de inatividade iniciado.");
-    }
-	
+	private Timer monitorInatividade;
+
+	public void iniciarMonitorSessao() {
+		if (monitorInatividade != null && monitorInatividade.isRunning()) {
+			monitorInatividade.stop();
+		}
+
+		monitorInatividade = new Timer(60000, e -> {
+			if (Sessao.getUsuario() != null) {
+				if (Sessao.isExpirada()) {
+					logger.warn("SESSÃO EXPIRADA PARA O USUÁRIO: {}", Sessao.getUsuario().getNome());
+					pararMonitorSessao();
+					executarLogout(false);
+					DialogFactory.aviso(null, "SUA SESSÃO EXPIROU POR INATIVIDADE.");
+				}
+			}
+		});
+		monitorInatividade.start();
+		logger.info("MONITOR DE INATIVIDADE INICIADO.");
+	}
+
 	public void pararMonitorSessao() {
-        if (monitorInatividade != null) {
-            monitorInatividade.stop();
-        }
-    }
-	
+		if (monitorInatividade != null) {
+			monitorInatividade.stop();
+		}
+	}
+
 	private void iniciarMonitorDeConexao() {
 		scheduler.scheduleAtFixedRate(() -> {
 			boolean estaValida = false;
@@ -251,11 +254,8 @@ public class MenuPrincipalController extends BaseController {
 				ViewFactory.showFrameWithCallback(view.getDesktopPane(), f, this::verificarSequenciaDeAcesso);
 			}
 			case 2 -> {
-				// 1. Criamos a View e a Controller através da Factory
-				// Supondo que sua ViewFactory já injete as Services e a Controller na View
 				UsuarioView fUser = ViewFactory.createPrimeiroMasterView();
 
-				// 3. Exibe com o callback para re-verificar quando fechar
 				ViewFactory.showFrameWithCallback(view.getDesktopPane(), fUser, this::verificarSequenciaDeAcesso);
 			}
 			case 3 -> {
@@ -285,14 +285,14 @@ public class MenuPrincipalController extends BaseController {
 			}
 			item.addActionListener(acao);
 		} else {
-			logger.warn("Item de menu não encontrado no registro: {}", chave);
+			logger.warn("ITEM DE MENU NÃO ENCONTRADO NO REGISTRO: {}", chave);
 		}
 	}
 
 	private void abrirEmpresaCliente() {
 		JDesktopPane desk = view.getDesktopPane();
 		if (DesktopUtils.reuseIfOpen(desk, "SISTEMA DE GERENCIAMENTO DE LICENÇA - CADASTRO DE CLIENTE")) {
-			logger.debug("Janela CLiente reutilizada.");
+			logger.debug("JANELA CLIENTE REUTILIZADA.");
 			return;
 		}
 
@@ -325,44 +325,36 @@ public class MenuPrincipalController extends BaseController {
 
 	}
 
-	private void abrirUsuario() {
-		JDesktopPane desk = view.getDesktopPane();
-		if (DesktopUtils.reuseIfOpen(desk, "NOVO_USUARIO")) {
-			return;
-		}
-		UsuarioView frame = ViewFactory.createUsuarioView();
-		frame.setName("NOVO_USUARIO");
-		DesktopUtils.showFrame(desk, frame);
-	}
+//	private void abrirUsuario() {
+//		JDesktopPane desk = view.getDesktopPane();
+//		if (DesktopUtils.reuseIfOpen(desk, "NOVO_USUARIO")) {
+//			return;
+//		}
+//		UsuarioView frame = ViewFactory.createUsuarioView();
+//		frame.setName("NOVO_USUARIO");
+//		DesktopUtils.showFrame(desk, frame);
+//	}
 
 	private void exibirLogin() {
 		MenuRegistry.disableAll();
 		UsuarioViewLogin login = ViewFactory.createLoginView();
 		DesktopUtils.showFrame(view.getDesktopPane(), login);
 	}
-	
-	/**
-	 * Finaliza a sessão atual, limpa a interface e força um novo login.
-	 * Útil para Logout manual e Expiração de Sessão.
-	 */
+
 	public void forcarLogoutExpiracao() {
-	    // 1. Garante a limpeza da sessão na memória
-	    Sessao.logout();
+		Sessao.logout();
 
-	    // 2. UI: Limpa o DesktopPane (fecha todas as janelas internas de dados)
-	    for (JInternalFrame frame : view.getDesktopPane().getAllFrames()) {
-	        frame.dispose();
-	    }
+		for (JInternalFrame frame : view.getDesktopPane().getAllFrames()) {
+			frame.dispose();
+		}
 
-	    // 3. UI: Reseta os Menus e informações do usuário na barra de status
-	    MenuRegistry.disableAll();
-	    view.setNomeUsuario("SESSÃO EXPIRADA");
-	    view.setTempoAcesso("");
+		MenuRegistry.disableAll();
+		view.setNomeUsuario("SESSÃO EXPIRADA");
+		view.setTempoAcesso("");
 
-	    // 4. UI: Abre a tela de login
-	    exibirLogin();
-	    
-	    logger.info("Sessão finalizada por expiração de inatividade.");
+		exibirLogin();
+
+		logger.info("SESSÃO FINALIZADA POR EXPIRAÇÃO DE INATIVIDADE.");
 	}
 
 	public void atualizarDadosUsuario() {
@@ -372,9 +364,9 @@ public class MenuPrincipalController extends BaseController {
 
 			if (user.getUltimoLogin() != null) {
 				String tempoFormatado = TimeUtils.formatarTempoDecorrido(user.getUltimoLogin());
-				view.setTempoAcesso("Último acesso: " + tempoFormatado);
+				view.setTempoAcesso("ÚLTIMO ACESSO: " + tempoFormatado);
 			} else {
-				view.setTempoAcesso("Bem-vindo! Este é seu primeiro acesso.");
+				view.setTempoAcesso("BEM-VINDO! ESTE É SEU PRIMEIRO ACESSO.");
 			}
 		}
 	}
@@ -401,15 +393,6 @@ public class MenuPrincipalController extends BaseController {
 		DesktopUtils.showFrame(desk, frame);
 	}
 
-	private void abrirConsultaPermissoes() {
-		JDesktopPane desk = view.getDesktopPane();
-		if (DesktopUtils.reuseIfOpen(desk, PermissaoConsultaView.class))
-			return;
-
-		PermissaoConsultaView frame = ViewFactory.createPermissaoConsultaView();
-		DesktopUtils.showFrame(desk, frame);
-	}
-
 	private void abrirParametroSistema() {
 		JDesktopPane desk = view.getDesktopPane();
 		if (DesktopUtils.reuseIfOpen(desk, ParametroSistemaView.class))
@@ -419,36 +402,30 @@ public class MenuPrincipalController extends BaseController {
 		DesktopUtils.showFrame(desk, frame);
 	}
 
-	private void abrirPerfil() {
-		JDesktopPane desk = view.getDesktopPane();
-		if (DesktopUtils.reuseIfOpen(desk, "NOVO_PERFIL")) {
-			return;
-		}
-		// Usa a Factory para criar a View + Controller
-		var frame = ViewFactory.createPerfilView();
-		frame.setName("NOVO_PERFIL");
-		DesktopUtils.showFrame(desk, frame);
-	}
-
 	private void abrirConsultaPerfil() {
 		JDesktopPane desk = view.getDesktopPane();
-		// Reutiliza se já estiver aberta para evitar múltiplas instâncias
 		if (DesktopUtils.reuseIfOpen(desk, PerfilConsultaView.class)) {
 			return;
 		}
-		// Chama a Factory
 		var frame = ViewFactory.createPerfilConsultaView();
 		DesktopUtils.showFrame(desk, frame);
 	}
 
 	private void abrirLogManutencao() {
 		JDesktopPane desk = view.getDesktopPane();
-		// Reutiliza se já estiver aberta para evitar múltiplas instâncias
 		if (DesktopUtils.reuseIfOpen(desk, LogManutencaoView.class)) {
 			return;
 		}
-		// Chama a Factory
 		var frame = ViewFactory.createLogManutencao();
+		DesktopUtils.showFrame(desk, frame);
+	}
+	
+	private void abrirConfiguracaoPreferencias() {
+		JDesktopPane desk = view.getDesktopPane();
+		if (DesktopUtils.reuseIfOpen(desk, PreferenciasSistemaView.class)) {
+			return;
+		}
+		var frame = ViewFactory.createPreferenciasSistemaView();
 		DesktopUtils.showFrame(desk, frame);
 	}
 

@@ -229,7 +229,7 @@ public class EmpresaConsultaController extends BaseController {
 
 		Window parent = SwingUtilities.getWindowAncestor(view);
 		runAsync(parent, () -> {
-			service.ExcluirEmpresa(empresa.getIdEmpresa(), Sessao.getUsuario());
+			service.excluirEmpresa(empresa.getIdEmpresa(), Sessao.getUsuario());
 			return true;
 		}, ok -> {
 			DialogFactory.informacao(view, "EMPRESA INATIVADA COM SUCESSO.");

@@ -16,6 +16,11 @@ public final class DataAccessException extends RuntimeException {
 		super(message != null ? message : resolveMessage(errorType), cause);
 		this.errorType = resolveErrorType(errorType);
 	}
+	
+	public DataAccessException(DataAccessErrorType errorType, Throwable cause) {
+	    super(resolveMessage(errorType), cause);
+	    this.errorType = resolveErrorType(errorType);
+	}
 
 	public DataAccessErrorType getErrorType() {
 		return errorType;

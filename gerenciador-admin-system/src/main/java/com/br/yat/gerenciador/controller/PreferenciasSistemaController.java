@@ -1,25 +1,26 @@
 package com.br.yat.gerenciador.controller;
 
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.Font;
-import java.awt.Window;
 
 import javax.swing.JColorChooser;
-import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 
 import com.br.yat.gerenciador.model.enums.Tema;
 import com.br.yat.gerenciador.service.PreferenciasSistemaService;
 import com.br.yat.gerenciador.view.PreferenciasSistemaView;
-import com.formdev.flatlaf.FlatDarkLaf;
-import com.formdev.flatlaf.FlatLightLaf;
 
-public class PreferenciasSistemaController {
+public class PreferenciasSistemaController extends BaseController {
+
     private final PreferenciasSistemaView view;
     private final PreferenciasSistemaService service;
 
-    public PreferenciasSistemaController(PreferenciasSistemaView view, PreferenciasSistemaService service) {
+    public PreferenciasSistemaController(
+            PreferenciasSistemaView view,
+            PreferenciasSistemaService service) {
+
         this.view = view;
         this.service = service;
 
@@ -28,96 +29,151 @@ public class PreferenciasSistemaController {
     }
 
     private void carregarConfiguracoesIniciais() {
+
         view.comboTema.setSelectedItem(service.carregarTema());
         view.comboFonte.setSelectedItem(service.carregarFonte());
-        
-        Color corTexto = service.carregarCorTexto();
-        Color corFundo = service.carregarCorFundo();
-        
-        view.btnCorTexto.setBackground(corTexto);
-        view.btnCorFundo.setBackground(corFundo);
+        view.comboTamanhoFonte.setSelectedItem(service.carregarTamanhoFonte());
+
+        view.btnCorTexto.setBackground(service.carregarCorTexto());
+        view.btnCorFundo.setBackground(service.carregarCorFundo());
+        view.btnCorDestaque.setBackground(service.carregarCorDestaque());
 
         atualizarPreview();
     }
 
     private void inicializarAcoes() {
+
         view.comboTema.addActionListener(e -> atualizarPreview());
         view.comboFonte.addActionListener(e -> atualizarPreview());
+        view.comboTamanhoFonte.addActionListener(e -> atualizarPreview());
 
-        view.btnCorTexto.addActionListener(e -> {
-            Color cor = JColorChooser.showDialog(view, "Escolha a Cor do Texto", view.btnCorTexto.getBackground());
-            if (cor != null) {
-                view.btnCorTexto.setBackground(cor);
-                atualizarPreview();
-            }
-        });
+        view.btnCorTexto.addActionListener(e ->
+                escolherCor(view.btnCorTexto, "Escolha a cor do Texto"));
 
-        view.btnCorFundo.addActionListener(e -> {
-            Color cor = JColorChooser.showDialog(view, "Escolha a Cor de Fundo", view.btnCorFundo.getBackground());
-            if (cor != null) {
-                view.btnCorFundo.setBackground(cor);
-                atualizarPreview();
-            }
-        });
+        view.btnCorFundo.addActionListener(e ->
+                escolherCor(view.btnCorFundo, "Escolha a cor de Fundo"));
+
+        view.btnCorDestaque.addActionListener(e ->
+                escolherCor(view.btnCorDestaque, "Escolha a cor de Destaque"));
 
         view.btnSalvar.addActionListener(e -> salvarConfiguracoes());
-        view.btnCancelar.addActionListener(e -> view.dispose());
+
+        view.btnCancelar.addActionListener(e -> {
+            dispose();
+            view.dispose();
+        });
+    }
+
+    private void escolherCor(javax.swing.JButton botao, String titulo) {
+        Color cor = JColorChooser.showDialog(view, titulo, botao.getBackground());
+        if (cor != null) {
+            botao.setBackground(cor);
+            atualizarPreview();
+        }
     }
 
     private void atualizarPreview() {
         try {
             Tema tema = (Tema) view.comboTema.getSelectedItem();
-            if (tema == Tema.ESCURO) {
-                UIManager.setLookAndFeel(new FlatDarkLaf());
-            } else {
-                UIManager.setLookAndFeel(new FlatLightLaf());
-            }
 
+            // cores base do tema
+            Color baseFundo = tema == Tema.ESCURO ? new Color(43, 43, 43) : Color.WHITE;
+            Color baseTexto = tema == Tema.ESCURO ? Color.WHITE : Color.BLACK;
+            Color baseDestaque = new Color(0, 120, 215);
+
+            // se o usuário já escolheu cores personalizadas, mantém
+            Color corFundoPreview = view.btnCorFundo.getBackground() != null
+                    ? view.btnCorFundo.getBackground()
+                    : baseFundo;
+
+            Color corTextoPreview = view.btnCorTexto.getBackground() != null
+                    ? view.btnCorTexto.getBackground()
+                    : baseTexto;
+
+            Color corDestaquePreview = view.btnCorDestaque.getBackground() != null
+                    ? view.btnCorDestaque.getBackground()
+                    : baseDestaque;
+
+            // fonte e tamanho
             String nomeFonte = (String) view.comboFonte.getSelectedItem();
-            Font fonte = new Font(nomeFonte, Font.PLAIN, 12);
-            UIManager.put("defaultFont", fonte);
-            Color texto = view.btnCorTexto.getBackground();
-            Color fundo = view.btnCorFundo.getBackground();
-            
-            // --- AS CHAVES QUE FALTAVAM ---
-            UIManager.put("Panel.background", fundo);
-            UIManager.put("Label.foreground", texto);
-            
-            // MenuBar e Menus
-            UIManager.put("MenuBar.background", fundo);
-            UIManager.put("MenuBar.foreground", texto);
-            UIManager.put("Menu.background", fundo);
-            UIManager.put("Menu.foreground", texto);
-            UIManager.put("MenuItem.background", fundo);
-            UIManager.put("MenuItem.foreground", texto);
-            
-            // DesktopPane (Fundo atrás das janelas internas)
-            UIManager.put("Desktop.background", fundo);
-            
-            // ToolBar (Barra de ferramentas)
-            UIManager.put("ToolBar.background", fundo);
-            UIManager.put("Control", fundo);
-            
-            for (Window window : Window.getWindows()) {
-                SwingUtilities.updateComponentTreeUI(window);
-            }
+            int tamanho = (Integer) view.comboTamanhoFonte.getSelectedItem();
+            Font fonte = new Font(nomeFonte, Font.PLAIN, tamanho);
+
+            // aplica preview com todas as regras
+            aplicarPreview(view.previewContainer, fonte, corTextoPreview, corFundoPreview, corDestaquePreview);
+
+            view.previewContainer.revalidate();
+            view.previewContainer.repaint();
+
         } catch (Exception ex) {
-            ex.printStackTrace();
+            handleException(ex, SwingUtilities.getWindowAncestor(view));
+        }
+    }
+
+    private void aplicarPreview(
+            Component comp,
+            Font fonte,
+            Color corTexto,
+            Color corFundo,
+            Color corDestaque) {
+
+        comp.setFont(fonte);
+
+        if (comp instanceof javax.swing.JPanel panel) {
+            panel.setBackground(corFundo);
+        }
+
+        if (comp instanceof javax.swing.JLabel label) {
+            label.setForeground(corTexto);
+        }
+
+        if (comp instanceof javax.swing.JButton button) {
+            // mantemos a cor do botão de destaque se for botão de ação
+            button.setForeground(Color.WHITE);
+            button.setBackground(corDestaque);
+            button.setFocusPainted(false);
+            button.setBorderPainted(false);
+            button.setOpaque(true);
+        }
+
+        if (comp instanceof javax.swing.JTextArea textArea) {
+            textArea.setForeground(corTexto);
+            textArea.setBackground(corFundo.brighter());
+            textArea.setCaretColor(corTexto);
+        }
+
+        if (comp instanceof javax.swing.JScrollPane scroll) {
+            scroll.getViewport().setBackground(corFundo);
+        }
+
+        if (comp instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                aplicarPreview(child, fonte, corTexto, corFundo, corDestaque);
+            }
         }
     }
 
     private void salvarConfiguracoes() {
-        try {
-            service.salvarTema((Tema) view.comboTema.getSelectedItem());
-            service.salvarFonte(view.comboFonte.getSelectedItem().toString());
+
+        runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+
+            Tema tema = (Tema) view.comboTema.getSelectedItem();
+
+            service.salvarTema(tema);
+            service.salvarFonte((String) view.comboFonte.getSelectedItem());
+            service.salvarTamanhoFonte((Integer) view.comboTamanhoFonte.getSelectedItem());
             service.salvarCorTexto(view.btnCorTexto.getBackground());
             service.salvarCorFundo(view.btnCorFundo.getBackground());
+            service.salvarCorDestaque(view.btnCorDestaque.getBackground());
 
-            JOptionPane.showMessageDialog(view, "Configurações salvas com sucesso!");
-            SwingUtilities.updateComponentTreeUI(view);
+            // aplica global após salvar
+            service.aplicarConfiguracoesGlobais();
+
+            return null;
+
+        }, result -> {
+            dispose();
             view.dispose();
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(view, "Erro ao salvar: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
-        }
+        });
     }
 }

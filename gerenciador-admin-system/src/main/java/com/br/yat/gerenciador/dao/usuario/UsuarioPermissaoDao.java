@@ -70,6 +70,13 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 		return lista;
 	}
 
+	public List<UsuarioPermissao> listarDiretasPorUsuario(int idUsuario) {
+		// Note o filtro 'AND herdada = 0'
+		String sql = "SELECT * FROM " + tableName + " WHERE id_usuario = ? AND herdada = 0 AND deletado_em IS NULL "
+				+ " AND (expira_em IS NULL OR expira_em > NOW())";
+		return executeQuery(sql, idUsuario);
+	}
+
 	public void syncByUsuario(int idUsuario, List<UsuarioPermissao> novos) {
 		// Busca os atuais para o diff da GenericDao
 		List<UsuarioPermissao> atuais = listarPorUsuario(idUsuario);
@@ -80,10 +87,9 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 	}
 
 	public List<UsuarioPermissao> listarPorUsuario(int idUsuario) {
-	    String sql = "SELECT * FROM " + tableName + 
-	                 " WHERE id_usuario = ? AND deletado_em IS NULL " +
-	                 " AND (expira_em IS NULL OR expira_em > NOW())"; 
-	    return executeQuery(sql, idUsuario);
+		String sql = "SELECT * FROM " + tableName + " WHERE id_usuario = ? AND deletado_em IS NULL "
+				+ " AND (expira_em IS NULL OR expira_em > NOW())";
+		return executeQuery(sql, idUsuario);
 	}
 
 	public void saveOrUpdate(UsuarioPermissao up) {
@@ -104,17 +110,14 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 	}
 
 	public boolean usuarioPossuiAcessoCompleto(int idUsuario, int idPerfil, String chave, String tipo) {
-	    String sql = "SELECT EXISTS ( " +
-	                 "  SELECT 1 FROM permissoes p " +
-	                 "  LEFT JOIN perfil_permissoes pp ON p.id_permissoes = pp.id_permissoes AND pp.id_perfil = ? " +
-	                 "  LEFT JOIN usuario_permissoes up ON p.id_permissoes = up.id_permissoes AND up.id_usuario = ? " +
-	                 "  WHERE p.chave = ? AND p.tipo = ? " +
-	                 "  AND ( " +
-	                 "    (pp.id_permissoes IS NOT NULL AND pp.deletado_em IS NULL) " +
-	                 "    OR (up.ativa = 1 AND up.deletado_em IS NULL AND (up.expira_em IS NULL OR up.expira_em > NOW())) " +
-	                 "  ) " +
-	                 ")";
-	    return executeScalarInt(sql, idPerfil, idUsuario, chave, tipo) > 0;
+		String sql = "SELECT EXISTS ( " + "  SELECT 1 FROM permissoes p "
+				+ "  LEFT JOIN perfil_permissoes pp ON p.id_permissoes = pp.id_permissoes AND pp.id_perfil = ? "
+				+ "  LEFT JOIN usuario_permissoes up ON p.id_permissoes = up.id_permissoes AND up.id_usuario = ? "
+				+ "  WHERE p.chave = ? AND p.tipo = ? " + "  AND ( "
+				+ "    (pp.id_permissoes IS NOT NULL AND pp.deletado_em IS NULL) "
+				+ "    OR (up.ativa = 1 AND up.deletado_em IS NULL AND (up.expira_em IS NULL OR up.expira_em > NOW())) "
+				+ "  ) " + ")";
+		return executeScalarInt(sql, idPerfil, idUsuario, chave, tipo) > 0;
 	}
 
 	public void softDeleteGranularesPorUsuario(int idUsuario) {

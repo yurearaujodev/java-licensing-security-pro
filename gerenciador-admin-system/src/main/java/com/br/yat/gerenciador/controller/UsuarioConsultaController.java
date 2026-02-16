@@ -9,6 +9,7 @@ import javax.swing.SwingUtilities;
 import com.br.yat.gerenciador.model.Sessao;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
+import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.service.AutenticacaoService;
 import com.br.yat.gerenciador.service.UsuarioService;
 import com.br.yat.gerenciador.util.DialogFactory;
@@ -141,7 +142,7 @@ public class UsuarioConsultaController extends BaseController {
 
 	private void filtrar() {
 		String termo = view.getTxtBusca().getText();
-		boolean verExcluidos = view.getChkVerExcluidos().isSelected(); // Adicionado
+		boolean verExcluidos = view.getChkVerExcluidos().isSelected();
 
 		if (debounceTask != null)
 			debounceTask.cancel(false);
@@ -174,11 +175,9 @@ public class UsuarioConsultaController extends BaseController {
 		if (logado == null || logado.isMaster())
 			return;
 
-		// Busca as permissões na service
 		List<String> permissoes = service.listarPermissoesAtivasPorMenu(logado.getIdUsuario(),
 				MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES);
 
-		// Usa o método da BaseController
 		boolean podeAcessar = aplicarRestricoesVisuais(permissoes, view.getBtnNovo(), view.getBtnEditar(),
 				view.getBtnExcluir());
 
@@ -186,68 +185,59 @@ public class UsuarioConsultaController extends BaseController {
 			view.dispose();
 			DialogFactory.aviso(null, "ACESSO NEGADO À GESTÃO DE USUÁRIOS.");
 		}
+		
+		runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> service.carregarPermissoesDetalhadas(logado.getIdUsuario()), minhas -> {
+		    SwingUtilities.invokeLater(() -> {
+		        boolean podeCriarAlterar = minhas.stream()
+		                .anyMatch(p -> p.getChave().equals(MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES.name())
+		                        && p.getTipo().equals(TipoPermissao.WRITE.name()));
+		        boolean podeExcluir = minhas.stream()
+		                .anyMatch(p -> p.getChave().equals(MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES.name())
+		                        && p.getTipo().equals(TipoPermissao.DELETE.name()));
+
+		        view.getBtnNovo().setEnabled(podeCriarAlterar);
+		        view.getBtnEditar().setEnabled(podeCriarAlterar);
+		        view.getBtnExcluir().setEnabled(podeExcluir);
+		        view.getBtnResetarSenha().setEnabled(podeExcluir);
+		    });
+		});
+
 	}
-	
+
 	private void abrirFormulario(Usuario usuario) {
-	    if (!podeAbrirCadastro()) {
-	        DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE USUÁRIOS.");
-	        return;
-	    }
+		if (!podeAbrirCadastro()) {
+			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE USUÁRIOS.");
+			return;
+		}
 
-	    JDesktopPane desk = view.getDesktopPane();
+		JDesktopPane desk = view.getDesktopPane();
 
-	    // Sempre criamos uma nova view + controller, evitando problemas com clientProperty antigo
-	    UsuarioView cadastroView = ViewFactory.criarUsuarioViewComController();
+		UsuarioView cadastroView = ViewFactory.createUsuarioViewComController();
 
-	    // Recupera a controller recém-criada
-	    UsuarioController controller = (UsuarioController) cadastroView.getClientProperty("controller");
-	    controller.setRefreshCallback(this::carregarDados);
+		UsuarioController controller = (UsuarioController) cadastroView.getClientProperty("controller");
+		controller.setRefreshCallback(this::carregarDados);
 
-	    // Define título da janela de acordo com o contexto
-	    if (usuario != null) {
-	        cadastroView.setTitle("EDITANDO USUÁRIO: " + usuario.getNome().toUpperCase());
-	        controller.carregarUsuarioParaEdicao(usuario);
-	    } else {
-	        cadastroView.setTitle("NOVO USUÁRIO");
-	        controller.novoUsuario();
-	    }
+		if (usuario != null) {
+			cadastroView.setTitle("EDITANDO USUÁRIO: " + usuario.getNome().toUpperCase());
+			controller.carregarUsuarioParaEdicao(usuario);
+		} else {
+			cadastroView.setTitle("NOVO USUÁRIO");
+			controller.novoUsuario();
+		}
 
-	    // Garantimos que a janela seja exibida
-	    DesktopUtils.showFrame(desk, cadastroView);
+		DesktopUtils.showFrame(desk, cadastroView);
 	}
-
-
-//	private void abrirFormulario(Usuario usuario) {
-//		if (!podeAbrirCadastro()) {
-//			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE USUÁRIOS.");
-//			return;
-//		}
-//
-//		JDesktopPane desk = view.getDesktopPane();
-//		String idJanela = (usuario == null) ? "NOVO_USUARIO" : "EDIT_USUARIO_" + usuario.getIdUsuario();
-//
-//		if (DesktopUtils.reuseIfOpen(desk, idJanela))
-//			return;
-//
-//		UsuarioView cadastroView = ViewFactory.createUsuarioView();
-//		cadastroView.setName(idJanela);
-//
-//		UsuarioController controller = (UsuarioController) cadastroView.getClientProperty("controller");
-//		controller.setRefreshCallback(this::carregarDados);
-//
-//		if (usuario != null) {
-//			controller.carregarUsuarioParaEdicao(usuario);
-//		} else {
-//			controller.novoUsuario();
-//		}
-//
-//		DesktopUtils.showFrame(desk, cadastroView);
-//	}
 
 	private boolean podeAbrirCadastro() {
 		Usuario logado = Sessao.getUsuario();
-		return logado != null && (logado.isMaster()
-				|| service.carregarPermissoesAtivas(logado.getIdUsuario()).contains(MenuChave.CADASTROS_USUARIO));
+		if (logado == null)
+			return false;
+		if (logado.isMaster())
+			return true;
+
+		List<String> permissoes = service.listarPermissoesAtivasPorMenu(logado.getIdUsuario(),
+				MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES);
+		return permissoes.contains(TipoPermissao.WRITE.name());
 	}
 
 	private void resetarSenhaSelecionado() {
@@ -259,9 +249,8 @@ public class UsuarioConsultaController extends BaseController {
 				+ "A SENHA SERÁ VOLTADA PARA O PADRÃO DO SISTEMA E O USUÁRIO DEVERÁ TROCÁ-LA NO PRÓXIMO ACESSO.";
 
 		if (DialogFactory.confirmacao(view, msg)) {
-			// Usando o runAsync da sua BaseController para manter o loading
+
 			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-				// Chama a service que já tem a Double Validation de Policy
 				return authService.resetarSenha(sel.getIdUsuario(), Sessao.getUsuario());
 			}, senhaPadrao -> {
 				DialogFactory.informacao(view, "SENHA RESETADA COM SUCESSO!\nNOVA SENHA TEMPORÁRIA: " + senhaPadrao);

@@ -26,6 +26,7 @@ import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.ParametroChave;
 import com.br.yat.gerenciador.model.enums.StatusUsuario;
+import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.policy.UsuarioPolicy;
 import com.br.yat.gerenciador.security.PasswordUtils;
@@ -47,11 +48,11 @@ public class UsuarioService extends BaseService {
 		this.permissaoService = permissaoService;
 	}
 
-	private static final MenuChave CHAVE_SALVAR = MenuChave.CADASTROS_USUARIO;
+	private static final MenuChave CHAVE_USUARIO = MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES;
 
 	public List<Usuario> listarUsuarios(String termo, Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, MenuChave.CADASTROS_USUARIO, "READ");
+			validarAcesso(conn, executor, CHAVE_USUARIO, TipoPermissao.READ);
 
 			UsuarioDao dao = new UsuarioDao(conn);
 			return (termo == null || termo.trim().isEmpty()) ? dao.listAll() : dao.listarPorNomeOuEmail(termo);
@@ -62,7 +63,7 @@ public class UsuarioService extends BaseService {
 
 	public List<Usuario> listarUsuariosUltimoLogin(String termo, Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, MenuChave.CADASTROS_USUARIO, "READ");
+			validarAcesso(conn, executor, CHAVE_USUARIO, TipoPermissao.READ);
 
 			UsuarioDao dao = new UsuarioDao(conn);
 			List<Usuario> lista = (termo == null || termo.trim().isEmpty()) ? dao.listAll()
@@ -81,7 +82,7 @@ public class UsuarioService extends BaseService {
 
 	public List<Usuario> listarExcluidos(Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES, "READ");
+			validarAcesso(conn, executor, CHAVE_USUARIO, TipoPermissao.DELETE);
 
 			return new UsuarioDao(conn).listarExcluidos();
 		} catch (SQLException e) {
@@ -94,100 +95,49 @@ public class UsuarioService extends BaseService {
 
 		validarDados(usuario, permissoesGranulares);
 		validarRestricoesMaster(usuario);
-		if (datasExpiracao != null && !datasExpiracao.isEmpty()) {
-	        datasExpiracao.forEach((menu, dataStr) -> {
-	            if (dataStr != null && !dataStr.isBlank()) {
-	                try {
-	                    LocalDateTime dataDigitada = TimeUtils.parseDataHora(dataStr);
-	                    
-	                    // Validação 1: Bloqueia datas retroativas
-	                    if (dataDigitada.isBefore(LocalDateTime.now().minusMinutes(1))) {
-	                        throw new ValidationException(ValidationErrorType.INVALID_FIELD, 
-	                            "A DATA DE EXPIRAÇÃO PARA [" + menu + "] NÃO PODE SER NO PASSADO.");
-	                    }
-	                    
-	                    // Validação 2: Bloqueia erros de digitação absurdos (ex: ano 2099)
-	                    if (dataDigitada.isAfter(LocalDateTime.now().plusYears(10))) {
-	                        throw new ValidationException(ValidationErrorType.INVALID_FIELD, 
-	                            "A DATA DE EXPIRAÇÃO PARA [" + menu + "] EXCEDEU O LIMITE (MÁX 10 ANOS).");
-	                    }
-	                } catch (Exception e) {
-	                    if (e instanceof ValidationException) throw e;
-	                    throw new ValidationException(ValidationErrorType.INVALID_FIELD, 
-	                        "FORMATO DE DATA INVÁLIDO PARA O MENU: " + menu);
-	                }
-	            }
-	        });
-	    }
+		validarDatasExpiracao(datasExpiracao);
+
+		if (UsuarioPolicy.isPrivilegiado(usuario)) {
+		    permissoesGranulares = new HashMap<>();
+		    datasExpiracao = new HashMap<>();
+		}
 		try (Connection conn = ConnectionFactory.getConnection()) {
+
 			UsuarioDao usuarioDao = new UsuarioDao(conn);
-			boolean isSetupInicial = (executor == null && !existeUsuarioMaster() && usuario.isMaster());
+			boolean isSetupInicial = (executor == null && usuario.isMaster() && !existeUsuarioMaster(conn));
 
 			ConnectionFactory.beginTransaction(conn);
 
 			if (!isSetupInicial) {
-				validarAcesso(conn, executor, CHAVE_SALVAR, "WRITE");
+				validarAcesso(conn, executor, CHAVE_USUARIO, TipoPermissao.WRITE);
 			}
 
 			try {
+
 				UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
+
 				validarRegrasPersistencia(usuarioDao, usuario);
-				if (usuario.getPerfil() != null) {
-				    PermissaoDao pDao = new PermissaoDao(conn);
-				    List<Permissao> permissoesDoPerfil = pDao.listarPermissoesDoPerfil(usuario.getPerfil().getIdPerfil());
 
-				    // 1. Criamos um novo mapa mutável para processamento
-				    Map<MenuChave, List<String>> novasPermissoes = new HashMap<>();
+				permissoesGranulares = processarPermissoesPerfil(conn, usuario, permissoesGranulares, datasExpiracao);
 
-				    permissoesGranulares.forEach((chave, tiposOriginais) -> {
-				        // 2. Criamos uma cópia mutável da lista (Resolve o UnsupportedOperationException)
-				        List<String> tiposMutaveis = new ArrayList<>(tiposOriginais);
-
-				        // 3. Removemos apenas o que o Perfil já possui (desde que não tenha data de expiração)
-				        tiposMutaveis.removeIf(tipo -> {
-				            boolean jaExisteNoPerfil = permissoesDoPerfil.stream()
-				                    .anyMatch(p -> p.getChave().equals(chave.name()) && p.getTipo().equalsIgnoreCase(tipo));
-				            
-				            boolean temDataEspecial = datasExpiracao.containsKey(chave);
-
-				            return jaExisteNoPerfil && !temDataEspecial;
-				        });
-
-				        // 4. Se restou algo (é uma permissão extra que você marcou), guardamos no novo mapa
-				        if (!tiposMutaveis.isEmpty()) {
-				            novasPermissoes.put(chave, tiposMutaveis);
-				        }
-				    });
-
-				    // 5. Substituímos a referência para o service seguir com os dados limpos
-				    permissoesGranulares = novasPermissoes;
-				}
-
-				Usuario estadoAnterior = null;
 				boolean isNovo = (usuario.getIdUsuario() == null || usuario.getIdUsuario() == 0);
-
+				Usuario estadoAnterior = null;
 				Usuario alvoExistente = null;
+
 				if (!isNovo) {
 					alvoExistente = usuarioDao.searchById(usuario.getIdUsuario());
 					if (alvoExistente == null) {
 						throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND,
 								"USUÁRIO NÃO ENCONTRADO.");
 					}
+
 					estadoAnterior = Usuario.snapshotParaValidacaoSenha(alvoExistente);
 				}
 
-				if (!isSetupInicial && alvoExistente != null) {
-					if (!UsuarioPolicy.isPrivilegiado(executor) && UsuarioPolicy.isPrivilegiado(alvoExistente)) {
-						throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-								"APENAS UM MASTER PODE ALTERAR OUTRO MASTER.");
-					}
-					if (!temMaisPoder(conn, executor, alvoExistente)) {
-						throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-								"Privilégios insuficientes para alterar este usuário.");
-					}
-				}
+				validarHierarquiaAlteracao(conn, executor, alvoExistente, isSetupInicial);
 
 				boolean senhaAlterada = processarSenha(usuario, isNovo, executor, estadoAnterior);
+
 				if (senhaAlterada) {
 					int diasExpira = parametroService.getInt(ParametroChave.SENHA_EXPIRA_DIAS, 90);
 					usuario.setSenhaExpiraEm(LocalDateTime.now().plusDays(diasExpira));
@@ -204,16 +154,108 @@ public class UsuarioService extends BaseService {
 						executor, isSetupInicial, permissoesGranulares, datasExpiracao);
 
 				upDao.syncByUsuario(usuario.getIdUsuario(), listaFinalSincronismo);
+
 				registrarLogPermissoesFinal(conn, usuario, listaFinalSincronismo);
 
 				ConnectionFactory.commitTransaction(conn);
+
 			} catch (Exception e) {
 				ConnectionFactory.rollbackTransaction(conn);
 				registrarLogErro("ERRO", "SALVAR_USUARIO", "usuario", e);
 				throw e;
 			}
+
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e.getMessage(), e);
+		}
+	}
+
+	private boolean existeUsuarioMaster(Connection conn) {
+		UsuarioDao dao = new UsuarioDao(conn);
+		return dao.buscarMasterUnico() != null;
+	}
+
+	private void validarDatasExpiracao(Map<MenuChave, String> datasExpiracao) {
+
+		if (datasExpiracao == null || datasExpiracao.isEmpty())
+			return;
+
+		datasExpiracao.forEach((menu, dataStr) -> {
+
+			if (dataStr != null && !dataStr.isBlank()) {
+				try {
+					LocalDateTime dataDigitada = TimeUtils.parseDataHora(dataStr);
+
+					if (dataDigitada.isBefore(LocalDateTime.now().minusMinutes(1))) {
+						throw new ValidationException(ValidationErrorType.INVALID_FIELD,
+								"A DATA DE EXPIRAÇÃO PARA [" + menu + "] NÃO PODE SER NO PASSADO.");
+					}
+
+					if (dataDigitada.isAfter(LocalDateTime.now().plusYears(10))) {
+						throw new ValidationException(ValidationErrorType.INVALID_FIELD,
+								"A DATA DE EXPIRAÇÃO PARA [" + menu + "] EXCEDEU O LIMITE (MÁX 10 ANOS).");
+					}
+
+				} catch (Exception e) {
+					if (e instanceof ValidationException)
+						throw e;
+
+					throw new ValidationException(ValidationErrorType.INVALID_FIELD,
+							"FORMATO DE DATA INVÁLIDO PARA O MENU: " + menu);
+				}
+			}
+		});
+	}
+
+	private Map<MenuChave, List<String>> processarPermissoesPerfil(Connection conn, Usuario usuario,
+			Map<MenuChave, List<String>> permissoesGranulares, Map<MenuChave, String> datasExpiracao) {
+
+		if (usuario.getPerfil() == null)
+			return permissoesGranulares;
+
+		PermissaoDao pDao = new PermissaoDao(conn);
+
+		List<Permissao> permissoesDoPerfil = pDao.listarPermissoesDoPerfil(usuario.getPerfil().getIdPerfil());
+
+		Map<MenuChave, List<String>> novasPermissoes = new HashMap<>();
+
+		permissoesGranulares.forEach((chave, tiposOriginais) -> {
+
+			List<String> tiposMutaveis = new ArrayList<>(tiposOriginais);
+
+			tiposMutaveis.removeIf(tipo -> {
+
+				boolean jaExisteNoPerfil = permissoesDoPerfil.stream()
+						.anyMatch(p -> p.getChave().equals(chave.name()) && p.getTipo().equalsIgnoreCase(tipo));
+
+				boolean temDataEspecial = datasExpiracao != null && datasExpiracao.containsKey(chave);
+
+				return jaExisteNoPerfil && !temDataEspecial;
+			});
+
+			if (!tiposMutaveis.isEmpty()) {
+				novasPermissoes.put(chave, tiposMutaveis);
+			}
+		});
+
+		return novasPermissoes;
+	}
+
+	private void validarHierarquiaAlteracao(Connection conn, Usuario executor, Usuario alvoExistente,
+			boolean isSetupInicial) {
+
+		if (isSetupInicial || alvoExistente == null)
+			return;
+
+		if (!UsuarioPolicy.isPrivilegiado(executor) && UsuarioPolicy.isPrivilegiado(alvoExistente)) {
+
+			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+					"APENAS UM MASTER PODE ALTERAR OUTRO MASTER.");
+		}
+
+		if (!temMaisPoder(conn, executor, alvoExistente)) {
+			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+					"Privilégios insuficientes para alterar este usuário.");
 		}
 	}
 
@@ -254,7 +296,7 @@ public class UsuarioService extends BaseService {
 					"SEGURANÇA: VOCÊ NÃO PODE EXCLUIR SUA PRÓPRIA CONTA.");
 		}
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, MenuChave.CADASTROS_USUARIO, "DELETE");
+			validarAcesso(conn, executor, CHAVE_USUARIO, TipoPermissao.DELETE);
 
 			UsuarioDao dao = new UsuarioDao(conn);
 			Usuario anterior = dao.searchById(idUsuario);
@@ -284,7 +326,7 @@ public class UsuarioService extends BaseService {
 
 	public void restaurarUsuario(int idUsuario, Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES, "DELETE");
+			validarAcesso(conn, executor, CHAVE_USUARIO, TipoPermissao.DELETE);
 
 			UsuarioDao dao = new UsuarioDao(conn);
 			dao.restaurar(idUsuario);
@@ -344,18 +386,6 @@ public class UsuarioService extends BaseService {
 			SensitiveData.safeClear(senhaConfirmar);
 		}
 	}
-//	
-//	public List<Permissao> carregarPermissoesEspeciais(Integer idUsuario) {
-//	    // 1ª Validação (Input): Evita ida ao banco com dados inválidos
-//	    if (idUsuario == null || idUsuario <= 0) return new ArrayList<>();
-//
-//	    try (Connection conn = ConnectionFactory.getConnection()) {
-//	        // 2ª Validação (State): A GenericDao já valida se a conexão está aberta no construtor
-//	        return new PermissaoDao(conn).buscarPermissoesGranularesNaoHerdadas(idUsuario);
-//	    } catch (SQLException e) {
-//	        throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "FALHA NA CONEXÃO AO CARREGAR PERMISSÕES", e);
-//	    }
-//	}
 
 	public Usuario buscarMasterUnico() {
 		try (Connection conn = ConnectionFactory.getConnection()) {
@@ -434,38 +464,65 @@ public class UsuarioService extends BaseService {
 					"ERRO AO CARREGAR PERMISSÕES DETALHADAS", e);
 		}
 	}
-	
+
 	public List<UsuarioPermissaoDetatlheDTO> carregarDadosPermissoesEdicao(Integer idUsuario) {
-	    // 1ª Validação (Input): Double Validation
-	    if (idUsuario == null || idUsuario <= 0) return new ArrayList<>();
+		if (idUsuario == null || idUsuario <= 0)
+			return new ArrayList<>();
 
-	    try (Connection conn = ConnectionFactory.getConnection()) {
-	        PermissaoDao pDao = new PermissaoDao(conn);
-	        UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
+		try (Connection conn = ConnectionFactory.getConnection()) {
+			UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
+			PermissaoDao pDao = new PermissaoDao(conn);
 
-	        // 1. Pegamos as definições das permissões
-	        List<Permissao> listaPermissoes = pDao.listarPermissoesAtivasPorUsuario(idUsuario);
-	        
-	        // 2. Pegamos os vínculos reais (onde mora a data)
-	        List<UsuarioPermissao> listaVinculos = upDao.listarPorUsuario(idUsuario);
+			// 1. Buscamos APENAS os vínculos DIRETOS do usuário (onde herdada = 0 ou false)
+			// Você deve garantir que seu UsuarioPermissaoDao tenha um método que filtre por
+			// isso
+			List<UsuarioPermissao> listaVinculosDiretos = upDao.listarDiretasPorUsuario(idUsuario);
 
-	        // Criamos um mapa para de-para rápido: ID_PERMISSAO -> VINCULO
-	        Map<Integer, UsuarioPermissao> mapaVinculos = listaVinculos.stream()
-	            .collect(Collectors.toMap(UsuarioPermissao::getIdPermissoes, v -> v, (a, b) -> a));
+			// 2. Criamos o DTO apenas para o que for "Especial"
+			List<UsuarioPermissaoDetatlheDTO> resultado = new ArrayList<>();
 
-	        // 2ª Validação (State/Integridade): Double Validation
-	        // Montamos o DTO que o Controller vai usar
-	        return listaPermissoes.stream().map(p -> {
-	            UsuarioPermissao vinculo = mapaVinculos.get(p.getIdPermissoes());
-	            
-	            // Aqui você poderia validar se a data vinda do banco é coerente
-	            return new UsuarioPermissaoDetatlheDTO(p, vinculo);
-	        }).toList();
+			for (UsuarioPermissao vinculo : listaVinculosDiretos) {
+				// Buscamos o detalhe da permissão (Nome/Tipo) para poder preencher a grade
+				Permissao p = pDao.searchById(vinculo.getIdPermissoes());
+				if (p != null) {
+					resultado.add(new UsuarioPermissaoDetatlheDTO(p, vinculo));
+				}
+			}
 
-	    } catch (SQLException e) {
-	        throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO CARREGAR DADOS PARA EDICAO", e);
-	    }
+			return resultado;
+
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO CARREGAR PERMISSÕES ESPECIAIS",
+					e);
+		}
 	}
+
+//	public List<UsuarioPermissaoDetatlheDTO> carregarDadosPermissoesEdicao(Integer idUsuario) {
+//		if (idUsuario == null || idUsuario <= 0)
+//			return new ArrayList<>();
+//
+//		try (Connection conn = ConnectionFactory.getConnection()) {
+//			PermissaoDao pDao = new PermissaoDao(conn);
+//			UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
+//
+//			List<Permissao> listaPermissoes = pDao.listarPermissoesAtivasPorUsuario(idUsuario);
+//
+//			List<UsuarioPermissao> listaVinculos = upDao.listarPorUsuario(idUsuario);
+//
+//			Map<Integer, UsuarioPermissao> mapaVinculos = listaVinculos.stream()
+//					.collect(Collectors.toMap(UsuarioPermissao::getIdPermissoes, v -> v, (a, b) -> a));
+//
+//			return listaPermissoes.stream().map(p -> {
+//				UsuarioPermissao vinculo = mapaVinculos.get(p.getIdPermissoes());
+//
+//				return new UsuarioPermissaoDetatlheDTO(p, vinculo);
+//			}).toList();
+//
+//		} catch (SQLException e) {
+//			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO CARREGAR DADOS PARA EDICAO",
+//					e);
+//		}
+//	}
 
 	public boolean existeUsuarioMaster() {
 		try (Connection conn = ConnectionFactory.getConnection()) {
@@ -480,13 +537,13 @@ public class UsuarioService extends BaseService {
 		return UsuarioPolicy.podeEditarPermissoes(u);
 	}
 
-	public List<Usuario> listarUsuariosPorPermissao(MenuChave chave) {
-		try (Connection conn = ConnectionFactory.getConnection()) {
-			return new UsuarioDao(conn).listarPorPermissao(chave.name());
-		} catch (SQLException e) {
-			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO FILTRAR PERMISSÃO", e);
-		}
-	}
+//	public List<Usuario> listarUsuariosPorPermissao(MenuChave chave) {
+//		try (Connection conn = ConnectionFactory.getConnection()) {
+//			return new UsuarioDao(conn).listarPorPermissao(chave.name());
+//		} catch (SQLException e) {
+//			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO FILTRAR PERMISSÃO", e);
+//		}
+//	}
 
 	private void validarDados(Usuario usuario, Map<MenuChave, List<String>> chaves) {
 		UsuarioValidationUtils.validarUsuario(usuario);

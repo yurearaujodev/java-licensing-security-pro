@@ -112,11 +112,11 @@ public class ConfiguracaoBancoController extends BaseController {
 			return (DatabaseStatus) connectionService.testarConfiguracao(dto);
 		}, status -> {
 			if (status.available()) {
-				atualizarStatusVisual(true, "Sucesso");
+				atualizarStatusVisual(true, "SUCESSO");
 				DialogFactory.informacao(view, status.message());
 				view.getBtnSalvar().setEnabled(true);
 			} else {
-				atualizarStatusVisual(false, "Falha");
+				atualizarStatusVisual(false, "FALHA");
 				DialogFactory.erro(view, status.message());
 				view.getBtnSalvar().setEnabled(false);
 			}

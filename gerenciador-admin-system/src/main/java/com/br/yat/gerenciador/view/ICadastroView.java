@@ -15,6 +15,7 @@ public interface ICadastroView {
 	JButton getBtnNovo();
 
 	JButton getBtnCancelar();
+	
 
 	// Controle de tela
 	void limpar();
@@ -22,6 +23,8 @@ public interface ICadastroView {
 	void doDefaultCloseAction();
 	
 	void setCamposHabilitados(boolean habilitado);
+	
+	void setTextoBotaoSalvar(String texto);
 
 	// Delegação de Permissões (vêm do PainelPermissoes)
 	void construirGradePermissoes(Map<String, List<MenuChave>> grupos);

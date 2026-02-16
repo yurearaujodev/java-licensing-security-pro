@@ -8,6 +8,7 @@ import javax.swing.SwingUtilities;
 import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.ParametroSistema;
 import com.br.yat.gerenciador.model.Sessao;
+import com.br.yat.gerenciador.model.dto.ParametrosDTO;
 import com.br.yat.gerenciador.model.enums.ParametroChave;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.service.AutenticacaoService;
@@ -21,10 +22,11 @@ public class ParametroSistemaController extends BaseController {
 	private final ParametroSistemaService service;
 	private final AutenticacaoService authService;
 
-	public ParametroSistemaController(ParametroSistemaView view, ParametroSistemaService service,AutenticacaoService authService) {
+	public ParametroSistemaController(ParametroSistemaView view, ParametroSistemaService service,
+			AutenticacaoService authService) {
 		this.view = view;
 		this.service = service;
-		this.authService=authService;
+		this.authService = authService;
 		init();
 	}
 
@@ -97,10 +99,10 @@ public class ParametroSistemaController extends BaseController {
 	private void salvar() {
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
 			List<ParametroSistema> lista = new ArrayList<>();
-			
+
 			String senhaPadrao = view.txtSenhaResetPadrao.getText();
 			authService.validarComplexidade(senhaPadrao.toCharArray());
-			
+
 			// Montamos a lista de objetos primeiro
 			lista.add(preparar(ParametroChave.LOGIN_MAX_TENTATIVAS, view.spnLoginMaxTentativas.getValue(),
 					"Máx. tentativas de login"));
@@ -141,7 +143,7 @@ public class ParametroSistemaController extends BaseController {
 
 	private ParametroSistema preparar(ParametroChave chave, Object valor, String descricao) {
 		if (valor == null) {
-			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "Campo nulo: " + descricao);
+			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "CAMPO NULO: " + descricao);
 		}
 
 		ParametroSistema p = new ParametroSistema();
@@ -153,16 +155,5 @@ public class ParametroSistemaController extends BaseController {
 		p.setValor(String.valueOf(valor).trim());
 
 		return p;
-	}
-
-	// -------------------- DTO PARA CARREGAMENTO --------------------
-	private record ParametrosDTO(int loginMaxTentativas, int loginTempoBloqueio, int senhaMin, int forcarTrocaSenhaDias,
-			int tempoSessaoMin,String senhaResetPadrao,
-
-			int licencaAlertaExpiracaoDias, int licencaMaxDispositivos, boolean licencaAtivaPadrao,
-
-			boolean logSistemaAtivo, String logNivelPadrao, int tempoRefreshDashboard, int logsDiasRetencao,
-
-			boolean emailNotificacaoAtivo, String emailAlertaLicenca) {
 	}
 }

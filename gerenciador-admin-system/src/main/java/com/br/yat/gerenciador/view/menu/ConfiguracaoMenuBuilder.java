@@ -20,6 +20,10 @@ public final class ConfiguracaoMenuBuilder {
 		MenuRegistry.register(MenuChave.CONFIGURACAO_EMPRESA_FORNECEDORA, itemEmpFor);
 		menuConfiguracao.add(itemEmpFor);
 
+		JMenuItem itemPre = MenuFactory.createMenuItem("PREFERÊNCIAS DO SISTEMA", null, null);
+		MenuRegistry.register(MenuChave.CONFIGURACAO_PREFERENCIAS_DO_SISTEMA, itemPre);
+		menuConfiguracao.add(itemPre);
+		
 		JMenuItem itemParSis = MenuFactory.createMenuItem("PARÂMETRO DO SISTEMA", null, null);
 		MenuRegistry.register(MenuChave.CONFIGURACAO_PARAMETRO_SISTEMA, itemParSis);
 		menuConfiguracao.add(itemParSis);

@@ -14,6 +14,7 @@ import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.ParametroChave;
 import com.br.yat.gerenciador.model.enums.ServiceErrorType;
+import com.br.yat.gerenciador.model.enums.TipoPermissao;
 
 public class ParametroSistemaService extends BaseService {
 
@@ -49,7 +50,7 @@ public class ParametroSistemaService extends BaseService {
 
 	public void salvarOuAtualizar(List<ParametroSistema> parametros, Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
-			validarAcesso(conn, executor, CHAVE_MENU, "WRITE");
+			validarAcesso(conn, executor, CHAVE_MENU, TipoPermissao.WRITE);
 			try {
 				ConnectionFactory.beginTransaction(conn);
 				Interno interno = new Interno(conn);

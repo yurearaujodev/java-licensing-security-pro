@@ -26,7 +26,7 @@ public class PerfilController extends BaseCadastroController<PerfilView> {
 	}
 
 	private void inicializar() {
-		Usuario logado = Objects.requireNonNull(Sessao.getUsuario(), "Usuário não encontrado.");
+		Usuario logado = Objects.requireNonNull(Sessao.getUsuario(), "USUÁRIO NÃO ENCONTRADO.");
 		ValidationUtils.createDocumentFilter(view.getTxtNome());
 
 		Map<String, List<MenuChave>> grupos = logado.isMaster() ? MenuChaveGrouper.groupByCategoria()
@@ -57,8 +57,9 @@ public class PerfilController extends BaseCadastroController<PerfilView> {
 
 		boolean isMaster = "MASTER".equalsIgnoreCase(perfil.getNome());
 		view.setEdicaoNomeHabilitada(!isMaster);
-		
+
 		view.entrarModoEdicao(isMaster);
+		atualizarEstadoInterface();
 
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> service.listarPermissoesDoPerfil(perfil.getIdPerfil()),
 				permissoes -> {
@@ -67,10 +68,10 @@ public class PerfilController extends BaseCadastroController<PerfilView> {
 					} else if (permissoes != null) {
 						permissoes.forEach(p -> {
 							try {
-								view.setPermissao(MenuChave.valueOf(p.getChave()),
-										com.br.yat.gerenciador.model.enums.TipoPermissao.valueOf(p.getTipo()), true);
+								view.setPermissao(MenuChave.valueOf(p.getChave()), TipoPermissao.valueOf(p.getTipo()),
+										true);
 							} catch (Exception ex) {
-								System.err.println("Permissão inválida ao carregar perfil: " + ex.getMessage());
+								System.err.println("PERMISSÃO INVÁLIDA AO CARREGAR PERFIL: " + ex.getMessage());
 							}
 						});
 					}
@@ -107,13 +108,13 @@ public class PerfilController extends BaseCadastroController<PerfilView> {
 				refreshCallback.onSaveSuccess();
 		});
 	}
-	
+
 	private void aplicarPermissoesDaTela() {
 		Usuario logado = Sessao.getUsuario();
 		if (logado == null || logado.isMaster())
 			return;
 		runAsync(SwingUtilities.getWindowAncestor(view),
-				() -> service.listarPermissoesAtivasPorMenu(logado.getIdUsuario(), MenuChave.CADASTROS_USUARIO), p -> {
+				() -> service.listarPermissoesAtivasPorMenu(logado.getIdUsuario(), MenuChave.CONFIGURACAO_PERMISSAO), p -> {
 					if (!aplicarRestricoesVisuais(p, view.getBtnNovo(), null, null))
 						view.doDefaultCloseAction();
 					view.getBtnSalvar().setVisible(p.contains(TipoPermissao.WRITE.name()));
@@ -127,6 +128,12 @@ public class PerfilController extends BaseCadastroController<PerfilView> {
 		view.getBtnNovo().setEnabled(false);
 		view.getBtnSalvar().setEnabled(true);
 		view.setCamposHabilitados(true);
+		atualizarEstadoInterface();
+	}
+
+	private void atualizarEstadoInterface() {
+		boolean isNovo = (perfilAtual == null || perfilAtual.getIdPerfil() == null);
+		view.setTextoBotaoSalvar(isNovo ? "SALVAR" : "ALTERAR");
 	}
 
 	public void setRefreshCallback(RefreshCallback callback) {
