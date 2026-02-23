@@ -114,12 +114,20 @@ public class UsuarioView extends BaseCadastroView {
 		txtNome.setText(n);
 	}
 
+	public JTextField getTxtNome() {
+		return txtNome;
+	}
+
 	public String getEmail() {
 		return txtEmail.getText();
 	}
 
 	public void setEmail(String e) {
 		txtEmail.setText(e);
+	}
+
+	public JTextField getTxtEmail() {
+		return txtEmail;
 	}
 
 	public char[] getSenhaNova() {
@@ -129,8 +137,7 @@ public class UsuarioView extends BaseCadastroView {
 	public char[] getSenhaAntiga() {
 		return txtSenhaAntiga.getPassword();
 	}
-	
-	
+
 	public void setSenhaAntigaHabilitado(boolean h) {
 		txtSenhaAntiga.setEnabled(h);
 	}
@@ -146,11 +153,14 @@ public class UsuarioView extends BaseCadastroView {
 	public void setStatus(StatusUsuario s) {
 		cbStatus.setSelectedItem(s);
 	}
-	
+
 	public void setStatusHabilitado(boolean h) {
 		cbStatus.setEnabled(h);
 	}
 
+	public JComboBox<StatusUsuario> getCbStatus() {
+		return cbStatus;
+	}
 
 	public boolean isMaster() {
 		return chkMaster.isSelected();

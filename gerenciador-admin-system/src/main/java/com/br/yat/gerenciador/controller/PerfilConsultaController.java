@@ -1,8 +1,9 @@
 package com.br.yat.gerenciador.controller;
 
-import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+
 import javax.swing.JDesktopPane;
 import javax.swing.SwingUtilities;
 
@@ -10,7 +11,7 @@ import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.Sessao;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
-import com.br.yat.gerenciador.model.enums.TipoPermissao;
+import com.br.yat.gerenciador.security.PermissaoContexto;
 import com.br.yat.gerenciador.service.PerfilService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
@@ -26,10 +27,32 @@ public class PerfilConsultaController extends BaseController {
 	private final PerfilService service;
 	private ScheduledFuture<?> debounceTask;
 
+	private Usuario usuarioLogado;
+	private PermissaoContexto permissaoContexto;
+
 	public PerfilConsultaController(PerfilConsultaView view, PerfilService service) {
 		this.view = view;
 		this.service = service;
+		inicializarEscopo();
 		configurar();
+	}
+
+	private void inicializarEscopo() {
+
+		this.usuarioLogado = Sessao.getUsuario();
+
+		if (usuarioLogado == null) {
+			permissaoContexto = PermissaoContexto.comum(Set.of());
+			return;
+		}
+
+		if (usuarioLogado.isMaster()) {
+			permissaoContexto = PermissaoContexto.master();
+			return;
+		}
+
+		permissaoContexto = service.obterContextoPermissao(usuarioLogado.getIdUsuario(),
+				MenuChave.CONFIGURACAO_PERMISSAO);
 	}
 
 	private void configurar() {
@@ -69,26 +92,20 @@ public class PerfilConsultaController extends BaseController {
 
 	private void configurarControleLixeira() {
 
-		Usuario logado = Sessao.getUsuario();
+		if (view.getChkVerExcluidos() == null)
+			return;
 
-		if (logado != null && view.getChkVerExcluidos() != null) {
+		view.getChkVerExcluidos().setVisible(permissaoContexto.temDelete());
 
-			boolean podeVerLixeira = logado.isMaster()
-					|| service.listarPermissoesAtivasPorMenu(logado.getIdUsuario(), MenuChave.CONFIGURACAO_PERMISSAO)
-							.contains(TipoPermissao.DELETE.name());
+		view.getChkVerExcluidos().addActionListener(e -> {
 
-			view.getChkVerExcluidos().setVisible(podeVerLixeira);
+			boolean modoLixeira = view.getChkVerExcluidos().isSelected();
 
-			view.getChkVerExcluidos().addActionListener(e -> {
-				boolean modoLixeira = view.getChkVerExcluidos().isSelected();
+			view.getBtnExcluir().setText(modoLixeira ? "RESTAURAR" : "EXCLUIR");
+			view.getBtnNovo().setEnabled(!modoLixeira && permissaoContexto.temWrite());
 
-				view.getBtnExcluir().setText(modoLixeira ? "RESTAURAR" : "EXCLUIR");
-
-				view.getBtnNovo().setEnabled(!modoLixeira);
-
-				carregarDados();
-			});
-		}
+			carregarDados();
+		});
 	}
 
 	private void atualizarBotoes() {
@@ -97,7 +114,7 @@ public class PerfilConsultaController extends BaseController {
 		boolean temSelecao = (sel != null);
 		boolean modoLixeira = view.getChkVerExcluidos() != null && view.getChkVerExcluidos().isSelected();
 
-		view.getBtnEditar().setEnabled(temSelecao && !modoLixeira);
+		view.getBtnEditar().setEnabled(temSelecao && !modoLixeira && permissaoContexto.temWrite());
 
 		if (!temSelecao) {
 			view.getBtnExcluir().setEnabled(false);
@@ -106,7 +123,9 @@ public class PerfilConsultaController extends BaseController {
 
 		boolean podeExcluir;
 
-		if (modoLixeira) {
+		if (!permissaoContexto.temDelete()) {
+			podeExcluir = false;
+		} else if (modoLixeira) {
 			podeExcluir = true;
 		} else {
 			podeExcluir = !"MASTER".equalsIgnoreCase(sel.getNome());
@@ -120,7 +139,7 @@ public class PerfilConsultaController extends BaseController {
 		boolean verExcluidos = view.getChkVerExcluidos() != null && view.getChkVerExcluidos().isSelected();
 
 		runAsyncSilent(SwingUtilities.getWindowAncestor(view),
-				() -> verExcluidos ? service.listarExcluidos(Sessao.getUsuario()) : service.listarTodos(),
+				() -> service.listarPerfisVisiveis("", verExcluidos, usuarioLogado),
 				lista -> view.getTableModel().setDados(lista));
 	}
 
@@ -129,24 +148,12 @@ public class PerfilConsultaController extends BaseController {
 		String termo = view.getTxtBusca().getText();
 		boolean verExcluidos = view.getChkVerExcluidos() != null && view.getChkVerExcluidos().isSelected();
 
-		if (debounceTask != null) {
+		if (debounceTask != null)
 			debounceTask.cancel(false);
-		}
 
-		debounceTask = scheduler.schedule(() -> {
-
-			runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
-				List<Perfil> lista = verExcluidos ? service.listarExcluidos(Sessao.getUsuario())
-						: service.listarTodos();
-
-				if (!termo.isEmpty()) {
-					lista.removeIf(p -> !p.getNome().toLowerCase().contains(termo.toLowerCase()));
-				}
-
-				return lista;
-			}, lista -> view.getTableModel().setDados(lista));
-
-		}, 500, TimeUnit.MILLISECONDS);
+		debounceTask = scheduler.schedule(() -> runAsyncSilent(SwingUtilities.getWindowAncestor(view),
+				() -> service.listarPerfisVisiveis(termo, verExcluidos, usuarioLogado),
+				lista -> view.getTableModel().setDados(lista)), 500, TimeUnit.MILLISECONDS);
 	}
 
 	private void editarSelecionado() {
@@ -166,12 +173,17 @@ public class PerfilConsultaController extends BaseController {
 		if (sel == null)
 			return;
 
+		if (!permissaoContexto.temDelete()) {
+			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA EXCLUIR.");
+			return;
+		}
+
 		boolean confirmou = DialogFactory.confirmacao(view,
 				"DESEJA REALMENTE EXCLUIR O PERFIL: " + sel.getNome().toUpperCase() + "?");
 
 		if (confirmou) {
 			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-				service.excluirPerfil(sel.getIdPerfil(), Sessao.getUsuario());
+				service.excluirPerfil(sel.getIdPerfil(), usuarioLogado);
 				return null;
 			}, unused -> {
 				DialogFactory.informacao(view, "PERFIL EXCLUÍDO COM SUCESSO!");
@@ -185,6 +197,11 @@ public class PerfilConsultaController extends BaseController {
 		Perfil sel = view.getSelecionado();
 		if (sel == null)
 			return;
+
+		if (!permissaoContexto.temDelete()) {
+			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA RESTAURAR.");
+			return;
+		}
 
 		if (DialogFactory.confirmacao(view, "DESEJA RESTAURAR O PERFIL: " + sel.getNome().toUpperCase() + "?")) {
 
@@ -200,122 +217,47 @@ public class PerfilConsultaController extends BaseController {
 
 	private void aplicarPermissoesEscopo() {
 
-		Usuario logado = Sessao.getUsuario();
+		if (!aplicarRestricoesVisuais(permissaoContexto, view.getBtnNovo(), view.getBtnEditar(),
+				view.getBtnExcluir())) {
 
-		if (logado == null || logado.isMaster())
-			return;
-
-		List<String> permissoes = service.listarPermissoesAtivasPorMenu(logado.getIdUsuario(),
-				MenuChave.CONFIGURACAO_PERMISSAO);
-
-		boolean podeAcessar = aplicarRestricoesVisuais(permissoes, view.getBtnNovo(), view.getBtnEditar(),
-				view.getBtnExcluir());
-
-		if (!podeAcessar) {
+			DialogFactory.aviso(view, "ACESSO NEGADO À GESTÃO DE PERFIS.");
 			view.dispose();
-			DialogFactory.aviso(null, "ACESSO NEGADO À GESTÃO DE PERFIS.");
 			return;
 		}
 
-		runAsyncSilent(SwingUtilities.getWindowAncestor(view),
-				() -> service.carregarPermissoesDetalhadas(logado.getIdUsuario()),
-				minhas -> SwingUtilities.invokeLater(() -> {
-
-					boolean podeCriarAlterar = minhas.stream()
-							.anyMatch(p -> p.getChave().equals(MenuChave.CONFIGURACAO_PERMISSAO.name())
-									&& p.getTipo().equals(TipoPermissao.WRITE.name()));
-
-					boolean podeExcluir = minhas.stream()
-							.anyMatch(p -> p.getChave().equals(MenuChave.CONFIGURACAO_PERMISSAO.name())
-									&& p.getTipo().equals(TipoPermissao.DELETE.name()));
-
-					view.getBtnNovo().setEnabled(podeCriarAlterar);
-					view.getBtnEditar().setEnabled(podeCriarAlterar);
-					view.getBtnExcluir().setEnabled(podeExcluir);
-				}));
+		if (view.getChkVerExcluidos() != null) {
+			view.getChkVerExcluidos().setVisible(permissaoContexto.temDelete());
+		}
 	}
-	
+
 	private void abrirFormulario(Perfil perfil) {
-	    // 1. Validação de Acesso
-	    if (!podeAbrirCadastro()) {
-	        DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE PERFIS.");
-	        return;
-	    }
+		if (!permissaoContexto.temWrite()) {
+			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE PERFIS.");
+			return;
+		}
 
-	    JDesktopPane desk = view.getDesktopPane();
+		JDesktopPane desk = view.getDesktopPane();
 
-	    // 2. Definição do ID Único para reuso (ID de controle do DesktopUtils)
-	    String idJanela = (perfil == null) ? "NOVO_PERFIL" : "EDIT_PERFIL_" + perfil.getIdPerfil();
+		String idJanela = (perfil == null) ? "NOVO_PERFIL" : "EDIT_PERFIL_" + perfil.getIdPerfil();
 
-	    // 3. Tenta reutilizar se já estiver aberta
-	    if (DesktopUtils.reuseIfOpen(desk, idJanela)) {
-	        return;
-	    }
+		if (DesktopUtils.reuseIfOpen(desk, idJanela)) {
+			return;
+		}
 
-	    // 4. Cria a View através da Factory (Igual ao modelo do Usuário)
-	    // Isso já traz a View com o Controller e Service injetados
-	    PerfilView formView = ViewFactory.createPerfilView();
-	    formView.setName(idJanela); 
+		PerfilView formView = ViewFactory.createPerfilView();
+		formView.setName(idJanela);
 
-	    // 5. Recupera o Controller pela propriedade do cliente para configurar o callback
-	    PerfilController controller = (PerfilController) formView.getClientProperty("controller");
-	    controller.setRefreshCallback(this::carregarDados);
+		PerfilController controller = (PerfilController) formView.getClientProperty("controller");
+		controller.setRefreshCallback(this::carregarDados);
 
-	    // 6. Lógica de Título e Carregamento (Padronizado com Usuário)
-	    if (perfil != null) {
-	        formView.setTitle("EDITANDO PERFIL: " + perfil.getNome().toUpperCase());
-	        controller.carregarParaEdicao(perfil);
-	    } else {
-	        formView.setTitle("NOVO PERFIL");
-	        // Se o seu PerfilController tiver o método novoPerfil(), chame-o aqui:
-	        // controller.novoPerfil(); 
-	    }
+		if (perfil != null) {
+			formView.setTitle("EDITANDO PERFIL: " + perfil.getNome().toUpperCase());
+			controller.carregarParaEdicao(perfil);
+		} else {
+			formView.setTitle("NOVO PERFIL");
+			controller.novoPerfil();
+		}
 
-	    // 7. Exibe a janela
-	    DesktopUtils.showFrame(desk, formView);
-	}
-
-//	private void abrirFormulario(Perfil perfil) {
-//
-//		if (!podeAbrirCadastro()) {
-//			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE PERFIS.");
-//			return;
-//		}
-//
-//		JDesktopPane desk = view.getDesktopPane();
-//
-//		String idJanela = (perfil == null) ? "NOVO_PERFIL" : "EDIT_PERFIL_" + perfil.getIdPerfil();
-//
-//		if (DesktopUtils.reuseIfOpen(desk, idJanela))
-//			return;
-//
-//		PerfilView formView = new PerfilView();
-//		formView.setName(idJanela);
-//
-//		PerfilController controller = new PerfilController(formView, service);
-//
-//		formView.putClientProperty("controller", controller);
-//		controller.setRefreshCallback(this::carregarDados);
-//
-//		if (perfil != null) {
-//			controller.carregarParaEdicao(perfil);
-//		}
-//
-//		DesktopUtils.showFrame(desk, formView);
-//	}
-
-	private boolean podeAbrirCadastro() {
-
-		Usuario logado = Sessao.getUsuario();
-
-		if (logado == null)
-			return false;
-		if (logado.isMaster())
-			return true;
-
-		List<String> permissoes = service.listarPermissoesAtivasPorMenu(logado.getIdUsuario(),
-				MenuChave.CONFIGURACAO_PERMISSAO);
-
-		return permissoes.contains(TipoPermissao.WRITE.name());
+		DesktopUtils.showFrame(desk, formView);
 	}
 }

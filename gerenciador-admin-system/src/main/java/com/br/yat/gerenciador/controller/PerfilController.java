@@ -1,6 +1,7 @@
 package com.br.yat.gerenciador.controller;
 
 import java.util.*;
+
 import javax.swing.SwingUtilities;
 import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.Sessao;
@@ -23,24 +24,47 @@ public class PerfilController extends BaseCadastroController<PerfilView> {
 		super(view);
 		this.service = service;
 		inicializar();
+		configurarFiltro();
 	}
 
 	private void inicializar() {
-		Usuario logado = Objects.requireNonNull(Sessao.getUsuario(), "USUÁRIO NÃO ENCONTRADO.");
-		ValidationUtils.createDocumentFilter(view.getTxtNome());
+		carregarGruposDeMenu();
+		registrarAcoes();
+		configurarAcoesBase(this::salvar, this::novoPerfil);
+		carregarDadosIniciais();
+		aplicarPermissoesDaTela();
+	}
+
+	private void registrarAcoes() {
+		view.getTxtNome()
+				.addFocusListener(ValidationUtils.createValidationListener(view.getTxtNome(), this::validarNome));
+
+	}
+
+	private void carregarGruposDeMenu() {
+
+		Usuario logado = Sessao.getUsuario();
+
+		if (logado == null) {
+			view.doDefaultCloseAction();
+			return;
+		}
 
 		Map<String, List<MenuChave>> grupos = logado.isMaster() ? MenuChaveGrouper.groupByCategoria()
 				: MenuChaveGrouper
 						.groupByCategoriaFiltrado(Optional.ofNullable(Sessao.getPermissoes()).orElse(List.of()));
-		view.getTxtNome().addFocusListener(ValidationUtils.createValidationListener(view.getTxtNome(), () -> {
-			if (ValidationUtils.isEmpty(view.getNome())) {
-				ValidationUtils.exibirErro(view.getTxtNome(), "NOME DO PERFIL É OBRIGATÓRIO.");
-			}
-		}));
+
 		view.construirGradePermissoes(grupos);
-		configurarAcoesBase(this::salvar, this::novoPerfil);
-		carregarDadosIniciais();
-		aplicarPermissoesDaTela();
+	}
+
+	private void validarNome() {
+		if (ValidationUtils.isEmpty(view.getNome())) {
+			ValidationUtils.exibirErro(view.getTxtNome(), "NOME DO PERFIL É OBRIGATÓRIO.");
+		}
+	}
+
+	private void configurarFiltro() {
+		ValidationUtils.createDocumentFilter(view.getTxtNome(), view.getTxtDescricao());
 	}
 
 	private void carregarDadosIniciais() {
@@ -55,17 +79,15 @@ public class PerfilController extends BaseCadastroController<PerfilView> {
 		view.setNome(perfil.getNome());
 		view.setDescricao(perfil.getDescricao());
 
-		boolean isMaster = "MASTER".equalsIgnoreCase(perfil.getNome());
-		view.setEdicaoNomeHabilitada(!isMaster);
+		boolean perfilEhMaster = service.isPerfilMaster(perfil);
 
-		view.entrarModoEdicao(isMaster);
+		view.setEdicaoNomeHabilitada(!perfilEhMaster);
+		view.entrarModoEdicao(perfilEhMaster);
 		atualizarEstadoInterface();
 
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> service.listarPermissoesDoPerfil(perfil.getIdPerfil()),
 				permissoes -> {
-					if (isMaster) {
-						marcarTodasPermissoesNaGrade();
-					} else if (permissoes != null) {
+					if (permissoes != null) {
 						permissoes.forEach(p -> {
 							try {
 								view.setPermissao(MenuChave.valueOf(p.getChave()), TipoPermissao.valueOf(p.getTipo()),
@@ -98,8 +120,14 @@ public class PerfilController extends BaseCadastroController<PerfilView> {
 			return;
 		}
 
+		Usuario logado = Sessao.getUsuario();
+		if (logado == null) {
+			DialogFactory.erro(view, "SESSÃO EXPIRADA.");
+			return;
+		}
+
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-			service.salvarPerfil(perfilAtual, permissoes, Sessao.getUsuario());
+			service.salvarPerfil(perfilAtual, permissoes, logado);
 			return true;
 		}, sucesso -> {
 			DialogFactory.informacao(view, "PERFIL SALVO COM SUCESSO!");
@@ -110,18 +138,34 @@ public class PerfilController extends BaseCadastroController<PerfilView> {
 	}
 
 	private void aplicarPermissoesDaTela() {
+
 		Usuario logado = Sessao.getUsuario();
-		if (logado == null || logado.isMaster())
+
+		if (logado == null) {
+			view.doDefaultCloseAction();
 			return;
+		}
+
+		if (logado.isMaster()) {
+			return;
+		}
+
 		runAsync(SwingUtilities.getWindowAncestor(view),
-				() -> service.listarPermissoesAtivasPorMenu(logado.getIdUsuario(), MenuChave.CONFIGURACAO_PERMISSAO), p -> {
-					if (!aplicarRestricoesVisuais(p, view.getBtnNovo(), null, null))
+				() -> service.obterContextoPermissao(logado.getIdUsuario(), MenuChave.CONFIGURACAO_PERMISSAO), ctx -> {
+
+					if (!ctx.temRead()) {
 						view.doDefaultCloseAction();
-					view.getBtnSalvar().setVisible(p.contains(TipoPermissao.WRITE.name()));
+						DialogFactory.aviso(view, "ACESSO NEGADO À CONFIGURAÇÃO DE PERFIS.");
+						return;
+					}
+
+					aplicarRestricoesVisuais(ctx, view.getBtnNovo(), null, null);
+
+					view.getBtnSalvar().setVisible(ctx.temWrite());
 				});
 	}
 
-	private void novoPerfil() {
+	public void novoPerfil() {
 		this.perfilAtual = null;
 		view.limpar();
 		view.setEdicaoNomeHabilitada(true);

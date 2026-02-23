@@ -61,22 +61,22 @@ public class MenuPrincipalController extends BaseController {
 		registrarAcoes();
 		iniciarRelogio();
 		iniciarMonitorDeConexao();
+		carregarLogoCache();
+		configurarMonitorGlobal();
+		verificarSequenciaDeAcesso();
+	}
+	
+	private void carregarLogoCache() {
 		AppEventManager.subscribeLogoChange(() -> {
 			IconFactory.limparCacheLogo();
 			carregarLogoSistema();
 		});
-		configurarMonitorGlobal();
-		verificarSequenciaDeAcesso();
 	}
 
 	public void registrarAcoes() {
 		configurarAcaoMenu(MenuChave.CADASTROS_EMPRESA_CLIENTE, e -> abrirEmpresaCliente());
-//		configurarAcaoMenu(MenuChave.CADASTROS_PERFIL, e -> abrirPerfil());
-//		configurarAcaoMenu(MenuChave.CADASTROS_USUARIO, e -> abrirUsuario());
-//		
-//		configurarAcaoMenu(MenuChave.CONSULTAS_PERFIL, e -> abrirConsultaPerfil());
+	
 		configurarAcaoMenu(MenuChave.CONSULTAS_EMPRESAS_CLIENTES, e -> abrirEmpresaConsulta());
-//		configurarAcaoMenu(MenuChave.CONSULTAS_USUARIOS, e -> abrirConsultaUsuario());
 
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_EMPRESA_FORNECEDORA, e -> abrirEmpresaFornecedora());
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_PREFERENCIAS_DO_SISTEMA, e -> abrirConfiguracaoPreferencias());
@@ -324,16 +324,6 @@ public class MenuPrincipalController extends BaseController {
 		DesktopUtils.showFrame(desk, frame);
 
 	}
-
-//	private void abrirUsuario() {
-//		JDesktopPane desk = view.getDesktopPane();
-//		if (DesktopUtils.reuseIfOpen(desk, "NOVO_USUARIO")) {
-//			return;
-//		}
-//		UsuarioView frame = ViewFactory.createUsuarioView();
-//		frame.setName("NOVO_USUARIO");
-//		DesktopUtils.showFrame(desk, frame);
-//	}
 
 	private void exibirLogin() {
 		MenuRegistry.disableAll();

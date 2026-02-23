@@ -65,6 +65,10 @@ public class PerfilView extends BaseCadastroView {
 		return txtNome;
 	}
 
+	public JTextField getTxtDescricao() {
+		return txtDescricao;
+	}
+
 	@Override
 	public void setTextoBotaoSalvar(String texto) {
 		this.btnSalvar.setText(texto);

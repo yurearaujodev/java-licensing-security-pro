@@ -70,17 +70,6 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		}
 		executeUpdate(sql, params);
 	}
-	public List<Usuario> listarPorPermissao(String chavePermissao) {
-	    String sql = "SELECT u.*, e.razao_social AS razao_social_empresa, p.nome AS nome_perfil FROM " + tableName + " u "
-	            + "INNER JOIN usuario_permissoes up ON u.id_usuario = up.id_usuario "
-	            + "INNER JOIN permissoes perm ON up.id_permissoes = perm.id_permissoes "
-	            + "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa "
-	            + "LEFT JOIN perfil p ON u.id_perfil = p.id_perfil "
-	            + "WHERE perm.chave = ? AND up.ativa = 1 AND u.deletado_em IS NULL "
-	            + "AND (up.expira_em IS NULL OR up.expira_em > NOW())"; // Garante apenas quem REALMENTE tem o acesso ativo agora
-
-	    return executeQuery(sql, chavePermissao);
-	}
 
 	public Usuario buscarPorEmail(String email) {
 		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa, p.nome AS nome_perfil " 
@@ -90,13 +79,6 @@ public class UsuarioDao extends GenericDao<Usuario> {
 				+ "WHERE u.email = ? AND u.deletado_em IS NULL";
 		var lista = executeQuery(sql, email);
 		return lista.isEmpty() ? null : lista.get(0);
-	}
-
-	//e pra ser removido banco mudou
-	public void atualizarUltimaAlteracaoSenha(int idUsuario) {
-		String sql = "UPDATE " + tableName + " SET ultima_alteracao_senha = NOW(), atualizado_em = NOW() "
-				+ " WHERE id_usuario = ?";
-		executeUpdate(sql, idUsuario);
 	}
 
 	public Usuario buscarMasterUnico() {
@@ -116,7 +98,6 @@ public class UsuarioDao extends GenericDao<Usuario> {
 	}
 	
 	public void atualizarSenha(int idUsuario, String novaSenhaHash) {
-	    // Além da senha, marcamos 'forcar_reset_senha' como 1 (true) por segurança
 	    String sql = "UPDATE " + tableName + 
 	                 " SET senha_hash = ?, forcar_reset_senha = 1, atualizado_em = NOW() " + 
 	                 " WHERE id_usuario = ?";
@@ -127,8 +108,8 @@ public class UsuarioDao extends GenericDao<Usuario> {
 	public void atualizarSenhaAposReset(int idUsuario, String novaSenhaHash, LocalDateTime novaDataExpiracao) {
 	    String sql = "UPDATE " + tableName + 
 	                 " SET senha_hash = ?, " +
-	                 "     forcar_reset_senha = 0, " + // Desativa a trava
-	                 "     senha_expira_em = ?, " +    // Define nova validade
+	                 "     forcar_reset_senha = 0, " +
+	                 "     senha_expira_em = ?, " +  
 	                 "     atualizado_em = NOW() " + 
 	                 " WHERE id_usuario = ?";
 	    
@@ -236,12 +217,10 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		u.setMaster(rs.getBoolean("is_master"));
 		u.setForcarResetSenha(rs.getBoolean("forcar_reset_senha"));
 
-		// Datas de segurança (LocalDateTime via Timestamp)
         u.setUltimoLogin(getLocalDateTime(rs, "ultimo_login"));
         u.setSenhaExpiraEm(getLocalDateTime(rs, "senha_expira_em"));
         u.setBloqueadoAte(getLocalDateTime(rs, "bloqueado_ate"));
         
-		// Empresa (Tratando o ID nulo corretamente)
         int idEmp = rs.getInt("id_empresa");
         if (!rs.wasNull()) {
             Empresa emp = new Empresa();
@@ -250,7 +229,6 @@ public class UsuarioDao extends GenericDao<Usuario> {
             u.setEmpresa(emp);
         }
 
-        // Perfil (Tratando o ID nulo corretamente)
         int idPerf = rs.getInt("id_perfil");
         if (!rs.wasNull()) {
             Perfil perf = new Perfil();
@@ -262,8 +240,7 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		return u;
 	}
 	
-	// Helper para evitar repetição de código de data
-    private java.time.LocalDateTime getLocalDateTime(ResultSet rs, String column) throws SQLException {
+    private LocalDateTime getLocalDateTime(ResultSet rs, String column) throws SQLException {
         Timestamp ts = rs.getTimestamp(column);
         return (ts != null) ? ts.toLocalDateTime() : null;
     }

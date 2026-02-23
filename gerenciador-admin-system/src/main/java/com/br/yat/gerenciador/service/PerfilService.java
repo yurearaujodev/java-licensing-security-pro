@@ -28,12 +28,14 @@ import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.policy.UsuarioPolicy;
+import com.br.yat.gerenciador.security.PermissaoContexto;
 import com.br.yat.gerenciador.util.AuditLogHelper;
 import com.br.yat.gerenciador.util.ValidationUtils;
 
 public class PerfilService extends BaseService {
 
 	private static final MenuChave CHAVE_ACESSO = MenuChave.CONFIGURACAO_PERMISSAO;
+	private static final String PERFIL_MASTER = "MASTER";
 
 	public void salvarPerfil(Perfil perfil, Map<MenuChave, List<String>> permissoes, Usuario executor) {
 		validarCampos(perfil);
@@ -97,15 +99,25 @@ public class PerfilService extends BaseService {
 	}
 
 	private void validarImutabilidadeMaster(PerfilDao dao, Perfil perfil) {
+
 		Perfil anterior = dao.searchById(perfil.getIdPerfil());
 
-		if (anterior != null && isMaster(anterior) && !isMaster(perfil)) {
+		if (anterior == null) {
+			return;
+		}
+
+		if (isMaster(anterior) && !anterior.getNome().equalsIgnoreCase(perfil.getNome())) {
 			throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "O NOME DO PERFIL MASTER É IMUTÁVEL.");
 		}
+
 	}
 
 	private boolean isMaster(Perfil perfil) {
-		return "MASTER".equalsIgnoreCase(perfil.getNome());
+		return PERFIL_MASTER.equalsIgnoreCase(perfil.getNome());
+	}
+
+	public boolean isPerfilMaster(Perfil perfil) {
+		return perfil != null && PERFIL_MASTER.equalsIgnoreCase(perfil.getNome());
 	}
 
 	private void sincronizarPermissoesPerfil(PerfilPermissoesDao ppDao, PermissaoDao pDao, int idPerfil,
@@ -163,7 +175,7 @@ public class PerfilService extends BaseService {
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			PerfilDao dao = new PerfilDao(conn);
 
-			Optional<Perfil> perfilExistente = dao.buscarPorNome("MASTER");
+			Optional<Perfil> perfilExistente = dao.buscarPorNome(PERFIL_MASTER);
 
 			if (perfilExistente.isPresent()) {
 				return perfilExistente.get();
@@ -174,7 +186,7 @@ public class PerfilService extends BaseService {
 
 			try {
 				Perfil novo = new Perfil();
-				novo.setNome("MASTER");
+				novo.setNome(PERFIL_MASTER);
 				novo.setDescricao("PERFIL ADMINISTRADOR MASTER (SETUP INICIAL)");
 
 				int idGerado = dao.save(novo);
@@ -215,7 +227,7 @@ public class PerfilService extends BaseService {
 				throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND, "PERFIL NÃO ENCONTRADO.");
 			}
 
-			if ("MASTER".equalsIgnoreCase(perfil.getNome())) {
+			if (PERFIL_MASTER.equalsIgnoreCase(perfil.getNome())) {
 				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
 						"O PERFIL MASTER NÃO PODE SER EXCLUÍDO OU DESATIVADO.");
 			}
@@ -237,51 +249,76 @@ public class PerfilService extends BaseService {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO DE CONEXÃO AO EXCLUIR PERFIL", e);
 		}
 	}
-	
+
 	public List<Perfil> listarExcluidos(Usuario executor) {
-	    try (Connection conn = ConnectionFactory.getConnection()) {
+		try (Connection conn = ConnectionFactory.getConnection()) {
 
-	        validarAcesso(conn, executor, CHAVE_ACESSO, TipoPermissao.DELETE);
+			validarAcesso(conn, executor, CHAVE_ACESSO, TipoPermissao.DELETE);
 
-	        return new PerfilDao(conn).listarExcluidos();
+			return new PerfilDao(conn).listarExcluidos();
 
-	    } catch (SQLException e) {
-	        throw new DataAccessException(
-	            DataAccessErrorType.CONNECTION_ERROR,
-	            "ERRO AO LISTAR PERFIS EXCLUÍDOS",
-	            e
-	        );
-	    }
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO LISTAR PERFIS EXCLUÍDOS", e);
+		}
+	}
+
+	public List<Perfil> listarPerfisVisiveis(String termo, boolean verExcluidos, Usuario usuarioLogado) {
+
+		List<Perfil> lista = verExcluidos ? listarExcluidos(usuarioLogado) : listarTodos();
+
+		if (usuarioLogado == null || !usuarioLogado.isMaster()) {
+			lista = lista.stream().filter(p -> !isMaster(p)).toList();
+		}
+
+		if (termo != null && !termo.isBlank()) {
+			String termoLower = termo.toLowerCase();
+			lista = lista.stream().filter(p -> p.getNome().toLowerCase().contains(termoLower)).toList();
+		}
+
+		return lista;
 	}
 
 	public void restaurarPerfil(int idPerfil, Usuario executor) {
 
-	    try (Connection conn = ConnectionFactory.getConnection()) {
+		try (Connection conn = ConnectionFactory.getConnection()) {
 
-	        validarAcesso(conn, executor, CHAVE_ACESSO, TipoPermissao.DELETE);
+			validarAcesso(conn, executor, CHAVE_ACESSO, TipoPermissao.DELETE);
 
-	        PerfilDao dao = new PerfilDao(conn);
+			PerfilDao dao = new PerfilDao(conn);
 
-	        dao.restaurar(idPerfil);
+			ConnectionFactory.beginTransaction(conn);
 
-	        Map<String, String> detalhes = new HashMap<>();
-	        detalhes.put("acao", "Restauração de perfil via lixeira");
+			try {
 
-	        registrarLogSucesso(conn,
-	                "SEGURANCA",
-	                "RESTAURAR_PERFIL",
-	                "perfil",
-	                idPerfil,
-	                null,
-	                detalhes);
+				Perfil perfil = dao.searchByIdIncluindoExcluidos(idPerfil);
 
-	    } catch (SQLException e) {
-	        throw new DataAccessException(
-	            DataAccessErrorType.CONNECTION_ERROR,
-	            "ERRO AO RESTAURAR PERFIL",
-	            e
-	        );
-	    }
+				if (perfil == null) {
+					throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND, "PERFIL NÃO ENCONTRADO.");
+				}
+
+				if (isMaster(perfil)) {
+					throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+							"O PERFIL MASTER NÃO PODE SER RESTAURADO MANUALMENTE.");
+				}
+
+				dao.restaurar(idPerfil);
+
+				Map<String, String> detalhes = new HashMap<>();
+				detalhes.put("acao", "Restauração de perfil via lixeira");
+
+				registrarLogSucesso(conn, "SEGURANCA", "RESTAURAR_PERFIL", "perfil", idPerfil, perfil.getNome(),
+						detalhes);
+
+				ConnectionFactory.commitTransaction(conn);
+
+			} catch (Exception e) {
+				ConnectionFactory.rollbackTransaction(conn);
+				throw e;
+			}
+
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO RESTAURAR PERFIL", e);
+		}
 	}
 
 	public List<Permissao> carregarPermissoesDetalhadas(Integer idUsuario) {
@@ -294,12 +331,27 @@ public class PerfilService extends BaseService {
 		}
 	}
 
-	public List<String> listarPermissoesAtivasPorMenu(int idUsuario, MenuChave menu) {
+	public PermissaoContexto obterContextoPermissao(int idUsuario, MenuChave menu) {
+
 		try (Connection conn = ConnectionFactory.getConnection()) {
+
 			PermissaoDao pDao = new PermissaoDao(conn);
-			return pDao.buscarTiposAtivosPorUsuarioEMenu(idUsuario, menu.name());
+
+			List<String> tipos = pDao.buscarTiposAtivosPorUsuarioEMenu(idUsuario, menu.name());
+
+			Set<TipoPermissao> permissoesEnum = tipos.stream().map(tipo -> {
+				try {
+					return TipoPermissao.valueOf(tipo);
+				} catch (IllegalArgumentException e) {
+					return null;
+				}
+			}).filter(p -> p != null).collect(Collectors.toSet());
+
+			return PermissaoContexto.comum(permissoesEnum);
+
 		} catch (SQLException e) {
-			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "FALHA NA CONEXÃO", e);
+			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO OBTER CONTEXTO DE PERMISSÃO",
+					e);
 		}
 	}
 
@@ -311,6 +363,12 @@ public class PerfilService extends BaseService {
 
 		if (ValidationUtils.isEmpty(p.getNome())) {
 			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "NOME DO PERFIL É OBRIGATÓRIO.");
+		}
+		String nomeNormalizado = p.getNome().trim();
+
+		if (PERFIL_MASTER.equalsIgnoreCase(nomeNormalizado) && isNovoPerfil(p)) {
+			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+					"O PERFIL MASTER SÓ PODE SER CRIADO PELO SISTEMA.");
 		}
 	}
 

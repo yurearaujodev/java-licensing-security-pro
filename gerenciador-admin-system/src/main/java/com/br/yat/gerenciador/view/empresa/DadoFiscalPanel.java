@@ -142,7 +142,7 @@ public class DadoFiscalPanel extends JPanel {
 	public JTextField getTxtCrt() {
 		return txtCrt;
 	}
-	
+
 	public String getCrt() {
 		return txtCrt.getText();
 	}
@@ -150,7 +150,7 @@ public class DadoFiscalPanel extends JPanel {
 	public void setCrt(String crt) {
 		txtCrt.setText(crt);
 	}
-	
+
 	public void limpar() {
 		cbCnae.setSelectedIndex(0);
 		cbRegimeTributario.setSelectedIndex(0);
@@ -158,7 +158,7 @@ public class DadoFiscalPanel extends JPanel {
 		cbPorteEmpresa.setSelectedIndex(0);
 		cbNaturezaJuridica.setSelectedIndex(0);
 	}
-	
+
 	public void desativarAtivar(boolean ativa) {
 		cbCnae.setEnabled(ativa);
 		cbContribuinteIcms.setEnabled(ativa);

@@ -1,7 +1,6 @@
 package com.br.yat.gerenciador.controller;
 
 import java.awt.Window;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -16,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.exception.ServiceOperationException;
 import com.br.yat.gerenciador.exception.ValidationException;
-import com.br.yat.gerenciador.model.enums.TipoPermissao;
+import com.br.yat.gerenciador.security.PermissaoContexto;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.view.factory.LoadingDialog;
 
@@ -105,11 +104,8 @@ public abstract class BaseController {
 			try {
 				T result = task.execute();
 				SwingUtilities.invokeLater(() -> onSuccess.accept(result));
-
 			} catch (Exception e) {
 				SwingUtilities.invokeLater(() -> handleException(e, view));
-			} finally {
-				SwingUtilities.invokeLater(() -> hideLoading(false));
 			}
 		});
 	}
@@ -130,54 +126,45 @@ public abstract class BaseController {
 	}
 
 	protected void hideLoading(boolean force) {
-	    final LoadingDialog dialogRef;
+		final LoadingDialog dialogRef;
 
-	    synchronized (this) {
+		synchronized (this) {
 
-	        if (loadingDialog == null)
-	            return;
+			if (loadingDialog == null)
+				return;
 
-	        loadingCounter = force
-	                ? 0
-	                : Math.max(0, loadingCounter - 1);
+			loadingCounter = force ? 0 : Math.max(0, loadingCounter - 1);
 
-	        if (loadingCounter != 0)
-	            return;
+			if (loadingCounter != 0)
+				return;
 
-	        dialogRef = loadingDialog;
-	    }
+			dialogRef = loadingDialog;
+		}
 
-	    SwingUtilities.invokeLater(dialogRef::hide);
+		SwingUtilities.invokeLater(dialogRef::hide);
 	}
 
+	protected boolean aplicarRestricoesVisuais(PermissaoContexto ctx, AbstractButton btnNovo, AbstractButton btnEditar,
+			AbstractButton btnExcluir) {
 
-	/**
-	 * Aplica o "cadeado visual" nos botões da view baseado nas permissões do
-	 * usuário. * @param permissoes Lista de strings ("READ", "WRITE", "DELETE")
-	 * 
-	 * @param btnNovo    Botão de criação (opcional)
-	 * @param btnEditar  Botão de edição (opcional)
-	 * @param btnExcluir Botão de exclusão (opcional)
-	 * @return true se tiver permissão de leitura, false caso contrário
-	 */
-	protected boolean aplicarRestricoesVisuais(List<String> permissoes, AbstractButton btnNovo,
-			AbstractButton btnEditar, AbstractButton btnExcluir) {
-		boolean temRead = permissoes.contains(TipoPermissao.READ.name());
-
-		// Sempre mostra a tela se houver permissão de leitura
-		boolean podeEscrever = permissoes.contains(TipoPermissao.WRITE.name());
-		boolean podeExcluir = permissoes.contains(TipoPermissao.DELETE.name());
-
-		SwingUtilities.invokeLater(() -> {
+		Runnable tarefa = () -> {
 			if (btnNovo != null)
-				btnNovo.setVisible(podeEscrever);
-			if (btnEditar != null)
-				btnEditar.setVisible(podeEscrever);
-			if (btnExcluir != null)
-				btnExcluir.setVisible(podeExcluir);
-		});
+				btnNovo.setVisible(ctx.temWrite());
 
-		return temRead;
+			if (btnEditar != null)
+				btnEditar.setVisible(ctx.temWrite());
+
+			if (btnExcluir != null)
+				btnExcluir.setVisible(ctx.temDelete());
+		};
+
+		if (SwingUtilities.isEventDispatchThread()) {
+			tarefa.run();
+		} else {
+			SwingUtilities.invokeLater(tarefa);
+		}
+
+		return ctx.temRead();
 	}
 
 }

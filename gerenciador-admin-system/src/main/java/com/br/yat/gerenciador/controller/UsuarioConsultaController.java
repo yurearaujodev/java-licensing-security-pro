@@ -1,15 +1,15 @@
 package com.br.yat.gerenciador.controller;
 
-import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+
 import javax.swing.JDesktopPane;
 import javax.swing.SwingUtilities;
 
 import com.br.yat.gerenciador.model.Sessao;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
-import com.br.yat.gerenciador.model.enums.TipoPermissao;
+import com.br.yat.gerenciador.security.PermissaoContexto;
 import com.br.yat.gerenciador.service.AutenticacaoService;
 import com.br.yat.gerenciador.service.UsuarioService;
 import com.br.yat.gerenciador.util.DialogFactory;
@@ -25,26 +25,61 @@ public class UsuarioConsultaController extends BaseController {
 	private final UsuarioConsultaView view;
 	private final UsuarioService service;
 	private final AutenticacaoService authService;
+
 	private ScheduledFuture<?> debounceTask;
+
+	private Usuario usuarioLogado;
+	private PermissaoContexto permissaoContexto;
 
 	public UsuarioConsultaController(UsuarioConsultaView view, UsuarioService service,
 			AutenticacaoService authService) {
+
 		this.view = view;
 		this.service = service;
 		this.authService = authService;
-		configurar();
-		aplicarPermissoesEscopo();
+
+		inicializarEscopo();
+	}
+
+	private void inicializarEscopo() {
+
+		this.usuarioLogado = Sessao.getUsuario();
+
+		if (usuarioLogado == null) {
+			view.dispose();
+			return;
+		}
+
+		if (usuarioLogado.isMaster()) {
+			this.permissaoContexto = PermissaoContexto.master();
+			configurar();
+			return;
+		}
+
+		runAsync(SwingUtilities.getWindowAncestor(view), () -> service
+				.obterContextoPermissao(usuarioLogado.getIdUsuario(), MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES),
+				ctx -> {
+
+					if (!ctx.temRead()) {
+						DialogFactory.aviso(null, "ACESSO NEGADO À GESTÃO DE USUÁRIOS.");
+						view.dispose();
+						return;
+					}
+
+					this.permissaoContexto = ctx;
+
+					configurar();
+				});
 	}
 
 	private void configurar() {
+
+		aplicarRestricoesVisuais(permissaoContexto, view.getBtnNovo(), view.getBtnEditar(), view.getBtnExcluir());
+
 		registrarAcoes();
 		configurarFiltros();
-		Usuario logado = Sessao.getUsuario();
-		if (logado != null) {
-			boolean podeVerLixeira = logado.isMaster() || service.carregarPermissoesAtivas(logado.getIdUsuario())
-					.contains(MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES);
-			view.getChkVerExcluidos().setVisible(podeVerLixeira);
-		}
+
+		view.getChkVerExcluidos().setVisible(permissaoContexto.temDelete());
 
 		carregarDados();
 	}
@@ -55,9 +90,11 @@ public class UsuarioConsultaController extends BaseController {
 	}
 
 	private void registrarAcoes() {
+
 		view.getBtnNovo().addActionListener(e -> abrirFormulario(null));
 		view.getBtnEditar().addActionListener(e -> editarSelecionado());
 		view.getBtnResetarSenha().addActionListener(e -> resetarSenhaSelecionado());
+
 		view.getBtnExcluir().addActionListener(e -> {
 			if (view.getChkVerExcluidos().isSelected()) {
 				restaurarSelecionado();
@@ -65,52 +102,93 @@ public class UsuarioConsultaController extends BaseController {
 				excluirSelecionado();
 			}
 		});
+
 		TableFactory.addDoubleClickAction(view.getTabela(), this::editarSelecionado);
-		view.getChkVerExcluidos().addActionListener(e -> {
+
+		view.getTabela().getSelectionModel().addListSelectionListener(e -> {
+
+			Usuario sel = view.getSelecionado();
+			boolean temSelecao = sel != null;
 			boolean modoLixeira = view.getChkVerExcluidos().isSelected();
+
+			view.getBtnEditar().setEnabled(temSelecao && !modoLixeira && permissaoContexto.temWrite());
+
+			view.getBtnResetarSenha().setEnabled(temSelecao && !modoLixeira && permissaoContexto.temDelete());
+
+			view.getBtnExcluir().setEnabled(temSelecao && podeExcluirSelecionado(sel, modoLixeira));
+		});
+
+		view.getChkVerExcluidos().addActionListener(e -> {
+
+			boolean modoLixeira = view.getChkVerExcluidos().isSelected();
+
 			view.getBtnExcluir().setText(modoLixeira ? "RESTAURAR" : "EXCLUIR");
-			view.getBtnNovo().setEnabled(!modoLixeira);
+
+			view.getBtnNovo().setEnabled(!modoLixeira && permissaoContexto.temWrite());
+
 			carregarDados();
 		});
-		view.getTabela().getSelectionModel().addListSelectionListener(e -> {
-			Usuario sel = view.getSelecionado();
-			boolean temSelecao = (sel != null);
-			boolean modoLixeira = view.getChkVerExcluidos().isSelected();
+	}
 
-			view.getBtnEditar().setEnabled(temSelecao && !modoLixeira);
-			view.getBtnResetarSenha().setEnabled(temSelecao && !modoLixeira && Sessao.getUsuario().isMaster());
+	private boolean podeExcluirSelecionado(Usuario sel, boolean modoLixeira) {
 
-			if (modoLixeira) {
-				view.getBtnExcluir().setEnabled(temSelecao);
-			} else {
-				view.getBtnExcluir().setEnabled(temSelecao && !sel.isMaster());
-			}
-		});
+		if (sel == null)
+			return false;
+
+		if (!permissaoContexto.temDelete())
+			return false;
+
+		if (!modoLixeira && sel.isMaster())
+			return false;
+
+		return true;
 	}
 
 	private void carregarDados() {
+
 		boolean verExcluidos = view.getChkVerExcluidos().isSelected();
 
-		runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
-			List<Usuario> lista = verExcluidos ? service.listarExcluidos(Sessao.getUsuario())
-					: service.listarUsuarios("", Sessao.getUsuario());
+		runAsyncSilent(SwingUtilities.getWindowAncestor(view),
+				() -> verExcluidos ? service.listarExcluidosVisiveis(usuarioLogado)
+						: service.listarUsuariosVisiveis("", usuarioLogado),
+				lista -> view.getTableModel().setDados(lista));
+	}
 
-			Usuario logado = Sessao.getUsuario();
-			if (logado != null && !logado.isMaster()) {
-				lista.removeIf(u -> u.isMaster());
-			}
-			return lista;
-		}, lista -> view.getTableModel().setDados(lista));
+	private void excluirSelecionado() {
+
+		if (!permissaoContexto.temDelete())
+			return;
+
+		Usuario sel = view.getSelecionado();
+		if (sel == null)
+			return;
+
+		if (DialogFactory.confirmacao(view,
+				"DESEJA REALMENTE EXCLUIR O USUÁRIO: " + sel.getNome().toUpperCase() + "?")) {
+
+			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+				service.excluirUsuario(sel.getIdUsuario(), usuarioLogado);
+				return null;
+			}, unused -> {
+				DialogFactory.informacao(view, "USUÁRIO EXCLUÍDO COM SUCESSO!");
+				carregarDados();
+			});
+		}
 	}
 
 	private void restaurarSelecionado() {
+
+		if (!permissaoContexto.temDelete())
+			return;
+
 		Usuario sel = view.getSelecionado();
 		if (sel == null)
 			return;
 
 		if (DialogFactory.confirmacao(view, "DESEJA RESTAURAR O USUÁRIO: " + sel.getNome().toUpperCase() + "?")) {
+
 			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-				service.restaurarUsuario(sel.getIdUsuario(), Sessao.getUsuario());
+				service.restaurarUsuario(sel.getIdUsuario(), usuarioLogado);
 				return null;
 			}, unused -> {
 				DialogFactory.informacao(view, "USUÁRIO RESTAURADO COM SUCESSO!");
@@ -119,102 +197,26 @@ public class UsuarioConsultaController extends BaseController {
 		}
 	}
 
-	private void excluirSelecionado() {
-		Usuario sel = view.getSelecionado();
-		if (sel == null)
-			return;
-
-		boolean confirmou = DialogFactory.confirmacao(view,
-				"DESEJA REALMENTE EXCLUIR O USUÁRIO: " + sel.getNome().toUpperCase() + "?");
-
-		if (confirmou) {
-			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-
-				service.excluirUsuario(sel.getIdUsuario(), Sessao.getUsuario());
-				return null;
-
-			}, unused -> {
-				DialogFactory.informacao(view, "USUÁRIO EXCLUÍDO COM SUCESSO!");
-				carregarDados();
-			});
-		}
-	}
-
-	private void filtrar() {
-		String termo = view.getTxtBusca().getText();
-		boolean verExcluidos = view.getChkVerExcluidos().isSelected();
-
-		if (debounceTask != null)
-			debounceTask.cancel(false);
-
-		debounceTask = scheduler.schedule(() -> {
-			runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
-				List<Usuario> lista = verExcluidos ? service.listarExcluidos(Sessao.getUsuario())
-						: service.listarUsuarios(termo, Sessao.getUsuario());
-
-				Usuario logado = Sessao.getUsuario();
-				if (logado != null && !logado.isMaster()) {
-					lista.removeIf(u -> u.isMaster());
-				}
-				return lista;
-			}, lista -> view.getTableModel().setDados(lista));
-		}, 500, TimeUnit.MILLISECONDS);
-	}
-
-	private void editarSelecionado() {
-		Usuario sel = view.getSelecionado();
-		if (sel != null) {
-			abrirFormulario(sel);
-		} else {
-			DialogFactory.aviso(view, "SELECIONE UM USUÁRIO PARA EDITAR.");
-		}
-	}
-
-	private void aplicarPermissoesEscopo() {
-		Usuario logado = Sessao.getUsuario();
-		if (logado == null || logado.isMaster())
-			return;
-
-		List<String> permissoes = service.listarPermissoesAtivasPorMenu(logado.getIdUsuario(),
-				MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES);
-
-		boolean podeAcessar = aplicarRestricoesVisuais(permissoes, view.getBtnNovo(), view.getBtnEditar(),
-				view.getBtnExcluir());
-
-		if (!podeAcessar) {
-			view.dispose();
-			DialogFactory.aviso(null, "ACESSO NEGADO À GESTÃO DE USUÁRIOS.");
-		}
-		
-		runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> service.carregarPermissoesDetalhadas(logado.getIdUsuario()), minhas -> {
-		    SwingUtilities.invokeLater(() -> {
-		        boolean podeCriarAlterar = minhas.stream()
-		                .anyMatch(p -> p.getChave().equals(MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES.name())
-		                        && p.getTipo().equals(TipoPermissao.WRITE.name()));
-		        boolean podeExcluir = minhas.stream()
-		                .anyMatch(p -> p.getChave().equals(MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES.name())
-		                        && p.getTipo().equals(TipoPermissao.DELETE.name()));
-
-		        view.getBtnNovo().setEnabled(podeCriarAlterar);
-		        view.getBtnEditar().setEnabled(podeCriarAlterar);
-		        view.getBtnExcluir().setEnabled(podeExcluir);
-		        view.getBtnResetarSenha().setEnabled(podeExcluir);
-		    });
-		});
-
-	}
-
 	private void abrirFormulario(Usuario usuario) {
-		if (!podeAbrirCadastro()) {
-			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE USUÁRIOS.");
+
+		if (!permissaoContexto.temWrite()) {
+			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO.");
 			return;
 		}
 
 		JDesktopPane desk = view.getDesktopPane();
 
+		String idJanela = (usuario == null) ? "NOVO_USUARIO" : "EDIT_USUARIO_" + usuario.getIdUsuario();
+
+		if (DesktopUtils.reuseIfOpen(desk, idJanela))
+			return;
+
 		UsuarioView cadastroView = ViewFactory.createUsuarioViewComController();
 
+		cadastroView.setName(idJanela);
+
 		UsuarioController controller = (UsuarioController) cadastroView.getClientProperty("controller");
+
 		controller.setRefreshCallback(this::carregarDados);
 
 		if (usuario != null) {
@@ -228,35 +230,49 @@ public class UsuarioConsultaController extends BaseController {
 		DesktopUtils.showFrame(desk, cadastroView);
 	}
 
-	private boolean podeAbrirCadastro() {
-		Usuario logado = Sessao.getUsuario();
-		if (logado == null)
-			return false;
-		if (logado.isMaster())
-			return true;
+	private void editarSelecionado() {
 
-		List<String> permissoes = service.listarPermissoesAtivasPorMenu(logado.getIdUsuario(),
-				MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES);
-		return permissoes.contains(TipoPermissao.WRITE.name());
+		Usuario sel = view.getSelecionado();
+
+		if (sel == null) {
+			DialogFactory.aviso(view, "SELECIONE UM USUÁRIO PARA EDITAR.");
+			return;
+		}
+
+		abrirFormulario(sel);
 	}
 
 	private void resetarSenhaSelecionado() {
+
+		if (!permissaoContexto.temDelete())
+			return;
+
 		Usuario sel = view.getSelecionado();
 		if (sel == null)
 			return;
 
-		String msg = "DESEJA REALMENTE RESETAR A SENHA DE: " + sel.getNome().toUpperCase() + "?\n"
-				+ "A SENHA SERÁ VOLTADA PARA O PADRÃO DO SISTEMA E O USUÁRIO DEVERÁ TROCÁ-LA NO PRÓXIMO ACESSO.";
+		if (DialogFactory.confirmacao(view,
+				"DESEJA REALMENTE RESETAR A SENHA DE: " + sel.getNome().toUpperCase() + "?")) {
 
-		if (DialogFactory.confirmacao(view, msg)) {
-
-			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-				return authService.resetarSenha(sel.getIdUsuario(), Sessao.getUsuario());
-			}, senhaPadrao -> {
-				DialogFactory.informacao(view, "SENHA RESETADA COM SUCESSO!\nNOVA SENHA TEMPORÁRIA: " + senhaPadrao);
-				carregarDados();
-			});
+			runAsync(SwingUtilities.getWindowAncestor(view),
+					() -> authService.resetarSenha(sel.getIdUsuario(), usuarioLogado), senhaPadrao -> {
+						DialogFactory.informacao(view, "SENHA RESETADA COM SUCESSO!\n" + "NOVA SENHA: " + senhaPadrao);
+						carregarDados();
+					});
 		}
 	}
 
+	private void filtrar() {
+
+		String termo = view.getTxtBusca().getText();
+		boolean verExcluidos = view.getChkVerExcluidos().isSelected();
+
+		if (debounceTask != null)
+			debounceTask.cancel(false);
+
+		debounceTask = scheduler.schedule(() -> runAsyncSilent(SwingUtilities.getWindowAncestor(view),
+				() -> verExcluidos ? service.listarExcluidosVisiveis(usuarioLogado)
+						: service.listarUsuariosVisiveis(termo, usuarioLogado),
+				lista -> view.getTableModel().setDados(lista)), 500, TimeUnit.MILLISECONDS);
+	}
 }

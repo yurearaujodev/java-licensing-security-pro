@@ -92,12 +92,9 @@ public class EmpresaService extends BaseService {
 
 			boolean existeEmpresaFornecedora = empDao.buscarPorFornecedora() != null;
 
-			// Valida criação ou alteração considerando setup inicial
 			if (empresa.getIdEmpresa() == 0) {
-				// Nova empresa → valida criação
 				EmpresaPolicy.validarCriacaoFornecedora(empresa, executor, existeEmpresaFornecedora);
 			} else {
-				// Alteração → valida alteração
 				EmpresaPolicy.validarAlteracao(empresa, executor);
 			}
 

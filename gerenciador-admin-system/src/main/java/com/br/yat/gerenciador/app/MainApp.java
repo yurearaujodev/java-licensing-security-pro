@@ -22,6 +22,7 @@ public class MainApp {
 
 		SwingUtilities.invokeLater(() -> {
 			try {
+				
 				ViewFactory.createMenuPrincipal();
 			} catch (Exception e) {
 				DialogFactory.erro(null, "ERRO AO ABRIR O MENU: " + e.getMessage());

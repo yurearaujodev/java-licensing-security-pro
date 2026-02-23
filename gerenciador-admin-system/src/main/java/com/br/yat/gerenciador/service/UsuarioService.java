@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.br.yat.gerenciador.configurations.ConnectionFactory;
@@ -30,6 +32,7 @@ import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.policy.UsuarioPolicy;
 import com.br.yat.gerenciador.security.PasswordUtils;
+import com.br.yat.gerenciador.security.PermissaoContexto;
 import com.br.yat.gerenciador.security.SensitiveData;
 import com.br.yat.gerenciador.util.AuditLogHelper;
 import com.br.yat.gerenciador.util.TimeUtils;
@@ -60,6 +63,47 @@ public class UsuarioService extends BaseService {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO LISTAR USUÁRIOS", e);
 		}
 	}
+	
+	public List<Usuario> listarUsuariosVisiveis(String termo, Usuario executor) {
+
+	    List<Usuario> lista = listarUsuarios(termo, executor);
+
+	    if (!executor.isMaster()) {
+	        lista.removeIf(Usuario::isMaster);
+	    }
+
+	    return lista;
+	}
+
+	public List<Usuario> listarExcluidosVisiveis(Usuario executor) {
+
+	    List<Usuario> lista = listarExcluidos(executor);
+
+	    if (!executor.isMaster()) {
+	        lista.removeIf(Usuario::isMaster);
+	    }
+
+	    return lista;
+	}
+	
+	public PermissaoContexto obterContextoPermissao(Integer idUsuario, MenuChave menu) {
+
+	    if (idUsuario == null || idUsuario <= 0) {
+	        return PermissaoContexto.semPermissao();
+	    }
+
+	    Set<TipoPermissao> permissoes = listarPermissoesAtivasPorMenu(idUsuario, menu)
+	            .stream()
+	            .map(p -> {
+	                try { return TipoPermissao.valueOf(p); }
+	                catch (Exception e) { return null; }
+	            })
+	            .filter(Objects::nonNull)
+	            .collect(Collectors.toUnmodifiableSet());
+
+	    return PermissaoContexto.comum(permissoes);
+	}
+
 
 	public List<Usuario> listarUsuariosUltimoLogin(String termo, Usuario executor) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
@@ -98,8 +142,8 @@ public class UsuarioService extends BaseService {
 		validarDatasExpiracao(datasExpiracao);
 
 		if (UsuarioPolicy.isPrivilegiado(usuario)) {
-		    permissoesGranulares = new HashMap<>();
-		    datasExpiracao = new HashMap<>();
+			permissoesGranulares = new HashMap<>();
+			datasExpiracao = new HashMap<>();
 		}
 		try (Connection conn = ConnectionFactory.getConnection()) {
 
@@ -411,7 +455,7 @@ public class UsuarioService extends BaseService {
 		}
 	}
 
-	public List<String> listarPermissoesAtivasPorMenu(int idUsuario, MenuChave menu) {
+	private List<String> listarPermissoesAtivasPorMenu(int idUsuario, MenuChave menu) {
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			PermissaoDao pDao = new PermissaoDao(conn);
 			return pDao.buscarTiposAtivosPorUsuarioEMenu(idUsuario, menu.name());
@@ -473,16 +517,11 @@ public class UsuarioService extends BaseService {
 			UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
 			PermissaoDao pDao = new PermissaoDao(conn);
 
-			// 1. Buscamos APENAS os vínculos DIRETOS do usuário (onde herdada = 0 ou false)
-			// Você deve garantir que seu UsuarioPermissaoDao tenha um método que filtre por
-			// isso
 			List<UsuarioPermissao> listaVinculosDiretos = upDao.listarDiretasPorUsuario(idUsuario);
 
-			// 2. Criamos o DTO apenas para o que for "Especial"
 			List<UsuarioPermissaoDetatlheDTO> resultado = new ArrayList<>();
 
 			for (UsuarioPermissao vinculo : listaVinculosDiretos) {
-				// Buscamos o detalhe da permissão (Nome/Tipo) para poder preencher a grade
 				Permissao p = pDao.searchById(vinculo.getIdPermissoes());
 				if (p != null) {
 					resultado.add(new UsuarioPermissaoDetatlheDTO(p, vinculo));
@@ -497,33 +536,6 @@ public class UsuarioService extends BaseService {
 		}
 	}
 
-//	public List<UsuarioPermissaoDetatlheDTO> carregarDadosPermissoesEdicao(Integer idUsuario) {
-//		if (idUsuario == null || idUsuario <= 0)
-//			return new ArrayList<>();
-//
-//		try (Connection conn = ConnectionFactory.getConnection()) {
-//			PermissaoDao pDao = new PermissaoDao(conn);
-//			UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
-//
-//			List<Permissao> listaPermissoes = pDao.listarPermissoesAtivasPorUsuario(idUsuario);
-//
-//			List<UsuarioPermissao> listaVinculos = upDao.listarPorUsuario(idUsuario);
-//
-//			Map<Integer, UsuarioPermissao> mapaVinculos = listaVinculos.stream()
-//					.collect(Collectors.toMap(UsuarioPermissao::getIdPermissoes, v -> v, (a, b) -> a));
-//
-//			return listaPermissoes.stream().map(p -> {
-//				UsuarioPermissao vinculo = mapaVinculos.get(p.getIdPermissoes());
-//
-//				return new UsuarioPermissaoDetatlheDTO(p, vinculo);
-//			}).toList();
-//
-//		} catch (SQLException e) {
-//			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO CARREGAR DADOS PARA EDICAO",
-//					e);
-//		}
-//	}
-
 	public boolean existeUsuarioMaster() {
 		try (Connection conn = ConnectionFactory.getConnection()) {
 			UsuarioDao dao = new UsuarioDao(conn);
@@ -536,14 +548,6 @@ public class UsuarioService extends BaseService {
 	public boolean podeEditarPermissoes(Usuario u) {
 		return UsuarioPolicy.podeEditarPermissoes(u);
 	}
-
-//	public List<Usuario> listarUsuariosPorPermissao(MenuChave chave) {
-//		try (Connection conn = ConnectionFactory.getConnection()) {
-//			return new UsuarioDao(conn).listarPorPermissao(chave.name());
-//		} catch (SQLException e) {
-//			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, "ERRO AO FILTRAR PERMISSÃO", e);
-//		}
-//	}
 
 	private void validarDados(Usuario usuario, Map<MenuChave, List<String>> chaves) {
 		UsuarioValidationUtils.validarUsuario(usuario);

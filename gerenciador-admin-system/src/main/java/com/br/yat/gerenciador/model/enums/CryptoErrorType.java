@@ -4,7 +4,7 @@ package com.br.yat.gerenciador.model.enums;
  * <p>
  * Cada constante possui:
  * <ul>
- * <li>Um código único ({@code CRYPTO-XXX}).</li>
+ * <li>Um código único (<code>CRYPTO-XXX</code>).</li>
  * <li>Uma mensagem descritiva.</li>
  * <li>Um indicador de criticidade.</li>
  * </ul>

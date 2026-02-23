@@ -36,8 +36,6 @@ public class LoadingDialog {
 	}
 
 	public void show() {
-        // NUNCA use thread virtual para setVisible(true) em um diálogo modal
-        // O SwingUtilities garante que isso rode na thread certa sem travar o sistema
         SwingUtilities.invokeLater(() -> {
             if (!dialog.isVisible()) {
                 dialog.setLocationRelativeTo(dialog.getOwner());
@@ -54,7 +52,6 @@ public class LoadingDialog {
         });
     }
     
-    // Para resolver o erro que você citou:
     public boolean isVisible() {
         return dialog.isVisible();
     }
