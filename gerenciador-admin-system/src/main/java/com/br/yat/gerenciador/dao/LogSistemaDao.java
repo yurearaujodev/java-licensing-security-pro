@@ -62,16 +62,11 @@ public class LogSistemaDao extends GenericDao<LogSistema> {
 	}
 
 	public int limparLogsAntigos(int diasRetencao) {
-		// Usamos DATEDIFF ou DATE_SUB dependendo do banco,
-		// mas essa sintaxe é padrão para MySQL:
 		String sql = "DELETE FROM " + tableName + " WHERE data_hora < DATE_SUB(NOW(), INTERVAL ? DAY)";
 
 		try {
-			// Usamos executeUpdate da classe pai ou do próprio JDBC
 			return executeUpdate(sql, diasRetencao);
 		} catch (Exception e) {
-			// Como é uma operação de manutenção, se falhar, apenas reportamos no
-			// console/log de arquivo
 			System.err.println("Erro ao realizar manutenção de logs: " + e.getMessage());
 			return 0;
 		}

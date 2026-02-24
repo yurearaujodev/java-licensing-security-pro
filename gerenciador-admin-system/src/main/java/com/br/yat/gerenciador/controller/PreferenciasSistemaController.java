@@ -5,6 +5,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Font;
 
+import javax.swing.JButton;
 import javax.swing.JColorChooser;
 import javax.swing.SwingUtilities;
 
@@ -64,7 +65,7 @@ public class PreferenciasSistemaController extends BaseController {
         });
     }
 
-    private void escolherCor(javax.swing.JButton botao, String titulo) {
+    private void escolherCor(JButton botao, String titulo) {
         Color cor = JColorChooser.showDialog(view, titulo, botao.getBackground());
         if (cor != null) {
             botao.setBackground(cor);

@@ -103,8 +103,8 @@ public final class ViewFactory {
 
 	public static void atualizarAcoesMenuPrincipal() {
 		if (mainController != null) {
-			mainController.registrarAcoes(); // Reativa os menus
-			mainController.atualizarDadosUsuario(); // ATUALIZA O NOME NA TELA
+			mainController.registrarAcoes();
+			mainController.atualizarDadosUsuario();
 		}
 	}
 
@@ -155,7 +155,6 @@ public final class ViewFactory {
 		UsuarioService service = new UsuarioService(authService, parametro, usuperservice);
 		UsuarioConsultaController controller = new UsuarioConsultaController(view, service, authService);
 
-		// Garante que o scheduler e recursos do controller sejam liberados
 		view.addInternalFrameListener(new InternalFrameAdapter() {
 			@Override
 			public void internalFrameClosed(InternalFrameEvent e) {
@@ -165,28 +164,6 @@ public final class ViewFactory {
 		return view;
 	}
 
-//	public static UsuarioView createUsuarioView() {
-//		UsuarioView view = new UsuarioView();
-//
-//		ParametroSistemaService parametro = new ParametroSistemaService();
-//		AutenticacaoService authService = new AutenticacaoService(parametro);
-//		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService();
-//		UsuarioService service = new UsuarioService(authService, parametro, usuperservice);
-//		PerfilService perfilService = new PerfilService();
-//		UsuarioController controller = new UsuarioController(view, service, perfilService);
-//		view.putClientProperty("controller", controller);
-//
-//		view.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-//		view.addInternalFrameListener(new InternalFrameAdapter() {
-//			@Override
-//			public void internalFrameClosing(InternalFrameEvent e) {
-//				view.dispose();
-//				controller.dispose();
-//			}
-//		});
-//		return view;
-//	}
-//	
 	public static UsuarioView createUsuarioViewComController() {
 		UsuarioView view = new UsuarioView();
 
@@ -255,8 +232,6 @@ public final class ViewFactory {
 		return view;
 	}
 
-	
-
 	public static LogSistemaView createLogSistemaView() {
 		LogSistemaView view = new LogSistemaView();
 
@@ -313,7 +288,6 @@ public final class ViewFactory {
 		return view;
 	}
 
-	// Método para abrir o perfil já carregado para edição
 	public static PerfilView createPerfilEdicaoView(Perfil perfil) {
 		PerfilView view = createPerfilView();
 		PerfilController controller = (PerfilController) view.getClientProperty("controller");
@@ -339,18 +313,17 @@ public final class ViewFactory {
 		new TrocaSenhaObrigatoriaController(view, user, authService, callbackSucesso);
 		view.setVisible(true);
 	}
-	
+
 	public static PreferenciasSistemaView createPreferenciasSistemaView() {
 
-	    PreferenciasSistemaView view = new PreferenciasSistemaView();
-	    PreferenciasSistemaService service = new PreferenciasSistemaService();
+		PreferenciasSistemaView view = new PreferenciasSistemaView();
+		PreferenciasSistemaService service = new PreferenciasSistemaService();
 
-	    new PreferenciasSistemaController(view, service);
+		new PreferenciasSistemaController(view, service);
 
-	    view.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+		view.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 
-	    return view;
+		return view;
 	}
-
 
 }

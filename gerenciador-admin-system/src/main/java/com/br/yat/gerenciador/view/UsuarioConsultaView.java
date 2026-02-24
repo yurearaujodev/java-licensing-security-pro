@@ -24,7 +24,7 @@ public class UsuarioConsultaView extends JInternalFrame {
 	private JTable tabela;
 	private UsuarioTableModel tableModel;
 	private JCheckBox chkVerExcluidos;
-	private JTextField txtBusca; // Alinhado com o nome na controller
+	private JTextField txtBusca;
 	private JButton btnPesquisar, btnEditar, btnNovo, btnExcluir;
 	private JButton btnResetarSenha;
 

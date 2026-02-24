@@ -87,20 +87,20 @@ public abstract class GenericDao<T> {
 		}
 		return lista;
 	}
-	
+
 	protected <R> R executeQuerySingle(String sql, Function<ResultSet, R> mapper, Object... params) {
-	    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-	        bindParameters(stmt, params);
-	        try (ResultSet rs = stmt.executeQuery()) {
-	            if (rs.next()) {
-	                return mapper.apply(rs);
-	            }
-	        }
-	    } catch (SQLException e) {
-	        throw new DataAccessException(DataAccessErrorType.QUERY_FAILED,
-	                "ERRO AO EXECUTAR QUERY SINGLE EM [" + tableName + "]: " + e.getMessage(), e);
-	    }
-	    return null;
+		try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+			bindParameters(stmt, params);
+			try (ResultSet rs = stmt.executeQuery()) {
+				if (rs.next()) {
+					return mapper.apply(rs);
+				}
+			}
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.QUERY_FAILED,
+					"ERRO AO EXECUTAR QUERY SINGLE EM [" + tableName + "]: " + e.getMessage(), e);
+		}
+		return null;
 	}
 
 	public T searchById(int id) {
@@ -108,9 +108,9 @@ public abstract class GenericDao<T> {
 		List<T> resultados = executeQuery(sql, id);
 		return resultados.isEmpty() ? null : resultados.get(0);
 	}
-	
+
 	public void softDeleteById(int id) {
-		String sql = "UPDATE "+tableName+" SET deletado_em = NOW() WHERE "+pkName+" =? AND deletado_em IS NULL";
+		String sql = "UPDATE " + tableName + " SET deletado_em = NOW() WHERE " + pkName + " =? AND deletado_em IS NULL";
 		executeUpdate(sql, id);
 	}
 
@@ -119,9 +119,9 @@ public abstract class GenericDao<T> {
 			Object value = params[i];
 			int idx = i + 1;
 			if (value == null) {
-	            stmt.setNull(idx, Types.NULL);
-	            continue;
-	        }
+				stmt.setNull(idx, Types.NULL);
+				continue;
+			}
 			switch (value) {
 			case String s -> stmt.setString(idx, s);
 			case Integer iVal -> stmt.setInt(idx, iVal);
@@ -132,7 +132,7 @@ public abstract class GenericDao<T> {
 			case Boolean b -> stmt.setInt(idx, b ? 1 : 0);
 			case Long l -> stmt.setLong(idx, l);
 			case Double d -> stmt.setDouble(idx, d);
-			
+
 			default -> stmt.setObject(idx, value);
 			}
 		}
@@ -164,20 +164,20 @@ public abstract class GenericDao<T> {
 		}
 		mapaAtuais.values().forEach(softDelete);
 	}
-	
+
 	public Connection getConnection() {
-	    return this.conn;
+		return this.conn;
 	}
 
 	protected int executeScalarInt(String sql, Object... params) {
-	    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-	        bindParameters(stmt, params);
-	        try (ResultSet rs = stmt.executeQuery()) {
-	            return rs.next() ? rs.getInt(1) : 0;
-	        }
-	    } catch (SQLException e) {
-	        throw new DataAccessException(DataAccessErrorType.QUERY_FAILED,
-	                "ERRO SCALAR EM [" + tableName + "]: " + e.getMessage(), e);
-	    }
+		try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+			bindParameters(stmt, params);
+			try (ResultSet rs = stmt.executeQuery()) {
+				return rs.next() ? rs.getInt(1) : 0;
+			}
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.QUERY_FAILED,
+					"ERRO SCALAR EM [" + tableName + "]: " + e.getMessage(), e);
+		}
 	}
 }

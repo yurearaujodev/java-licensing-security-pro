@@ -56,11 +56,11 @@ public class PerfilDao extends GenericDao<Perfil> {
 
 		super.softDeleteById(id);
 	}
-	
+
 	public Perfil searchByIdIncluindoExcluidos(int id) {
-	    String sql = "SELECT * FROM " + tableName + " WHERE " + pkName + " = ?";
-	    List<Perfil> resultados = executeQuery(sql, id);
-	    return resultados.isEmpty() ? null : resultados.get(0);
+		String sql = "SELECT * FROM " + tableName + " WHERE " + pkName + " = ?";
+		List<Perfil> resultados = executeQuery(sql, id);
+		return resultados.isEmpty() ? null : resultados.get(0);
 	}
 
 	public List<Perfil> listAll() {

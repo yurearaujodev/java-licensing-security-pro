@@ -35,7 +35,6 @@ public class PerfilPermissoesDao extends GenericDao<Object> {
         
         List<Permissao> lista = new ArrayList<>();
         
-        // Usando o seu getConnection() para fazer a query manual já que o retorno não é <T> (Object)
         try (var stmt = getConnection().prepareStatement(sql)) {
             stmt.setInt(1, idPerfil);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -50,7 +49,6 @@ public class PerfilPermissoesDao extends GenericDao<Object> {
                 }
             }
         } catch (SQLException e) {
-            // Se der erro, não vou inventar, apenas sigo o fluxo de erro
         }
         return lista;
     }
@@ -62,6 +60,6 @@ public class PerfilPermissoesDao extends GenericDao<Object> {
 
     @Override
     protected Object mapResultSetToEntity(ResultSet rs) throws SQLException {
-        return null; // Tabela associativa
+        return null;
     }
 }

@@ -65,7 +65,7 @@ public class MenuPrincipalController extends BaseController {
 		configurarMonitorGlobal();
 		verificarSequenciaDeAcesso();
 	}
-	
+
 	private void carregarLogoCache() {
 		AppEventManager.subscribeLogoChange(() -> {
 			IconFactory.limparCacheLogo();
@@ -75,7 +75,7 @@ public class MenuPrincipalController extends BaseController {
 
 	public void registrarAcoes() {
 		configurarAcaoMenu(MenuChave.CADASTROS_EMPRESA_CLIENTE, e -> abrirEmpresaCliente());
-	
+
 		configurarAcaoMenu(MenuChave.CONSULTAS_EMPRESAS_CLIENTES, e -> abrirEmpresaConsulta());
 
 		configurarAcaoMenu(MenuChave.CONFIGURACAO_EMPRESA_FORNECEDORA, e -> abrirEmpresaFornecedora());
@@ -409,7 +409,7 @@ public class MenuPrincipalController extends BaseController {
 		var frame = ViewFactory.createLogManutencao();
 		DesktopUtils.showFrame(desk, frame);
 	}
-	
+
 	private void abrirConfiguracaoPreferencias() {
 		JDesktopPane desk = view.getDesktopPane();
 		if (DesktopUtils.reuseIfOpen(desk, PreferenciasSistemaView.class)) {

@@ -26,7 +26,7 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 		String sql = "SELECT DISTINCT p.chave FROM usuario_permissoes up "
 				+ "INNER JOIN permissoes p ON up.id_permissoes = p.id_permissoes "
 				+ "WHERE up.id_usuario = ? AND up.ativa = 1 AND up.deletado_em IS NULL "
-				+ "AND (up.expira_em IS NULL OR up.expira_em > NOW())"; // ADICIONE ESTA LINHA
+				+ "AND (up.expira_em IS NULL OR up.expira_em > NOW())";
 		try (var stmt = conn.prepareStatement(sql)) {
 			stmt.setInt(1, idUsuario);
 			try (ResultSet rs = stmt.executeQuery()) {
@@ -48,7 +48,6 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 
 	public List<Permissao> buscarPermissoesAtivasDoUsuario(Integer idUsuario) throws SQLException {
 		List<Permissao> lista = new ArrayList<>();
-		// Ajuste o SELECT para trazer os campos necessários
 		String sql = "SELECT p.id_permissoes, p.chave, p.tipo, p.categoria FROM usuario_permissoes up "
 				+ "INNER JOIN permissoes p ON up.id_permissoes = p.id_permissoes "
 				+ "WHERE up.id_usuario = ? AND up.ativa = 1 AND up.deletado_em IS NULL "
@@ -59,7 +58,7 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 			try (ResultSet rs = ps.executeQuery()) {
 				while (rs.next()) {
 					Permissao p = new Permissao();
-					p.setIdPermissoes(rs.getInt("id_permissoes")); // Agora o campo existe no SELECT
+					p.setIdPermissoes(rs.getInt("id_permissoes"));
 					p.setChave(rs.getString("chave"));
 					p.setTipo(rs.getString("tipo"));
 					p.setCategoria(rs.getString("categoria"));
@@ -71,17 +70,14 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 	}
 
 	public List<UsuarioPermissao> listarDiretasPorUsuario(int idUsuario) {
-		// Note o filtro 'AND herdada = 0'
 		String sql = "SELECT * FROM " + tableName + " WHERE id_usuario = ? AND herdada = 0 AND deletado_em IS NULL "
 				+ " AND (expira_em IS NULL OR expira_em > NOW())";
 		return executeQuery(sql, idUsuario);
 	}
 
 	public void syncByUsuario(int idUsuario, List<UsuarioPermissao> novos) {
-		// Busca os atuais para o diff da GenericDao
 		List<UsuarioPermissao> atuais = listarPorUsuario(idUsuario);
 
-		// O syncByParentId vai usar o id da permissão como chave de comparação
 		syncByParentId(novos, atuais, up -> up.getIdPermissoes(), this::saveOrUpdate, this::saveOrUpdate,
 				this::softDelete);
 	}
@@ -97,8 +93,6 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 				+ "VALUES (?, ?, ?, ?, ?, NOW(), NOW()) "
 				+ "ON DUPLICATE KEY UPDATE ativa = ?, expira_em = ?, herdada = ?, deletado_em = NULL, atualizado_em = NOW()";
 
-		// Centralizando a lógica de conversão de boolean para int no bind da GenericDao
-		// (ou manual aqui)
 		executeUpdate(sql, up.getIdUsuario(), up.getIdPermissoes(), up.isAtiva(), up.getExpiraEm(), up.isHerdada(),
 				up.isAtiva(), up.getExpiraEm(), up.isHerdada());
 	}
@@ -121,7 +115,6 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 	}
 
 	public void softDeleteGranularesPorUsuario(int idUsuario) {
-		// Ajustado para 'usuario_permissoes'
 		String sql = "UPDATE usuario_permissoes SET deletado_em = NOW(), ativa = 0 "
 				+ "WHERE id_usuario = ? AND herdada = 0 AND deletado_em IS NULL";
 		executeUpdate(sql, idUsuario);
@@ -131,9 +124,7 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 		String sql = "SELECT COUNT(*) FROM usuario_permissoes up "
 				+ "JOIN permissoes p ON up.id_permissoes = p.id_permissoes "
 				+ "WHERE up.id_usuario = ? AND p.chave = ? AND p.tipo = ? "
-				+ "AND up.ativa = 1 AND up.deletado_em IS NULL " + "AND (up.expira_em IS NULL OR up.expira_em > NOW())"; // VALIDAÇÃO
-																															// DE
-																															// EXPIRAÇÃO
+				+ "AND up.ativa = 1 AND up.deletado_em IS NULL " + "AND (up.expira_em IS NULL OR up.expira_em > NOW())";
 
 		return executeScalarInt(sql, idUsuario, chave, tipo) > 0;
 	}

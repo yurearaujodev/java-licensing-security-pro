@@ -20,17 +20,18 @@ public class PermissaoDao extends GenericDao<Permissao> {
 	}
 
 	public int save(Permissao p) {
-	    String sql = "INSERT INTO " + tableName + 
-	                 " (chave, tipo, categoria, nivel, descricao, criado_em, atualizado_em) " +
-	                 " VALUES (?, ?, ?, ?, ?, NOW(), NOW())";
-	    return executeInsert(sql, p.getChave(), p.getTipo(), p.getCategoria(), p.getNivel(), p.getDescricao());
+		String sql = "INSERT INTO " + tableName
+				+ " (chave, tipo, categoria, nivel, descricao, criado_em, atualizado_em) "
+				+ " VALUES (?, ?, ?, ?, ?, NOW(), NOW())";
+		return executeInsert(sql, p.getChave(), p.getTipo(), p.getCategoria(), p.getNivel(), p.getDescricao());
 	}
-	
+
 	public void update(Permissao p) {
-	    String sql = "UPDATE " + tableName + 
-	                 " SET chave = ?, tipo = ?, categoria = ?, nivel = ?, descricao = ?, atualizado_em = NOW() " +
-	                 " WHERE id_permissoes = ?";
-	    executeUpdate(sql, p.getChave(), p.getTipo(), p.getCategoria(), p.getNivel(), p.getDescricao(), p.getIdPermissoes());
+		String sql = "UPDATE " + tableName
+				+ " SET chave = ?, tipo = ?, categoria = ?, nivel = ?, descricao = ?, atualizado_em = NOW() "
+				+ " WHERE id_permissoes = ?";
+		executeUpdate(sql, p.getChave(), p.getTipo(), p.getCategoria(), p.getNivel(), p.getDescricao(),
+				p.getIdPermissoes());
 	}
 
 	public Permissao findByChave(String chave) {
@@ -52,34 +53,30 @@ public class PermissaoDao extends GenericDao<Permissao> {
 		var lista = executeQuery(sql, idPermissao);
 		return lista.isEmpty() ? null : lista.get(0);
 	}
-	
-	public List<Permissao> listAll() {
-	    // Usamos o tableName definido no construtor ("permissoes")
-	    String sql = "SELECT * FROM " + tableName + " WHERE deletado_em IS NULL";
-	    return executeQuery(sql);
-	}
-	
-	public List<String> buscarTiposAtivosPorUsuarioEMenu(Integer idUsuario, String chaveMenu) {
-	    List<String> tipos = new ArrayList<>();
-	    String sql = "SELECT p.tipo FROM permissoes p "
-	               + "INNER JOIN usuario_permissoes up ON p.id_permissoes = up.id_permissoes "
-	               + "WHERE up.id_usuario = ? "
-	               + "AND p.chave = ? "
-	               + "AND up.ativa = 1 "
-	               + "AND p.deletado_em IS NULL "
-	               + "AND (up.expira_em IS NULL OR up.expira_em > NOW())"; // <--- VALIDAÇÃO DE TEMPO
 
-	    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-	        bindParameters(stmt, idUsuario, chaveMenu);
-	        try (ResultSet rs = stmt.executeQuery()) {
-	            while (rs.next()) {
-	                tipos.add(rs.getString("tipo"));
-	            }
-	        }
-	    } catch (SQLException e) {
-	        throw new DataAccessException(DataAccessErrorType.QUERY_FAILED, "ERRO AO BUSCAR PERMISSÕES", e);
-	    }
-	    return tipos;
+	public List<Permissao> listAll() {
+		String sql = "SELECT * FROM " + tableName + " WHERE deletado_em IS NULL";
+		return executeQuery(sql);
+	}
+
+	public List<String> buscarTiposAtivosPorUsuarioEMenu(Integer idUsuario, String chaveMenu) {
+		List<String> tipos = new ArrayList<>();
+		String sql = "SELECT p.tipo FROM permissoes p "
+				+ "INNER JOIN usuario_permissoes up ON p.id_permissoes = up.id_permissoes " + "WHERE up.id_usuario = ? "
+				+ "AND p.chave = ? " + "AND up.ativa = 1 " + "AND p.deletado_em IS NULL "
+				+ "AND (up.expira_em IS NULL OR up.expira_em > NOW())";
+
+		try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+			bindParameters(stmt, idUsuario, chaveMenu);
+			try (ResultSet rs = stmt.executeQuery()) {
+				while (rs.next()) {
+					tipos.add(rs.getString("tipo"));
+				}
+			}
+		} catch (SQLException e) {
+			throw new DataAccessException(DataAccessErrorType.QUERY_FAILED, "ERRO AO BUSCAR PERMISSÕES", e);
+		}
+		return tipos;
 	}
 
 	public List<Permissao> listarPorIds(List<Integer> ids) {
@@ -87,7 +84,6 @@ public class PermissaoDao extends GenericDao<Permissao> {
 			return List.of();
 		}
 
-		// Gera placeholders para a query: ?, ?, ?
 		String placeholders = ids.stream().map(i -> "?").collect(Collectors.joining(","));
 		String sql = "SELECT * FROM " + tableName + " WHERE id_permissoes IN (" + placeholders
 				+ ") AND deletado_em IS NULL";
@@ -96,41 +92,38 @@ public class PermissaoDao extends GenericDao<Permissao> {
 	}
 
 	public List<Permissao> listarPermissoesAtivasPorUsuario(Integer idUsuario) {
-	    String sql = "SELECT p.* FROM permissoes p "
-	            + "INNER JOIN usuario_permissoes up ON p.id_permissoes = up.id_permissoes "
-	            + "WHERE up.id_usuario = ? AND up.ativa = 1 AND p.deletado_em IS NULL "
-	            + "AND (up.expira_em IS NULL OR up.expira_em > NOW())"; // ADICIONADO PARA SEGURANÇA
+		String sql = "SELECT p.* FROM permissoes p "
+				+ "INNER JOIN usuario_permissoes up ON p.id_permissoes = up.id_permissoes "
+				+ "WHERE up.id_usuario = ? AND up.ativa = 1 AND p.deletado_em IS NULL "
+				+ "AND (up.expira_em IS NULL OR up.expira_em > NOW())";
 
-	    return executeQuery(sql, idUsuario);
+		return executeQuery(sql, idUsuario);
 	}
-	
-	public List<Permissao> buscarPermissoesGranularesNaoHerdadas(Integer idUsuario) {
-	    String sql = "SELECT p.* FROM usuario_permissoes up "
-	            + "INNER JOIN permissoes p ON up.id_permissoes = p.id_permissoes "
-	            + "WHERE up.id_usuario = ? AND up.ativa = 1 AND up.herdada = 0 " 
-	            + "AND up.deletado_em IS NULL "
-	            + "AND (up.expira_em IS NULL OR up.expira_em > NOW())";
 
-	    // A GenericDao faz o try-catch, o bind do idUsuario e o mapResultSetToEntity para você!
-	    return executeQuery(sql, idUsuario);
+	public List<Permissao> buscarPermissoesGranularesNaoHerdadas(Integer idUsuario) {
+		String sql = "SELECT p.* FROM usuario_permissoes up "
+				+ "INNER JOIN permissoes p ON up.id_permissoes = p.id_permissoes "
+				+ "WHERE up.id_usuario = ? AND up.ativa = 1 AND up.herdada = 0 " + "AND up.deletado_em IS NULL "
+				+ "AND (up.expira_em IS NULL OR up.expira_em > NOW())";
+
+		return executeQuery(sql, idUsuario);
 	}
 
 	public List<Permissao> listarPermissoesDoPerfil(Integer idPerfil) {
-	    String sql = "SELECT p.* FROM permissoes p " +
-	                 "INNER JOIN perfil_permissoes pp ON p.id_permissoes = pp.id_permissoes " +
-	                 "WHERE pp.id_perfil = ? AND pp.deletado_em IS NULL";
-	    
-	    return executeQuery(sql, idPerfil);
+		String sql = "SELECT p.* FROM permissoes p "
+				+ "INNER JOIN perfil_permissoes pp ON p.id_permissoes = pp.id_permissoes "
+				+ "WHERE pp.id_perfil = ? AND pp.deletado_em IS NULL";
+
+		return executeQuery(sql, idPerfil);
 	}
-	
+
 	public Integer buscarMaiorNivelDoUsuario(int idUsuario) {
-	    String sql = "SELECT MAX(p.nivel) FROM permissoes p " +
-	                 "INNER JOIN usuario_permissoes up ON p.id_permissoes = up.id_permissoes " +
-	                 "WHERE up.id_usuario = ? AND up.ativa = 1 AND up.deletado_em IS NULL " +
-	                 "AND (up.expira_em IS NULL OR up.expira_em > NOW())";
-	    
-	    // O executeScalarInt já trata o ResultSet e retorna 0 se for nulo
-	    return executeScalarInt(sql, idUsuario);
+		String sql = "SELECT MAX(p.nivel) FROM permissoes p "
+				+ "INNER JOIN usuario_permissoes up ON p.id_permissoes = up.id_permissoes "
+				+ "WHERE up.id_usuario = ? AND up.ativa = 1 AND up.deletado_em IS NULL "
+				+ "AND (up.expira_em IS NULL OR up.expira_em > NOW())";
+
+		return executeScalarInt(sql, idUsuario);
 	}
 
 	@Override

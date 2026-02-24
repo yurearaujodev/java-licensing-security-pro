@@ -267,12 +267,12 @@ public class PerfilService extends BaseService {
 		List<Perfil> lista = verExcluidos ? listarExcluidos(usuarioLogado) : listarTodos();
 
 		if (usuarioLogado == null || !usuarioLogado.isMaster()) {
-			lista = lista.stream().filter(p -> !isMaster(p)).toList();
+			lista = lista.stream().filter(p -> !isMaster(p)).collect(Collectors.toList());
 		}
 
 		if (termo != null && !termo.isBlank()) {
 			String termoLower = termo.toLowerCase();
-			lista = lista.stream().filter(p -> p.getNome().toLowerCase().contains(termoLower)).toList();
+			lista = lista.stream().filter(p -> p.getNome().toLowerCase().contains(termoLower)).collect(Collectors.toList());
 		}
 
 		return lista;
