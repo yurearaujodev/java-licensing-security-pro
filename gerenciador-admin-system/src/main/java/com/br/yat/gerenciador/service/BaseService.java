@@ -2,6 +2,7 @@ package com.br.yat.gerenciador.service;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import com.br.yat.gerenciador.configurations.ConnectionFactory;
@@ -16,56 +17,13 @@ import com.br.yat.gerenciador.security.SecurityService;
 import com.br.yat.gerenciador.util.AuditLogHelper;
 
 public abstract class BaseService {
-	
+
 	private final SecurityService securityService = new SecurityService();
 
-	protected void validarAcesso(Connection conn,
-	                              Usuario executor,
-	                              MenuChave chave,
-	                              TipoPermissao tipoOperacao) {
+	protected void validarAcesso(Connection conn, Usuario executor, MenuChave chave, TipoPermissao tipoOperacao) {
 
-	    securityService.validarAcesso(
-	            conn, executor, chave, tipoOperacao);
+		securityService.validarAcesso(conn, executor, chave, tipoOperacao);
 	}
-
-//	protected void validarAcesso(Connection conn, Usuario executor, MenuChave chave, TipoPermissao tipoOperacao)
-//			throws SQLException {
-//
-//		if (executor != null && Sessao.isExpirada()) {
-//			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-//					"SUA SESSÃO EXPIROU POR INATIVIDADE. OPERAÇÃO BLOQUEADA.");
-//		}
-//
-//		if (executor == null) {
-//			EmpresaDao dao = new EmpresaDao(conn);
-//			if (dao.buscarPorFornecedora() != null) {
-//				throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "SESSÃO INVÁLIDA.");
-//			}
-//			return;
-//		}
-//
-//		UsuarioDao uDao = new UsuarioDao(conn);
-//		Usuario atualNoBanco = uDao.searchById(executor.getIdUsuario());
-//
-//		if (atualNoBanco == null || atualNoBanco.getStatus() != StatusUsuario.ATIVO) {
-//			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-//					"USUÁRIO INATIVO OU REMOVIDO. ACESSO IMEDIATAMENTE REVOGADO.");
-//		}
-//
-//		if (executor.isMaster())
-//			return;
-//
-//		UsuarioPermissaoDao upDao = new UsuarioPermissaoDao(conn);
-//		Integer idPerfil = (executor.getPerfil() != null) ? executor.getPerfil().getIdPerfil() : 0;
-//
-//		boolean temPermissao = upDao.usuarioPossuiAcessoCompleto(executor.getIdUsuario(), idPerfil, chave.name(),
-//				tipoOperacao.name());
-//
-//		if (!temPermissao) {
-//			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-//					"ACESSO NEGADO: VOCÊ NÃO TEM PERMISSÃO DE " + tipoOperacao + " NESTA TELA.");
-//		}
-//	}
 
 	protected void registrarLogErro(String tipo, String acao, String entidade, Exception e) {
 		try (Connection connLog = ConnectionFactory.getConnection()) {
@@ -97,6 +55,9 @@ public abstract class BaseService {
 		try (Connection conn = ConnectionFactory.getConnection()) {
 
 			return action.apply(conn);
+
+		} catch (ValidationException e) {
+			throw e;
 
 		} catch (SQLException e) {
 
@@ -133,6 +94,13 @@ public abstract class BaseService {
 		} catch (SQLException e) {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e);
 		}
+	}
+	
+	protected void executeInTransactionVoid(Consumer<Connection> action) {
+	    executeInTransaction(conn -> {
+	        action.accept(conn);
+	        return null;
+	    });
 	}
 
 }

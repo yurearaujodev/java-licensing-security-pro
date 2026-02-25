@@ -145,13 +145,14 @@ public class EmpresaController extends BaseController {
 			return;
 
 		Empresa empresa = ePrincipal.getDados();
+		boolean alterar = empresa.getIdEmpresa() > 0;
 
 		if (tipoCadastro == TipoCadastro.FORNECEDORA) {
 			eFiscal.getDadosComplementar(empresa);
 		}
 
-		boolean alterar = empresa.getIdEmpresa() > 0;
 		Usuario executor = Sessao.getUsuario();
+		boolean isPrimeiroAcesso = (tipoCadastro == TipoCadastro.FORNECEDORA && executor == null);
 
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
 			service.salvarEmpresaCompleta(eEndereco.getDados(), empresa, eContato.getDados(),
@@ -165,15 +166,28 @@ public class EmpresaController extends BaseController {
 			if (tipoCadastro == TipoCadastro.FORNECEDORA) {
 		        AppEventManager.notifyLogoChange();
 		    }
-			
-			if (tipoCadastro == TipoCadastro.CLIENTE) {
-				limparFormulario();
-				setModoEdicao(false);
-				view.getBtnNovo().setEnabled(true);
-			}
+			processarFechamentoOuLimpeza(isPrimeiroAcesso);
+//			if (tipoCadastro == TipoCadastro.CLIENTE) {
+//				limparFormulario();
+//				setModoEdicao(false);
+//				view.getBtnNovo().setEnabled(true);
+//			}
 			if (refreshCallback != null)
 				refreshCallback.onSaveSuccess();
 		});
+	}
+	
+	private void processarFechamentoOuLimpeza(boolean isPrimeiroAcesso) {
+	    if (isPrimeiroAcesso) {
+	        view.doDefaultCloseAction();
+	        return;
+	    }
+
+	    if (tipoCadastro == TipoCadastro.CLIENTE) {
+	        limparFormulario();
+	        setModoEdicao(false);
+	        view.getBtnNovo().setEnabled(true);
+	    }
 	}
 
 	private boolean validarFormulario() {

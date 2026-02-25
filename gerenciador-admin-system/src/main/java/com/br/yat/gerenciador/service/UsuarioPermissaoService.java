@@ -24,7 +24,7 @@ public class UsuarioPermissaoService {
 
 	public List<UsuarioPermissao> montarPermissoes(Connection conn, Usuario usuario, Usuario executor,
 			boolean isSetupInicial, Map<MenuChave, List<String>> permissoesGranulares,
-			Map<MenuChave, String> datasExpiracao) throws SQLException {
+			Map<MenuChave, String> datasExpiracao){
 		List<UsuarioPermissao> perfil = carregarPermissoesDoPerfil(conn, usuario);
 		List<UsuarioPermissao> diretas = carregarPermissoesGranulares(conn, usuario, permissoesGranulares,
 				datasExpiracao);
@@ -52,35 +52,79 @@ public class UsuarioPermissaoService {
 			return up;
 		}).toList();
 	}
-
+	
 	private List<UsuarioPermissao> carregarPermissoesGranulares(Connection conn, Usuario usuario,
-			Map<MenuChave, List<String>> permissoesGranulares, Map<MenuChave, String> datasTexto) throws SQLException {
-		List<UsuarioPermissao> novas = new ArrayList<>();
-		PermissaoDao pDao = new PermissaoDao(conn);
-		if (usuario.isMaster()) {
-			for (Permissao p : pDao.listAll()) {
-				novas.add(criar(usuario.getIdUsuario(), p.getIdPermissoes()));
-			}
-			return novas;
-		}
-		if (permissoesGranulares != null) {
-			permissoesGranulares.forEach((chave, tipos) -> {
-				LocalDateTime exp = datasTexto != null && datasTexto.containsKey(chave)
-						? TimeUtils.parseDataHora(datasTexto.get(chave))
-						: null;
-				for (String tipo : tipos) {
-					Permissao p = pDao.findByChaveETipo(chave.name(), tipo);
-					if (p != null) {
-						UsuarioPermissao up = criar(usuario.getIdUsuario(), p.getIdPermissoes());
-						up.setHerdada(false);
-						up.setExpiraEm(exp);
-						novas.add(up);
-					}
-				}
-			});
-		}
-		return novas;
+	        Map<MenuChave, List<String>> permissoesGranulares, Map<MenuChave, String> datasTexto) {
+
+	    List<UsuarioPermissao> novas = new ArrayList<>();
+	    PermissaoDao pDao = new PermissaoDao(conn);
+
+	    // Se master, concede todas as permissões
+	    if (usuario.isMaster()) {
+	        for (Permissao p : pDao.listAll()) {
+	            novas.add(criar(usuario.getIdUsuario(), p.getIdPermissoes()));
+	        }
+	        return novas;
+	    }
+
+	    if (permissoesGranulares != null) {
+	        // Processa permissões granulares, respeitando perfil e datas
+	        permissoesGranulares.forEach((chave, tipos) -> {
+	            LocalDateTime exp = datasTexto != null && datasTexto.containsKey(chave)
+	                    ? TimeUtils.parseDataHora(datasTexto.get(chave))
+	                    : null;
+
+	            for (String tipo : tipos) {
+	                Permissao p = pDao.findByChaveETipo(chave.name(), tipo);
+	                if (p != null) {
+	                    // Remove se já existir no perfil e não houver data especial
+	                    boolean jaExisteNoPerfil = usuario.getPerfil() != null &&
+	                            usuario.getPerfil().getPermissoes().stream()
+	                            .anyMatch(per -> per.getChave().equals(chave.name())
+	                                    && per.getTipo().equalsIgnoreCase(tipo));
+
+	                    if (!jaExisteNoPerfil || (datasTexto != null && datasTexto.containsKey(chave))) {
+	                        UsuarioPermissao up = criar(usuario.getIdUsuario(), p.getIdPermissoes());
+	                        up.setHerdada(false);
+	                        up.setExpiraEm(exp);
+	                        novas.add(up);
+	                    }
+	                }
+	            }
+	        });
+	    }
+
+	    return novas;
 	}
+
+//	private List<UsuarioPermissao> carregarPermissoesGranulares(Connection conn, Usuario usuario,
+//			Map<MenuChave, List<String>> permissoesGranulares, Map<MenuChave, String> datasTexto) throws SQLException {
+//		List<UsuarioPermissao> novas = new ArrayList<>();
+//		PermissaoDao pDao = new PermissaoDao(conn);
+//		if (usuario.isMaster()) {
+//			for (Permissao p : pDao.listAll()) {
+//				novas.add(criar(usuario.getIdUsuario(), p.getIdPermissoes()));
+//			}
+//			return novas;
+//		}
+//		if (permissoesGranulares != null) {
+//			permissoesGranulares.forEach((chave, tipos) -> {
+//				LocalDateTime exp = datasTexto != null && datasTexto.containsKey(chave)
+//						? TimeUtils.parseDataHora(datasTexto.get(chave))
+//						: null;
+//				for (String tipo : tipos) {
+//					Permissao p = pDao.findByChaveETipo(chave.name(), tipo);
+//					if (p != null) {
+//						UsuarioPermissao up = criar(usuario.getIdUsuario(), p.getIdPermissoes());
+//						up.setHerdada(false);
+//						up.setExpiraEm(exp);
+//						novas.add(up);
+//					}
+//				}
+//			});
+//		}
+//		return novas;
+//	}
 
 	private UsuarioPermissao criar(Integer idUsuario, Integer idPermissao) {
 		UsuarioPermissao up = new UsuarioPermissao();
