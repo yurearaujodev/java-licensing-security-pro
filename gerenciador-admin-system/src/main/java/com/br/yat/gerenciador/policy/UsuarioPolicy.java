@@ -43,7 +43,7 @@ public final class UsuarioPolicy {
 	public static boolean temHierarquiaParaAlterar(Usuario executor, int nivelExecutor, int nivelAlvo) {
 		if (isPrivilegiado(executor))
 			return true;
-		return nivelExecutor >= nivelAlvo;
+		return nivelExecutor > nivelAlvo;
 	}
 
 }

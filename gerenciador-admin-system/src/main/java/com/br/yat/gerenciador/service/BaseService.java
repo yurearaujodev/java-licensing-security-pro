@@ -21,7 +21,6 @@ public abstract class BaseService {
 	private final SecurityService securityService = new SecurityService();
 
 	protected void validarAcesso(Connection conn, Usuario executor, MenuChave chave, TipoPermissao tipoOperacao) {
-
 		securityService.validarAcesso(conn, executor, chave, tipoOperacao);
 	}
 

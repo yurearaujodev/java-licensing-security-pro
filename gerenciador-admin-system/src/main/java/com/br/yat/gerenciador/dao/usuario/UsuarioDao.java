@@ -50,12 +50,12 @@ public class UsuarioDao extends GenericDao<Usuario> {
 
 		if (u.getSenhaHashString() != null && !u.getSenhaHashString().isEmpty()) {
 			sql = baseSql + ", senha_hash = ? WHERE id_usuario = ?";
-			params = new Object[] { u.getNome(), u.getEmail(), u.getStatus(), idEmpresa, idPerfil, u.isMaster() ? 1 : 0,
+			params = new Object[] { u.getNome(), u.getEmail(), u.getStatus().name(), idEmpresa, idPerfil, u.isMaster() ? 1 : 0,
 					u.getSenhaExpiraEm(), u.getBloqueadoAte(), u.isForcarResetSenha() ? 1 : 0, u.getSenhaHashString(),
 					u.getIdUsuario() };
 		} else {
 			sql = baseSql + " WHERE id_usuario = ?";
-			params = new Object[] { u.getNome(), u.getEmail(), u.getStatus(), idEmpresa, idPerfil, u.isMaster() ? 1 : 0,
+			params = new Object[] { u.getNome(), u.getEmail(), u.getStatus().name(), idEmpresa, idPerfil, u.isMaster() ? 1 : 0,
 					u.getSenhaExpiraEm(), u.getBloqueadoAte(), u.isForcarResetSenha() ? 1 : 0, u.getIdUsuario() };
 		}
 		executeUpdate(sql, params);

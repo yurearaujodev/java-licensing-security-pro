@@ -19,11 +19,16 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 	private final PerfilService perfilService;
 	private Usuario usuarioAtual;
 	private RefreshCallback refreshCallback;
+	private final BootstrapService bootstrapService;
+	private final UsuarioPermissaoService usuarioPermissaoUsuario;
 
-	public UsuarioController(UsuarioView view, UsuarioService service, PerfilService perfilService) {
+	public UsuarioController(UsuarioView view, UsuarioService service, PerfilService perfilService,
+			BootstrapService bootstrapService, UsuarioPermissaoService usuarioPermissaoUsuario) {
 		super(view);
 		this.service = service;
 		this.perfilService = perfilService;
+		this.bootstrapService = bootstrapService;
+		this.usuarioPermissaoUsuario = usuarioPermissaoUsuario;
 		inicializar();
 		configurarFiltro();
 	}
@@ -40,7 +45,7 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 
 	private void carregarGruposDeMenu() {
 		Usuario logado = Sessao.getUsuario();
-		boolean bancoVazio = !service.existeUsuarioMaster();
+		boolean bancoVazio = !bootstrapService.existeUsuarioMaster();
 		Map<String, List<MenuChave>> grupos = (bancoVazio || (logado != null && logado.isMaster()))
 				? MenuChaveGrouper.groupByCategoria()
 				: MenuChaveGrouper
@@ -239,7 +244,7 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 		} else {
 
 			runAsync(SwingUtilities.getWindowAncestor(view),
-					() -> service.carregarDadosPermissoesEdicao(u.getIdUsuario()), lista -> {
+					() -> usuarioPermissaoUsuario.carregarDadosPermissoesEdicao(u.getIdUsuario()), lista -> {
 						lista.forEach(dto -> {
 							view.setPermissao(MenuChave.valueOf(dto.permissao().getChave()),
 									TipoPermissao.valueOf(dto.permissao().getTipo()), true);
@@ -258,7 +263,7 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 			return;
 
 		runAsyncSilent(SwingUtilities.getWindowAncestor(view),
-				() -> service.carregarPermissoesDetalhadas(executor.getIdUsuario()), minhas -> {
+				() -> usuarioPermissaoUsuario.carregarPermissoesDetalhadas(executor.getIdUsuario()), minhas -> {
 					view.getChavesAtivas().forEach(chave -> {
 						for (TipoPermissao t : TIPOS) {
 							boolean ok = minhas.stream()
@@ -284,16 +289,17 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 		atualizarEstadoInterface();
 		view.setSenhaAntigaHabilitado(false);
 
-		runAsync(SwingUtilities.getWindowAncestor(view), () -> service.buscarMasterUnico(), masterExistente -> {
-			if (masterExistente == null) {
-				view.setMaster(true);
-				view.setMasterHabilitado(true);
-				view.setPermissoesHabilitadas(false);
-			} else {
-				view.setMaster(false);
-				view.setMasterHabilitado(false);
-			}
-		});
+		runAsync(SwingUtilities.getWindowAncestor(view), () -> bootstrapService.buscarMasterUnico(),
+				masterExistente -> {
+					if (masterExistente == null) {
+						view.setMaster(true);
+						view.setMasterHabilitado(true);
+						view.setPermissoesHabilitadas(false);
+					} else {
+						view.setMaster(false);
+						view.setMasterHabilitado(false);
+					}
+				});
 	}
 
 	private void carregarListaPerfis(Runnable cb) {
@@ -313,7 +319,7 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 	}
 
 	private void carregarEmpresaPadrao() {
-		runAsync(SwingUtilities.getWindowAncestor(view), () -> service.buscarEmpresaFornecedora(), e -> {
+		runAsync(SwingUtilities.getWindowAncestor(view), () -> bootstrapService.buscarEmpresaFornecedora(), e -> {
 			if (e != null)
 				view.setEmpresa(e.getIdEmpresa(), e.getRazaoSocialEmpresa());
 		});

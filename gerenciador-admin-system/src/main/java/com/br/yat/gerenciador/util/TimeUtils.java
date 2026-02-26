@@ -18,18 +18,36 @@ public class TimeUtils {
 		return dataHora.format(FORMATTER_BR);
 	}
 
+//	public static LocalDateTime parseDataHora(String dataStr) {
+//	    if (dataStr == null || dataStr.trim().isEmpty()) return null;
+//	    try {
+//	        // Tenta o formato completo primeiro
+//	        return LocalDateTime.parse(dataStr, FORMATTER_BR);
+//	    } catch (Exception e) {
+//	        try {
+//	            // Tenta um formato sem segundos como fallback
+//	            DateTimeFormatter fallback = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+//	            return LocalDateTime.parse(dataStr, fallback);
+//	        } catch (Exception ex) {
+//	            return null; // Se não for data válida, retorna null
+//	        }
+//	    }
+//	}
+	
 	public static LocalDateTime parseDataHora(String dataStr) {
-	    if (dataStr == null || dataStr.trim().isEmpty()) return null;
+	    if (dataStr == null || dataStr.trim().isEmpty()) {
+	        throw new IllegalArgumentException("Data não pode ser vazia.");
+	    }
+
 	    try {
-	        // Tenta o formato completo primeiro
 	        return LocalDateTime.parse(dataStr, FORMATTER_BR);
 	    } catch (Exception e) {
 	        try {
-	            // Tenta um formato sem segundos como fallback
-	            DateTimeFormatter fallback = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+	            DateTimeFormatter fallback =
+	                    DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 	            return LocalDateTime.parse(dataStr, fallback);
 	        } catch (Exception ex) {
-	            return null; // Se não for data válida, retorna null
+	            throw new IllegalArgumentException("Formato de data inválido.");
 	        }
 	    }
 	}

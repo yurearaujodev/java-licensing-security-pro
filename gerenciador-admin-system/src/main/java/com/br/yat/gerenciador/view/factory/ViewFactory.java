@@ -37,6 +37,7 @@ import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.service.AutenticacaoService;
+import com.br.yat.gerenciador.service.BootstrapService;
 import com.br.yat.gerenciador.service.DatabaseConnectionService;
 import com.br.yat.gerenciador.service.DatabaseSetupService;
 import com.br.yat.gerenciador.service.EmpresaService;
@@ -65,23 +66,23 @@ public final class ViewFactory {
 
 	private static MenuPrincipalController mainController;
 	private static DaoFactory daoFactory;
-	
-	 public static void initializeDependencies() {
-	        if (daoFactory == null) {
-	            synchronized (ViewFactory.class) {
-	                if (daoFactory == null) {
-	                    daoFactory = new DaoFactoryImpl();
-	                }
-	            }
-	        }
-	    }
-	 
-	 private static DaoFactory getDaoFactory() {
-	        if (daoFactory == null) {
-	            initializeDependencies();
-	        }
-	        return daoFactory;
-	    }
+
+	public static void initializeDependencies() {
+		if (daoFactory == null) {
+			synchronized (ViewFactory.class) {
+				if (daoFactory == null) {
+					daoFactory = new DaoFactoryImpl();
+				}
+			}
+		}
+	}
+
+	private static DaoFactory getDaoFactory() {
+		if (daoFactory == null) {
+			initializeDependencies();
+		}
+		return daoFactory;
+	}
 
 	public static EmpresaView createEmpresaView(TipoCadastro tipoCadastro) {
 		EmpresaView view = new EmpresaView();
@@ -168,15 +169,14 @@ public final class ViewFactory {
 
 	public static UsuarioConsultaView createUsuarioConsultaView() {
 		UsuarioConsultaView view = new UsuarioConsultaView();
-		
-		DaoFactory df = getDaoFactory();
-		
-		
-		ParametroSistemaService parametro = new ParametroSistemaService();
-		AutenticacaoService authService = new AutenticacaoService(parametro,df);
-		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService();
 
-		UsuarioService service = new UsuarioService(authService, parametro, usuperservice,df);
+		DaoFactory df = getDaoFactory();
+
+		ParametroSistemaService parametro = new ParametroSistemaService();
+		AutenticacaoService authService = new AutenticacaoService(parametro, df);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df);
+		BootstrapService bootstrapService = new BootstrapService(df);
+		UsuarioService service = new UsuarioService(authService, parametro, usuperservice, df, bootstrapService);
 		UsuarioConsultaController controller = new UsuarioConsultaController(view, service, authService);
 
 		view.addInternalFrameListener(new InternalFrameAdapter() {
@@ -193,12 +193,14 @@ public final class ViewFactory {
 		DaoFactory df = getDaoFactory();
 
 		ParametroSistemaService parametro = new ParametroSistemaService();
-		AutenticacaoService authService = new AutenticacaoService(parametro,df);
-		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService();
-		UsuarioService service = new UsuarioService(authService, parametro, usuperservice,df);
+		AutenticacaoService authService = new AutenticacaoService(parametro, df);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df);
+		BootstrapService bootstrapService = new BootstrapService(df);
+		UsuarioService service = new UsuarioService(authService, parametro, usuperservice, df, bootstrapService);
 		PerfilService perfilService = new PerfilService();
 
-		UsuarioController controller = new UsuarioController(view, service, perfilService);
+		UsuarioController controller = new UsuarioController(view, service, perfilService, bootstrapService,
+				usuperservice);
 		view.putClientProperty("controller", controller);
 
 		view.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
@@ -215,13 +217,14 @@ public final class ViewFactory {
 
 	public static UsuarioViewLogin createLoginView() {
 		UsuarioViewLogin view = new UsuarioViewLogin();
-		
+
 		DaoFactory df = getDaoFactory();
 		ParametroSistemaService parametro = new ParametroSistemaService();
-		AutenticacaoService authService = new AutenticacaoService(parametro,df);
-		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService();
-		UsuarioService service = new UsuarioService(authService, parametro, usuperservice,df);
-		new LoginController(view, authService, service);
+		AutenticacaoService authService = new AutenticacaoService(parametro, df);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df);
+		BootstrapService bootstrapService = new BootstrapService(df);
+		new UsuarioService(authService, parametro, usuperservice, df, bootstrapService);
+		new LoginController(view, authService, usuperservice);
 
 		view.setClosable(false);
 		view.setIconifiable(false);
@@ -278,9 +281,9 @@ public final class ViewFactory {
 	public static ParametroSistemaView createParametroSistemaView() {
 		ParametroSistemaView view = new ParametroSistemaView();
 		DaoFactory df = getDaoFactory();
-		
+
 		ParametroSistemaService service = new ParametroSistemaService();
-		AutenticacaoService authService = new AutenticacaoService(service,df);
+		AutenticacaoService authService = new AutenticacaoService(service, df);
 		new ParametroSistemaController(view, service, authService);
 		return view;
 	}
@@ -339,7 +342,7 @@ public final class ViewFactory {
 		DaoFactory df = getDaoFactory();
 
 		ParametroSistemaService parametro = new ParametroSistemaService();
-		AutenticacaoService authService = new AutenticacaoService(parametro,df);
+		AutenticacaoService authService = new AutenticacaoService(parametro, df);
 		new TrocaSenhaObrigatoriaController(view, user, authService, callbackSucesso);
 		view.setVisible(true);
 	}

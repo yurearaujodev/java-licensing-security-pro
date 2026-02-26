@@ -11,7 +11,7 @@ import com.br.yat.gerenciador.model.enums.ParametroChave;
 import com.br.yat.gerenciador.policy.UsuarioPolicy;
 import com.br.yat.gerenciador.service.LogSistemaService;
 import com.br.yat.gerenciador.service.ParametroSistemaService;
-import com.br.yat.gerenciador.service.UsuarioService;
+import com.br.yat.gerenciador.service.UsuarioPermissaoService;
 import com.br.yat.gerenciador.service.AutenticacaoService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.view.UsuarioViewLogin;
@@ -19,13 +19,13 @@ import com.br.yat.gerenciador.view.factory.ViewFactory;
 
 public class LoginController extends BaseController {
 	private final UsuarioViewLogin view;
-	private final UsuarioService userService;
 	private final AutenticacaoService authService;
+	private final UsuarioPermissaoService usuarioPermissaoService;
 
-	public LoginController(UsuarioViewLogin view, AutenticacaoService authService, UsuarioService userService) {
+	public LoginController(UsuarioViewLogin view, AutenticacaoService authService, UsuarioPermissaoService usuarioPermissaoService) {
 		this.view = view;
-		this.userService = userService;
 		this.authService = authService;
+		this.usuarioPermissaoService=usuarioPermissaoService;
 		registrarAcoes();
 		SwingUtilities.invokeLater(view::focarEmail);
 	}
@@ -40,7 +40,7 @@ public class LoginController extends BaseController {
 			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
 				Usuario user = authService.autenticar(email, senha);
 
-				List<MenuChave> permissoes = userService.carregarPermissoesAtivas(user.getIdUsuario());
+				List<MenuChave> permissoes = usuarioPermissaoService.carregarPermissoesAtivas(user.getIdUsuario());
 				return new LoginDTO(user, permissoes);
 			}, data -> {
 				Usuario user = data.user();
