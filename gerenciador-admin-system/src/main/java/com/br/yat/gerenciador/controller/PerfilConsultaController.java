@@ -13,6 +13,7 @@ import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.security.PermissaoContexto;
 import com.br.yat.gerenciador.service.PerfilService;
+import com.br.yat.gerenciador.service.UsuarioPermissaoService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.view.PerfilConsultaView;
@@ -25,14 +26,16 @@ public class PerfilConsultaController extends BaseController {
 
 	private final PerfilConsultaView view;
 	private final PerfilService service;
+	private final UsuarioPermissaoService usuarioPermissaoService;
 	private ScheduledFuture<?> debounceTask;
 
 	private Usuario usuarioLogado;
 	private PermissaoContexto permissaoContexto;
 
-	public PerfilConsultaController(PerfilConsultaView view, PerfilService service) {
+	public PerfilConsultaController(PerfilConsultaView view, PerfilService service,UsuarioPermissaoService usuarioPermissaoService) {
 		this.view = view;
 		this.service = service;
+		this.usuarioPermissaoService=usuarioPermissaoService;
 		inicializarEscopo();
 		configurar();
 	}
@@ -51,7 +54,7 @@ public class PerfilConsultaController extends BaseController {
 			return;
 		}
 
-		permissaoContexto = service.obterContextoPermissao(usuarioLogado.getIdUsuario(),
+		permissaoContexto = usuarioPermissaoService.obterContextoPermissao(usuarioLogado.getIdUsuario(),
 				MenuChave.CONFIGURACAO_PERMISSAO);
 	}
 

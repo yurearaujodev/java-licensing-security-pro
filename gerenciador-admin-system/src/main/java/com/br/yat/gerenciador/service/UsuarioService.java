@@ -6,11 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.br.yat.gerenciador.dao.DaoFactory;
-import com.br.yat.gerenciador.dao.LogSistemaDao;
 import com.br.yat.gerenciador.dao.usuario.PermissaoDao;
 import com.br.yat.gerenciador.dao.usuario.UsuarioDao;
 import com.br.yat.gerenciador.exception.ValidationException;
@@ -22,8 +19,8 @@ import com.br.yat.gerenciador.model.enums.StatusUsuario;
 import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.policy.UsuarioPolicy;
-import com.br.yat.gerenciador.security.PermissaoContexto;
-import com.br.yat.gerenciador.util.AuditLogHelper;
+import com.br.yat.gerenciador.util.Diferenca;
+import com.br.yat.gerenciador.util.DiferencaMapperUtil;
 import com.br.yat.gerenciador.util.TimeUtils;
 import com.br.yat.gerenciador.validation.UsuarioValidationUtils;
 
@@ -34,16 +31,19 @@ public class UsuarioService extends BaseService {
 	private final UsuarioPermissaoService permissaoService;
 	private final DaoFactory daoFactory;
 	private final BootstrapService bootstrapService;
+	private final AuditLogService auditLogService;
 
 	private static final MenuChave CHAVE_USUARIO = MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES;
 
 	public UsuarioService(AutenticacaoService authService, ParametroSistemaService parametroService,
-			UsuarioPermissaoService permissaoService, DaoFactory daoFactory, BootstrapService bootstrapService) {
+			UsuarioPermissaoService permissaoService, DaoFactory daoFactory, BootstrapService bootstrapService,
+			AuditLogService auditLogService) {
 		this.authService = authService;
 		this.parametroService = parametroService;
 		this.permissaoService = permissaoService;
 		this.daoFactory = daoFactory;
 		this.bootstrapService = bootstrapService;
+		this.auditLogService = auditLogService;
 	}
 
 	public List<Usuario> listarUsuarios(String termo, Usuario executor) {
@@ -64,10 +64,10 @@ public class UsuarioService extends BaseService {
 	}
 
 	private List<Usuario> filtrarMastersSeNecessario(List<Usuario> lista, Usuario executor) {
-	    if (executor == null || !UsuarioPolicy.isPrivilegiado(executor)) {
-	        lista.removeIf(Usuario::isMaster);
-	    }
-	    return lista;
+		if (executor == null || !UsuarioPolicy.isPrivilegiado(executor)) {
+			lista.removeIf(Usuario::isMaster);
+		}
+		return lista;
 	}
 
 	public List<Usuario> listarUsuariosUltimoLogin(String termo, Usuario executor) {
@@ -94,70 +94,64 @@ public class UsuarioService extends BaseService {
 		});
 	}
 
-	public PermissaoContexto obterContextoPermissao(Integer idUsuario, MenuChave menu) {
-		if (idUsuario == null || idUsuario <= 0)
-			return PermissaoContexto.semPermissao();
-		return execute(conn -> {
-			Set<TipoPermissao> permissoes = permissaoService.listarPermissoesAtivasPorMenu(conn, idUsuario, menu)
-					.stream().map(p -> {
-						try {
-							return TipoPermissao.valueOf(p);
-						} catch (Exception e) {
-							return null;
-						}
-					}).filter(Objects::nonNull).collect(Collectors.toUnmodifiableSet());
-			return PermissaoContexto.comum(permissoes);
-		});
-	}
-
 	public void salvarUsuario(Usuario usuario, Map<MenuChave, List<String>> permissoesGranulares,
 			Map<MenuChave, String> datasExpiracao, Usuario executor) {
 
-		// --- 1. Validações iniciais ---
-		validarDados(usuario, permissoesGranulares);
-		validarRestricoesMaster(usuario);
-		validarDatasExpiracao(datasExpiracao);
+		try {
 
-		// --- 2. Preparar permissões e datas ---
-		Map<MenuChave, List<String>> permissoesFinal = prepararPermissoes(usuario, permissoesGranulares);
-		Map<MenuChave, String> datasFinal = prepararDatas(usuario, datasExpiracao);
+			// --- 1. Validações iniciais ---
+			validarDados(usuario, permissoesGranulares);
+			validarRestricoesMaster(usuario);
+			validarDatasExpiracao(datasExpiracao);
 
-		// --- 3. Inicia transação ---
-		executeInTransactionVoid(conn -> {
+			// --- 2. Preparar permissões e datas ---
+			Map<MenuChave, List<String>> permissoesFinal = prepararPermissoes(usuario, permissoesGranulares);
+			Map<MenuChave, String> datasFinal = prepararDatas(usuario, datasExpiracao);
 
-			// --- 4. Determinar se é setup inicial ---
-			boolean isSetupInicial = isSetupInicial(usuario, executor, conn);
+			// --- 3. Inicia transação ---
+			executeInTransactionVoid(conn -> {
 
-			// --- 5. Valida acesso se não for setup inicial ---
-			if (!isSetupInicial) {
-				validarAcesso(conn, executor, CHAVE_USUARIO, TipoPermissao.WRITE);
-			}
+				// --- 4. Determinar se é setup inicial ---
+				boolean isSetupInicial = isSetupInicial(usuario, executor, conn);
 
-			// --- 6. Valida regras de persistência do usuário ---
-			UsuarioDao usuarioDao = daoFactory.createUsuarioDao(conn);
-			validarRegrasPersistencia(usuarioDao, usuario);
+				// --- 5. Valida acesso se não for setup inicial ---
+				if (!isSetupInicial) {
+					validarAcesso(conn, executor, CHAVE_USUARIO, TipoPermissao.WRITE);
+				}
 
-			// --- 7. Obter estado anterior (para updates) ---
-			Usuario alvoExistente = obterUsuarioExistente(usuario, usuarioDao);
-			Usuario estadoAnterior = alvoExistente != null ? Usuario.snapshotParaValidacaoSenha(alvoExistente) : null;
+				// --- 6. Valida regras de persistência do usuário ---
+				UsuarioDao usuarioDao = daoFactory.createUsuarioDao(conn);
+				validarRegrasPersistencia(usuarioDao, usuario);
 
-			// --- 8. Validar hierarquia e privilégios ---
-			validarHierarquiaAlteracao(conn, executor, alvoExistente, isSetupInicial);
+				// --- 7. Obter estado anterior (para updates) ---
+				Usuario alvoExistente = obterUsuarioExistente(usuario, usuarioDao);
+				Usuario estadoAnterior = alvoExistente != null ? Usuario.snapshotParaValidacaoSenha(alvoExistente)
+						: null;
 
-			// --- 9. Processar senha se necessário ---
-			boolean senhaAlterada = processarSenhaSeNecessario(usuario, executor, estadoAnterior);
+				// --- 8. Validar hierarquia e privilégios ---
+				validarHierarquiaAlteracao(conn, executor, alvoExistente, isSetupInicial);
 
-			// --- 10. Salvar ou atualizar usuário ---
-			salvarOuAtualizar(usuarioDao, usuario, estadoAnterior, alvoExistente == null, conn);
+				// --- 9. Processar senha se necessário ---
+				boolean senhaAlterada = processarSenhaSeNecessario(usuario, executor, estadoAnterior);
 
-			// --- 11. Registrar log de alteração de senha ---
-			registrarLogSenhaAlterada(conn, usuario, senhaAlterada, alvoExistente == null);
+				// --- 10. Salvar ou atualizar usuário ---
+				salvarOuAtualizar(usuarioDao, usuario, estadoAnterior, alvoExistente == null, conn);
 
-			// --- 12. Montar permissões finais e sincronizar ---
-			List<UsuarioPermissao> permissoesSincronizadas = permissaoService.montarPermissoes(conn, usuario, executor,
-					isSetupInicial, permissoesFinal, datasFinal);
-			permissaoService.sincronizarPermissoes(conn, usuario, permissoesSincronizadas);
-		});
+				// --- 11. Registrar log de alteração de senha ---
+				registrarLogSenhaAlterada(conn, usuario, senhaAlterada, alvoExistente == null);
+
+				// --- 12. Montar permissões finais e sincronizar ---
+				List<UsuarioPermissao> permissoesSincronizadas = permissaoService.montarPermissoes(conn, usuario,
+						executor, isSetupInicial, permissoesFinal, datasFinal);
+				permissaoService.sincronizarPermissoes(conn, usuario, permissoesSincronizadas);
+			});
+		} catch (ValidationException ve) {
+			throw ve;
+
+		} catch (RuntimeException e) {
+			registrarLogErro("ERRO", "SALVAR_USUARIO", "usuario", e);
+			throw e;
+		}
 	}
 
 	private Map<MenuChave, List<String>> prepararPermissoes(Usuario usuario, Map<MenuChave, List<String>> permissoes) {
@@ -195,7 +189,7 @@ public class UsuarioService extends BaseService {
 
 	private void registrarLogSenhaAlterada(Connection conn, Usuario usuario, boolean senhaAlterada, boolean isNovo) {
 		if (senhaAlterada && !isNovo) {
-			registrarLogSucesso(conn, "SEGURANCA", "SENHA_ALTERADA", "usuario", usuario.getIdUsuario(),
+			auditLogService.registrarSucesso(conn, "SEGURANCA", "SENHA_ALTERADA", "usuario", usuario.getIdUsuario(),
 					"O executor alterou a senha deste usuário.", null);
 		}
 	}
@@ -250,12 +244,10 @@ public class UsuarioService extends BaseService {
 	}
 
 	private void salvarOuAtualizar(UsuarioDao dao, Usuario usuario, Usuario anterior, boolean isNovo, Connection conn) {
-		LogSistemaDao logDao = daoFactory.createLogSistemaDao(conn);
-
 		if (isNovo) {
 			int id = dao.save(usuario);
 			usuario.setIdUsuario(id);
-			registrarLogSucesso(conn, "CADASTRO", "INSERIR_USUARIO", "usuario", id, null, usuario);
+			auditLogService.registrarSucesso(conn, "CADASTRO", "INSERIR_USUARIO", "usuario", id, null, usuario);
 		} else {
 			if (anterior.getStatus() != StatusUsuario.ATIVO && usuario.getStatus() == StatusUsuario.ATIVO) {
 				dao.resetTentativasFalhas(usuario.getIdUsuario());
@@ -265,14 +257,20 @@ public class UsuarioService extends BaseService {
 				alteracaoStatus.put("para", "ATIVO");
 				alteracaoStatus.put("motivo", "Reativação manual via service layer");
 
-				registrarLogSucesso(conn, "SEGURANCA", "REATIVACAO_MANUAL", "usuario", usuario.getIdUsuario(), null,
-						alteracaoStatus);
+				auditLogService.registrarSucesso(conn, "SEGURANCA", "REATIVACAO_MANUAL", "usuario",
+						usuario.getIdUsuario(), null, alteracaoStatus);
 			}
 
+//			dao.update(usuario);
+//
+//			auditLogService.registrarSucesso(conn, "CADASTRO", "ALTERAR_USUARIO", "usuario", usuario.getIdUsuario(),
+//					anterior, usuario);
 			dao.update(usuario);
 
-			logDao.save(AuditLogHelper.gerarLogSucesso("CADASTRO", "ALTERAR_USUARIO", "usuario", usuario.getIdUsuario(),
-					anterior, usuario));
+			Usuario depois = dao.searchById(usuario.getIdUsuario());
+
+			registrarAlteracaoComDiff(conn, "CADASTRO", "ALTERAR_USUARIO", "usuario", usuario.getIdUsuario(), anterior,
+					depois);
 		}
 	}
 
@@ -309,7 +307,10 @@ public class UsuarioService extends BaseService {
 				}
 
 				dao.softDeleteById(idUsuario);
-				registrarLogSucesso(conn, "CADASTRO", "EXCLUIR_USUARIO", "usuario", idUsuario, anterior, null);
+
+				Usuario depois = dao.searchById(idUsuario);
+
+				registrarAlteracaoComDiff(conn, "CADASTRO", "EXCLUIR_USUARIO", "usuario", idUsuario, anterior, depois);
 			});
 
 		} catch (RuntimeException e) {
@@ -325,19 +326,31 @@ public class UsuarioService extends BaseService {
 				validarAcesso(conn, executor, CHAVE_USUARIO, TipoPermissao.DELETE);
 
 				UsuarioDao dao = daoFactory.createUsuarioDao(conn);
+				Usuario anterior = dao.searchById(idUsuario);
+
 				dao.restaurar(idUsuario);
 
-				Map<String, String> detalhes = new HashMap<>();
-				detalhes.put("status_anterior", "EXCLUIDO");
-				detalhes.put("status_atual", "ATIVO");
-				detalhes.put("acao", "Restauração de registro via lixeira");
+				Usuario depois = dao.searchById(idUsuario);
 
-				registrarLogSucesso(conn, "CADASTRO", "RESTAURAR_USUARIO", "usuario", idUsuario, null, detalhes);
+				registrarAlteracaoComDiff(conn, "CADASTRO", "RESTAURAR_USUARIO", "usuario", idUsuario, anterior,
+						depois);
 			});
 
 		} catch (RuntimeException e) {
-			registrarLogErro("ERRO", "RESTAURAR_USUARIO", "usuario", e);
+			auditLogService.registrarErro("ERRO", "RESTAURAR_USUARIO", "usuario", e);
 			throw e;
+		}
+	}
+
+	private void registrarAlteracaoComDiff(Connection conn, String tipo, String acao, String entidade, Integer id,
+			Usuario anterior, Usuario depois) {
+
+		Diferenca<String> diff = DiferencaMapperUtil.calcular(List.of(anterior), List.of(depois),
+				this::mapearUsuarioParaDiff);
+
+		if (diff.temAlteracao()) {
+			auditLogService.registrarSucesso(conn, tipo, acao, entidade, id, Map.of("antes", anterior),
+					Map.of("depois", depois));
 		}
 	}
 
@@ -405,6 +418,17 @@ public class UsuarioService extends BaseService {
 			throw new ValidationException(ValidationErrorType.DUPLICATE_ENTRY,
 					"ESTE E-MAIL JÁ ESTÁ CADASTRADO NO SISTEMA.");
 		}
+	}
+
+	private String mapearUsuarioParaDiff(Usuario u) {
+
+		if (u == null)
+			return "";
+
+		return u.getNome() + "|" + u.getEmail() + "|" + u.getStatus() + "|"
+				+ (u.getPerfil() != null ? u.getPerfil().getIdPerfil() : "SEM_PERFIL") + "|" + u.isMaster() + "|"
+				+ u.isForcarResetSenha() + "|" + (u.getSenhaExpiraEm() != null ? u.getSenhaExpiraEm() : "SEM_EXPIRACAO")
+				+ "|" + (u.getBloqueadoAte() != null ? u.getBloqueadoAte() : "NAO_BLOQUEADO");
 	}
 
 }

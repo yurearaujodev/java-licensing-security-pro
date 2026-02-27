@@ -11,6 +11,7 @@ import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.security.PermissaoContexto;
 import com.br.yat.gerenciador.service.AutenticacaoService;
+import com.br.yat.gerenciador.service.UsuarioPermissaoService;
 import com.br.yat.gerenciador.service.UsuarioService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.ValidationUtils;
@@ -25,6 +26,7 @@ public class UsuarioConsultaController extends BaseController {
 	private final UsuarioConsultaView view;
 	private final UsuarioService service;
 	private final AutenticacaoService authService;
+	private final UsuarioPermissaoService usuarioPermissaoService;
 
 	private ScheduledFuture<?> debounceTask;
 
@@ -32,11 +34,12 @@ public class UsuarioConsultaController extends BaseController {
 	private PermissaoContexto permissaoContexto;
 
 	public UsuarioConsultaController(UsuarioConsultaView view, UsuarioService service,
-			AutenticacaoService authService) {
+			AutenticacaoService authService,UsuarioPermissaoService usuarioPermissaoService) {
 
 		this.view = view;
 		this.service = service;
 		this.authService = authService;
+		this.usuarioPermissaoService=usuarioPermissaoService;
 
 		inicializarEscopo();
 	}
@@ -56,7 +59,7 @@ public class UsuarioConsultaController extends BaseController {
 			return;
 		}
 
-		runAsync(SwingUtilities.getWindowAncestor(view), () -> service
+		runAsync(SwingUtilities.getWindowAncestor(view), () -> usuarioPermissaoService
 				.obterContextoPermissao(usuarioLogado.getIdUsuario(), MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES),
 				ctx -> {
 

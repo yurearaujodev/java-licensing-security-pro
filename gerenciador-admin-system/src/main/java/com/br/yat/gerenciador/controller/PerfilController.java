@@ -9,6 +9,7 @@ import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.service.PerfilService;
+import com.br.yat.gerenciador.service.UsuarioPermissaoService;
 import com.br.yat.gerenciador.util.DialogFactory;
 import com.br.yat.gerenciador.util.MenuChaveGrouper;
 import com.br.yat.gerenciador.util.ValidationUtils;
@@ -19,10 +20,12 @@ public class PerfilController extends BaseCadastroController<PerfilView> {
 	private final PerfilService service;
 	private Perfil perfilAtual;
 	private RefreshCallback refreshCallback;
-
-	public PerfilController(PerfilView view, PerfilService service) {
+	private final UsuarioPermissaoService usuarioPermissaoService;
+	
+	public PerfilController(PerfilView view, PerfilService service,UsuarioPermissaoService usuarioPermissaoService) {
 		super(view);
 		this.service = service;
+		this.usuarioPermissaoService=usuarioPermissaoService;
 		inicializar();
 		configurarFiltro();
 	}
@@ -151,7 +154,7 @@ public class PerfilController extends BaseCadastroController<PerfilView> {
 		}
 
 		runAsync(SwingUtilities.getWindowAncestor(view),
-				() -> service.obterContextoPermissao(logado.getIdUsuario(), MenuChave.CONFIGURACAO_PERMISSAO), ctx -> {
+				() -> usuarioPermissaoService.obterContextoPermissao(logado.getIdUsuario(), MenuChave.CONFIGURACAO_PERMISSAO), ctx -> {
 
 					if (!ctx.temRead()) {
 						view.doDefaultCloseAction();

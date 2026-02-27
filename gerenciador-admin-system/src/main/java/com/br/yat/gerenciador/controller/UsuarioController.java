@@ -339,7 +339,7 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 		}
 
 		runAsync(SwingUtilities.getWindowAncestor(view),
-				() -> service.obterContextoPermissao(logado.getIdUsuario(), MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES),
+				() -> usuarioPermissaoUsuario.obterContextoPermissao(logado.getIdUsuario(), MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES),
 				ctx -> {
 
 					if (!ctx.temRead()) {
@@ -363,7 +363,7 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 			if (emp == null)
 				throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND, "CADASTRE A EMPRESA ANTES!");
 
-			Perfil perf = perfilService.buscarOuCriarPerfilMaster();
+			Perfil perf = bootstrapService.buscarOuCriarPerfilMaster();
 			return new Object[] { emp, perf };
 		}, result -> {
 			Empresa emp = (Empresa) result[0];

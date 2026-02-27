@@ -36,6 +36,7 @@ import com.br.yat.gerenciador.dao.DaoFactoryImpl;
 import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
+import com.br.yat.gerenciador.service.AuditLogService;
 import com.br.yat.gerenciador.service.AutenticacaoService;
 import com.br.yat.gerenciador.service.BootstrapService;
 import com.br.yat.gerenciador.service.DatabaseConnectionService;
@@ -174,10 +175,11 @@ public final class ViewFactory {
 
 		ParametroSistemaService parametro = new ParametroSistemaService();
 		AutenticacaoService authService = new AutenticacaoService(parametro, df);
-		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df);
+		AuditLogService auditLogService = new AuditLogService(df);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService);
 		BootstrapService bootstrapService = new BootstrapService(df);
-		UsuarioService service = new UsuarioService(authService, parametro, usuperservice, df, bootstrapService);
-		UsuarioConsultaController controller = new UsuarioConsultaController(view, service, authService);
+		UsuarioService service = new UsuarioService(authService, parametro, usuperservice, df, bootstrapService,auditLogService);
+		UsuarioConsultaController controller = new UsuarioConsultaController(view, service, authService,usuperservice);
 
 		view.addInternalFrameListener(new InternalFrameAdapter() {
 			@Override
@@ -194,10 +196,11 @@ public final class ViewFactory {
 
 		ParametroSistemaService parametro = new ParametroSistemaService();
 		AutenticacaoService authService = new AutenticacaoService(parametro, df);
-		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df);
+		AuditLogService auditLogService = new AuditLogService(df);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService);
 		BootstrapService bootstrapService = new BootstrapService(df);
-		UsuarioService service = new UsuarioService(authService, parametro, usuperservice, df, bootstrapService);
-		PerfilService perfilService = new PerfilService();
+		UsuarioService service = new UsuarioService(authService, parametro, usuperservice, df, bootstrapService,auditLogService);
+		PerfilService perfilService = new PerfilService(usuperservice,df,auditLogService);
 
 		UsuarioController controller = new UsuarioController(view, service, perfilService, bootstrapService,
 				usuperservice);
@@ -221,9 +224,10 @@ public final class ViewFactory {
 		DaoFactory df = getDaoFactory();
 		ParametroSistemaService parametro = new ParametroSistemaService();
 		AutenticacaoService authService = new AutenticacaoService(parametro, df);
-		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df);
+		AuditLogService auditLogService = new AuditLogService(df);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService);
 		BootstrapService bootstrapService = new BootstrapService(df);
-		new UsuarioService(authService, parametro, usuperservice, df, bootstrapService);
+		new UsuarioService(authService, parametro, usuperservice, df, bootstrapService,auditLogService);
 		new LoginController(view, authService, usuperservice);
 
 		view.setClosable(false);
@@ -290,8 +294,11 @@ public final class ViewFactory {
 
 	public static PerfilView createPerfilView() {
 		PerfilView view = new PerfilView();
-		PerfilService service = new PerfilService();
-		PerfilController controller = new PerfilController(view, service);
+		DaoFactory df = getDaoFactory();
+		AuditLogService auditLogService = new AuditLogService(df);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService);
+		PerfilService service = new PerfilService(usuperservice,df,auditLogService);
+		PerfilController controller = new PerfilController(view, service,usuperservice);
 
 		view.putClientProperty("controller", controller);
 
@@ -308,8 +315,11 @@ public final class ViewFactory {
 
 	public static PerfilConsultaView createPerfilConsultaView() {
 		PerfilConsultaView view = new PerfilConsultaView();
-		PerfilService service = new PerfilService();
-		PerfilConsultaController controller = new PerfilConsultaController(view, service);
+		DaoFactory df = getDaoFactory();
+		AuditLogService auditLogService = new AuditLogService(df);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService);
+		PerfilService service = new PerfilService(usuperservice,df,auditLogService);
+		PerfilConsultaController controller = new PerfilConsultaController(view, service,usuperservice);
 
 		view.addInternalFrameListener(new InternalFrameAdapter() {
 			@Override

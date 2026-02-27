@@ -2,11 +2,14 @@ package com.br.yat.gerenciador.service;
 
 import java.sql.Connection;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.br.yat.gerenciador.dao.DaoFactory;
@@ -19,16 +22,22 @@ import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.UsuarioPermissao;
 import com.br.yat.gerenciador.model.dto.UsuarioPermissaoDetalheDTO;
 import com.br.yat.gerenciador.model.enums.MenuChave;
+import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.policy.UsuarioPolicy;
+import com.br.yat.gerenciador.security.PermissaoContexto;
+import com.br.yat.gerenciador.util.Diferenca;
+import com.br.yat.gerenciador.util.DiferencaMapperUtil;
 import com.br.yat.gerenciador.util.TimeUtils;
 
 public class UsuarioPermissaoService extends BaseService {
 
 	private final DaoFactory daoFactory;
+	private final AuditLogService auditLogService;
 
-	public UsuarioPermissaoService(DaoFactory daoFactory) {
+	public UsuarioPermissaoService(DaoFactory daoFactory, AuditLogService auditLogService) {
 		this.daoFactory = daoFactory;
+		this.auditLogService = auditLogService;
 	}
 
 	public List<UsuarioPermissao> montarPermissoes(Connection conn, Usuario usuario, Usuario executor,
@@ -87,7 +96,7 @@ public class UsuarioPermissaoService extends BaseService {
 			Map<MenuChave, List<String>> permissoesGranulares, Map<MenuChave, String> datasTexto) {
 
 		List<UsuarioPermissao> novas = new ArrayList<>();
-		PermissaoDao pDao = new PermissaoDao(conn);
+		PermissaoDao pDao = daoFactory.createPermissaoDao(conn);
 
 		if (usuario.isMaster()) {
 			for (Permissao p : pDao.listAll()) {
@@ -143,9 +152,9 @@ public class UsuarioPermissaoService extends BaseService {
 				throw new ValidationException(ValidationErrorType.INVALID_FIELD,
 						"FORMATO DE DATA INVÁLIDO PARA O MENU: " + chave);
 			}
-			
+
 			LocalDateTime agora = LocalDateTime.now();
-			
+
 			if (dataDigitada.isBefore(agora.minusMinutes(1))) {
 				throw new ValidationException(ValidationErrorType.INVALID_FIELD,
 						"A DATA DE EXPIRAÇÃO PARA [" + chave + "] NÃO PODE SER NO PASSADO.");
@@ -262,33 +271,129 @@ public class UsuarioPermissaoService extends BaseService {
 	}
 
 	public void sincronizarPermissoes(Connection conn, Usuario usuario, List<UsuarioPermissao> permissoes) {
+
 		UsuarioPermissaoDao upDao = daoFactory.createUsuarioPermissaoDao(conn);
+
+		List<UsuarioPermissao> antes = upDao.listarPorUsuario(usuario.getIdUsuario());
+
 		upDao.syncByUsuario(usuario.getIdUsuario(), permissoes);
-		registrarLogPermissoesFinal(conn, usuario, permissoes);
+
+		List<UsuarioPermissao> depois = upDao.listarPorUsuario(usuario.getIdUsuario());
+
+		registrarLogDiferencaUsuario(conn, usuario, antes, depois);
 	}
 
-	private void registrarLogPermissoesFinal(Connection conn, Usuario usuario, List<UsuarioPermissao> finais) {
+	private void registrarLogDiferencaUsuario(Connection conn, Usuario usuario, List<UsuarioPermissao> antes,
+			List<UsuarioPermissao> depois) {
+
+		Diferenca<String> diff = DiferencaMapperUtil.calcular(antes, depois, this::mapearPermissaoUsuario);
+
+		auditLogService.registrarAlteracaoPermissoesUsuario(conn, usuario, diff);
+	}
+
+	private String mapearPermissaoUsuario(UsuarioPermissao up) {
+		return up.getIdPermissoes() + "|" + up.isHerdada() + "|"
+				+ (up.getExpiraEm() != null ? up.getExpiraEm().truncatedTo(ChronoUnit.SECONDS) : "SEM_EXPIRACAO") + "|"
+				+ up.isAtiva();
+	}
+
+	public void sincronizarPermissoesPerfil(Connection conn, int idPerfil, Map<MenuChave, List<String>> permissoes,
+			Usuario executor) {
+
+		PerfilPermissoesDao ppDao = daoFactory.createPerfilPermissoesDao(conn);
 		PermissaoDao pDao = daoFactory.createPermissaoDao(conn);
 
-		List<Integer> ids = finais.stream().map(UsuarioPermissao::getIdPermissoes).distinct().toList();
+		sincronizarPermissoesPerfil(conn, ppDao, pDao, idPerfil, permissoes, executor);
+	}
 
-		Map<Integer, Permissao> mapaRef = pDao.listarPorIds(ids).stream()
-				.collect(Collectors.toMap(Permissao::getIdPermissoes, p -> p));
+	private void sincronizarPermissoesPerfil(Connection conn, PerfilPermissoesDao ppDao, PermissaoDao pDao,
+			int idPerfil, Map<MenuChave, List<String>> permissoes, Usuario executor) {
 
-		String resumo = finais.stream().map(up -> {
-			Permissao p = mapaRef.get(up.getIdPermissoes());
+		List<Permissao> antes = ppDao.listarPermissoesPorPerfil(idPerfil);
 
-			String nome = (p != null) ? p.getChave() + " (" + p.getTipo() + ")" : "ID:" + up.getIdPermissoes();
-			String origem = up.isHerdada() ? "[PERFIL]" : "[DIRETA]";
+		ppDao.desvincularTodasDoPerfil(idPerfil);
 
-			String expira = (up.getExpiraEm() != null) ? " EXPIRA EM: " + TimeUtils.formatarDataHora(up.getExpiraEm())
-					: " (PERMANENTE)";
+		if (permissoes == null || permissoes.isEmpty()) {
+			registrarLogDiferencaPerfil(conn, idPerfil, executor, antes, List.of());
+			return;
+		}
 
-			return nome + origem + expira;
-		}).collect(Collectors.joining(" | "));
+		final Integer nivelTetoExecutor;
+		final Set<Integer> idsPermitidos;
 
-		registrarLogSucesso(conn, "SEGURANCA", "SINCRONIZAR_PERMISSOES", "usuario_permissao", usuario.getIdUsuario(),
-				"Sincronização de acessos realizada com sucesso.", resumo);
+		boolean isPrivilegiado = UsuarioPolicy.isPrivilegiado(executor);
+
+		if (isPrivilegiado) {
+			nivelTetoExecutor = null;
+			idsPermitidos = null;
+		} else {
+			nivelTetoExecutor = pDao.buscarMaiorNivelDoUsuario(executor.getIdUsuario());
+			idsPermitidos = pDao.listarPermissoesAtivasPorUsuario(executor.getIdUsuario()).stream()
+					.map(Permissao::getIdPermissoes).collect(Collectors.toSet());
+		}
+
+		permissoes.forEach((chave, tipos) -> {
+			if (tipos == null)
+				return;
+
+			for (String tipo : tipos) {
+
+				Permissao p = pDao.findByChaveETipo(chave.name(), tipo);
+				if (p == null)
+					continue;
+
+				validarAtribuicaoPermissao(p, isPrivilegiado, idsPermitidos, nivelTetoExecutor);
+
+				ppDao.vincularPermissaoAoPerfil(idPerfil, p.getIdPermissoes(), true);
+			}
+		});
+
+		List<Permissao> depois = ppDao.listarPermissoesPorPerfil(idPerfil);
+
+		registrarLogDiferencaPerfil(conn, idPerfil, executor, antes, depois);
+	}
+
+	private void registrarLogDiferencaPerfil(Connection conn, int idPerfil, Usuario executor, List<Permissao> antes,
+			List<Permissao> depois) {
+
+		Diferenca<String> diff = DiferencaMapperUtil.calcular(antes, depois, p -> p.getChave() + ":" + p.getTipo());
+
+		auditLogService.registrarAlteracaoPermissoesPerfil(conn, idPerfil, diff);
+	}
+
+	private void validarAtribuicaoPermissao(Permissao permissao, boolean isPrivilegiado, Set<Integer> idsPermitidos,
+			Integer nivelTetoExecutor) {
+
+		if (isPrivilegiado) {
+			return;
+		}
+
+		if (idsPermitidos == null || !idsPermitidos.contains(permissao.getIdPermissoes())) {
+			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+					"VOCÊ NÃO PODE ATRIBUIR [" + permissao.getChave() + "] POIS NÃO A POSSUI.");
+		}
+
+		int teto = nivelTetoExecutor != null ? nivelTetoExecutor : 0;
+
+		if (permissao.getNivel() > teto) {
+			throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "NÍVEL INSUFICIENTE: A permissão ["
+					+ permissao.getChave() + "] exige nível " + permissao.getNivel() + " e seu teto é " + teto);
+		}
+	}
+
+	public PermissaoContexto obterContextoPermissao(Integer idUsuario, MenuChave menu) {
+		if (idUsuario == null || idUsuario <= 0)
+			return PermissaoContexto.semPermissao();
+		return execute(conn -> {
+			Set<TipoPermissao> permissoes = listarPermissoesAtivasPorMenu(conn, idUsuario, menu).stream().map(p -> {
+				try {
+					return TipoPermissao.valueOf(p);
+				} catch (Exception e) {
+					return null;
+				}
+			}).filter(Objects::nonNull).collect(Collectors.toUnmodifiableSet());
+			return PermissaoContexto.comum(permissoes);
+		});
 	}
 
 }

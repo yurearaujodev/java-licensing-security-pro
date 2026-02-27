@@ -5,6 +5,9 @@ import java.sql.SQLException;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.br.yat.gerenciador.configurations.ConnectionFactory;
 import com.br.yat.gerenciador.dao.LogSistemaDao;
 import com.br.yat.gerenciador.exception.DataAccessException;
@@ -19,6 +22,7 @@ import com.br.yat.gerenciador.util.AuditLogHelper;
 public abstract class BaseService {
 
 	private final SecurityService securityService = new SecurityService();
+	protected static final Logger logger = LogManager.getLogger(BaseService.class);
 
 	protected void validarAcesso(Connection conn, Usuario executor, MenuChave chave, TipoPermissao tipoOperacao) {
 		securityService.validarAcesso(conn, executor, chave, tipoOperacao);
@@ -32,7 +36,7 @@ public abstract class BaseService {
 
 			new LogSistemaDao(connLog).save(log);
 		} catch (Exception ex) {
-			System.err.println("Falha crítica ao gravar log de erro: " + ex.getMessage());
+			System.err.println("Falha crítica ao gravar log de erro" + ex.getMessage());
 		}
 	}
 

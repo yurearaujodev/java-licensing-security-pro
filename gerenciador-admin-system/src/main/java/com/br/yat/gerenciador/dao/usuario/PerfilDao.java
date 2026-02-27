@@ -7,9 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.br.yat.gerenciador.dao.GenericDao;
-import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.model.Perfil;
-import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 
 public class PerfilDao extends GenericDao<Perfil> {
 
@@ -47,14 +45,7 @@ public class PerfilDao extends GenericDao<Perfil> {
 
 	@Override
 	public void softDeleteById(int id) {
-		Perfil perfil = searchById(id);
-
-		if (perfil != null && "MASTER".equalsIgnoreCase(perfil.getNome())) {
-			throw new DataAccessException(DataAccessErrorType.QUERY_FAILED,
-					"ERRO: O PERFIL MASTER NÃO PODE SER EXCLUÍDO.", null);
-		}
-
-		super.softDeleteById(id);
+	    super.softDeleteById(id);
 	}
 
 	public Perfil searchByIdIncluindoExcluidos(int id) {
