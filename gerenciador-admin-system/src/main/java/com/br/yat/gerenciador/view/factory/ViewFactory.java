@@ -33,9 +33,11 @@ import com.br.yat.gerenciador.controller.empresa.EmpresaConsultaController;
 import com.br.yat.gerenciador.controller.empresa.EmpresaController;
 import com.br.yat.gerenciador.dao.DaoFactory;
 import com.br.yat.gerenciador.dao.DaoFactoryImpl;
+import com.br.yat.gerenciador.domain.event.DomainEventPublisher;
 import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.TipoCadastro;
+import com.br.yat.gerenciador.security.SecurityService;
 import com.br.yat.gerenciador.service.AuditLogService;
 import com.br.yat.gerenciador.service.AutenticacaoService;
 import com.br.yat.gerenciador.service.BootstrapService;
@@ -62,20 +64,43 @@ import com.br.yat.gerenciador.view.UsuarioView;
 import com.br.yat.gerenciador.view.UsuarioViewLogin;
 import com.br.yat.gerenciador.view.UsuarioViewTrocaSenha;
 import com.br.yat.gerenciador.view.empresa.EmpresaConsultaView;
+import com.br.yat.gerenciador.domain.event.listener.UsuarioAuditListener;
+import com.br.yat.gerenciador.domain.event.listener.ErrorEventListener;
 
 public final class ViewFactory {
 
 	private static MenuPrincipalController mainController;
 	private static DaoFactory daoFactory;
+	private static DomainEventPublisher eventPublisher;
 
 	public static void initializeDependencies() {
-		if (daoFactory == null) {
-			synchronized (ViewFactory.class) {
-				if (daoFactory == null) {
-					daoFactory = new DaoFactoryImpl();
-				}
-			}
-		}
+	    if (daoFactory == null) {
+	        synchronized (ViewFactory.class) {
+	            if (daoFactory == null) {
+	                daoFactory = new DaoFactoryImpl();
+	            }
+	        }
+	    }
+
+	    if (eventPublisher == null) {
+	        synchronized (ViewFactory.class) {
+	            if (eventPublisher == null) {
+	                eventPublisher = new DomainEventPublisher();
+	                
+	                SecurityService securityService = new SecurityService();
+	                AuditLogService auditLogService = new AuditLogService(daoFactory, eventPublisher, securityService);
+	                eventPublisher.register(new UsuarioAuditListener(auditLogService));
+	                eventPublisher.register(new ErrorEventListener(daoFactory));
+	            }
+	        }
+	    }
+	}
+
+	public static DomainEventPublisher getEventPublisher() {
+	    if (eventPublisher == null) {
+	        initializeDependencies();
+	    }
+	    return eventPublisher;
 	}
 
 	private static DaoFactory getDaoFactory() {
@@ -87,7 +112,9 @@ public final class ViewFactory {
 
 	public static EmpresaView createEmpresaView(TipoCadastro tipoCadastro) {
 		EmpresaView view = new EmpresaView();
-		EmpresaService service = new EmpresaService();
+		DomainEventPublisher dep = getEventPublisher();
+		SecurityService securityService = new SecurityService();
+		EmpresaService service = new EmpresaService(dep,securityService);
 
 		var ePrincipal = new DadoPrincipalController(view.getDadoPrincipal());
 		var eEndereco = new DadoEnderecoController(view.getDadoEndereco());
@@ -132,7 +159,9 @@ public final class ViewFactory {
 
 	public static EmpresaConsultaView createEmpresaConsultaView() {
 		EmpresaConsultaView view = new EmpresaConsultaView();
-		EmpresaService service = new EmpresaService();
+		DomainEventPublisher dep = getEventPublisher();
+		SecurityService securityService = new SecurityService();
+		EmpresaService service = new EmpresaService(dep,securityService);
 		EmpresaConsultaController controller = new EmpresaConsultaController(view, service);
 
 		view.addInternalFrameListener(new InternalFrameAdapter() {
@@ -172,13 +201,16 @@ public final class ViewFactory {
 		UsuarioConsultaView view = new UsuarioConsultaView();
 
 		DaoFactory df = getDaoFactory();
+		DomainEventPublisher dep = getEventPublisher();
+		SecurityService securityService = new SecurityService();
 
-		ParametroSistemaService parametro = new ParametroSistemaService();
-		AutenticacaoService authService = new AutenticacaoService(parametro, df);
-		AuditLogService auditLogService = new AuditLogService(df);
-		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService);
-		BootstrapService bootstrapService = new BootstrapService(df);
-		UsuarioService service = new UsuarioService(authService, parametro, usuperservice, df, bootstrapService,auditLogService);
+		ParametroSistemaService parametro = new ParametroSistemaService(dep,securityService);
+
+		AutenticacaoService authService = new AutenticacaoService(parametro, df,dep,securityService);
+		AuditLogService auditLogService = new AuditLogService(df,dep,securityService);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService,dep,securityService);
+		BootstrapService bootstrapService = new BootstrapService(df,dep,securityService);
+		UsuarioService service = new UsuarioService(authService, parametro, usuperservice, df, bootstrapService,dep,securityService);
 		UsuarioConsultaController controller = new UsuarioConsultaController(view, service, authService,usuperservice);
 
 		view.addInternalFrameListener(new InternalFrameAdapter() {
@@ -193,17 +225,21 @@ public final class ViewFactory {
 	public static UsuarioView createUsuarioViewComController() {
 		UsuarioView view = new UsuarioView();
 		DaoFactory df = getDaoFactory();
+		DomainEventPublisher dep = getEventPublisher();
+		SecurityService securityService = new SecurityService();
+		EmpresaService empresa = new EmpresaService(dep, securityService);
 
-		ParametroSistemaService parametro = new ParametroSistemaService();
-		AutenticacaoService authService = new AutenticacaoService(parametro, df);
-		AuditLogService auditLogService = new AuditLogService(df);
-		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService);
-		BootstrapService bootstrapService = new BootstrapService(df);
-		UsuarioService service = new UsuarioService(authService, parametro, usuperservice, df, bootstrapService,auditLogService);
-		PerfilService perfilService = new PerfilService(usuperservice,df,auditLogService);
+		ParametroSistemaService parametro = new ParametroSistemaService(dep,securityService);
+
+		AutenticacaoService authService = new AutenticacaoService(parametro, df,dep,securityService);
+		AuditLogService auditLogService = new AuditLogService(df,dep,securityService);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService,dep,securityService);
+		BootstrapService bootstrapService = new BootstrapService(df,dep,securityService);
+		UsuarioService service = new UsuarioService(authService, parametro, usuperservice, df, bootstrapService,dep,securityService);
+		PerfilService perfilService = new PerfilService(usuperservice,df,auditLogService,dep,securityService);
 
 		UsuarioController controller = new UsuarioController(view, service, perfilService, bootstrapService,
-				usuperservice);
+				usuperservice,empresa);
 		view.putClientProperty("controller", controller);
 
 		view.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
@@ -222,13 +258,17 @@ public final class ViewFactory {
 		UsuarioViewLogin view = new UsuarioViewLogin();
 
 		DaoFactory df = getDaoFactory();
-		ParametroSistemaService parametro = new ParametroSistemaService();
-		AutenticacaoService authService = new AutenticacaoService(parametro, df);
-		AuditLogService auditLogService = new AuditLogService(df);
-		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService);
-		BootstrapService bootstrapService = new BootstrapService(df);
-		new UsuarioService(authService, parametro, usuperservice, df, bootstrapService,auditLogService);
-		new LoginController(view, authService, usuperservice);
+		DomainEventPublisher dep = getEventPublisher();
+		SecurityService securityService = new SecurityService();
+		
+		ParametroSistemaService parametro = new ParametroSistemaService(dep,securityService);
+		LogSistemaService logSistemaService = new LogSistemaService(dep, securityService, parametro);
+		AutenticacaoService authService = new AutenticacaoService(parametro, df,dep,securityService);
+		AuditLogService auditLogService = new AuditLogService(df,dep,securityService);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService,dep,securityService);
+		BootstrapService bootstrapService = new BootstrapService(df,dep,securityService);
+		new UsuarioService(authService, parametro, usuperservice, df, bootstrapService,dep,securityService);
+		new LoginController(view, authService, usuperservice,parametro,logSistemaService);
 
 		view.setClosable(false);
 		view.setIconifiable(false);
@@ -285,9 +325,11 @@ public final class ViewFactory {
 	public static ParametroSistemaView createParametroSistemaView() {
 		ParametroSistemaView view = new ParametroSistemaView();
 		DaoFactory df = getDaoFactory();
+		DomainEventPublisher dep = getEventPublisher();
+		SecurityService securityService = new SecurityService();
 
-		ParametroSistemaService service = new ParametroSistemaService();
-		AutenticacaoService authService = new AutenticacaoService(service, df);
+		ParametroSistemaService service = new ParametroSistemaService(dep,securityService);
+		AutenticacaoService authService = new AutenticacaoService(service, df,dep,securityService);
 		new ParametroSistemaController(view, service, authService);
 		return view;
 	}
@@ -295,9 +337,11 @@ public final class ViewFactory {
 	public static PerfilView createPerfilView() {
 		PerfilView view = new PerfilView();
 		DaoFactory df = getDaoFactory();
-		AuditLogService auditLogService = new AuditLogService(df);
-		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService);
-		PerfilService service = new PerfilService(usuperservice,df,auditLogService);
+		DomainEventPublisher dep = getEventPublisher();
+		SecurityService securityService = new SecurityService();
+		AuditLogService auditLogService = new AuditLogService(df,dep,securityService);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService,dep,securityService);
+		PerfilService service = new PerfilService(usuperservice,df,auditLogService,dep,securityService);
 		PerfilController controller = new PerfilController(view, service,usuperservice);
 
 		view.putClientProperty("controller", controller);
@@ -316,9 +360,11 @@ public final class ViewFactory {
 	public static PerfilConsultaView createPerfilConsultaView() {
 		PerfilConsultaView view = new PerfilConsultaView();
 		DaoFactory df = getDaoFactory();
-		AuditLogService auditLogService = new AuditLogService(df);
-		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService);
-		PerfilService service = new PerfilService(usuperservice,df,auditLogService);
+		DomainEventPublisher dep = getEventPublisher();
+		SecurityService securityService = new SecurityService();
+		AuditLogService auditLogService = new AuditLogService(df,dep,securityService);
+		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,auditLogService,dep,securityService);
+		PerfilService service = new PerfilService(usuperservice,df,auditLogService,dep,securityService);
 		PerfilConsultaController controller = new PerfilConsultaController(view, service,usuperservice);
 
 		view.addInternalFrameListener(new InternalFrameAdapter() {
@@ -339,8 +385,11 @@ public final class ViewFactory {
 
 	public static LogManutencaoView createLogManutencao() {
 		LogManutencaoView view = new LogManutencaoView();
-		ParametroSistemaService parametro = new ParametroSistemaService();
-		LogSistemaService service = new LogSistemaService();
+		DomainEventPublisher dep = getEventPublisher();
+		SecurityService securityService = new SecurityService();
+		ParametroSistemaService parametro = new ParametroSistemaService(dep,securityService);
+		LogSistemaService service = new LogSistemaService(dep,securityService,parametro);
+
 		new LogManutencaoController(view, service, parametro);
 
 		return view;
@@ -350,9 +399,10 @@ public final class ViewFactory {
 		Window parent = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
 		UsuarioViewTrocaSenha view = new UsuarioViewTrocaSenha(parent instanceof JFrame ? (JFrame) parent : null);
 		DaoFactory df = getDaoFactory();
-
-		ParametroSistemaService parametro = new ParametroSistemaService();
-		AutenticacaoService authService = new AutenticacaoService(parametro, df);
+		DomainEventPublisher dep = getEventPublisher();
+		SecurityService securityService = new SecurityService();
+		ParametroSistemaService parametro = new ParametroSistemaService(dep,securityService);
+		AutenticacaoService authService = new AutenticacaoService(parametro, df,dep,securityService);
 		new TrocaSenhaObrigatoriaController(view, user, authService, callbackSucesso);
 		view.setVisible(true);
 	}

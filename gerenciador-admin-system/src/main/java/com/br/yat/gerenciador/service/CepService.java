@@ -29,16 +29,16 @@ import com.br.yat.gerenciador.model.Endereco;
  * Não deve ser instanciada.
  * </p>
  */
-public final class CepUtils {
+public final class CepService {
 
-	private static final Logger logger = LoggerFactory.getLogger(CepUtils.class);
+	private static final Logger logger = LoggerFactory.getLogger(CepService.class);
 
 	private static final HttpClient CLIENT = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
 	/**
 	 * Construtor privado para evitar instanciação.
 	 */
-	private CepUtils() {
+	private CepService() {
 		throw new AssertionError("Classe Utilitária não deve ser instanciada");
 	}
 

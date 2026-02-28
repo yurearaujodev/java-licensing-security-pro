@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import com.br.yat.gerenciador.dao.DaoFactory;
 import com.br.yat.gerenciador.dao.usuario.PerfilDao;
 import com.br.yat.gerenciador.dao.usuario.PerfilPermissoesDao;
+import com.br.yat.gerenciador.domain.event.DomainEventPublisher;
 import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.Permissao;
@@ -16,6 +17,7 @@ import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
+import com.br.yat.gerenciador.security.SecurityService;
 import com.br.yat.gerenciador.util.Diferenca;
 import com.br.yat.gerenciador.util.DiferencaMapperUtil;
 
@@ -28,7 +30,8 @@ public class PerfilService extends BaseService {
 	private DaoFactory daoFactory;
 
 	public PerfilService(UsuarioPermissaoService usuarioPermissaoService, DaoFactory daoFactory,
-			AuditLogService auditLogService) {
+			AuditLogService auditLogService, DomainEventPublisher eventPublisher,SecurityService securityService) {
+		super(eventPublisher, securityService);
 		this.usuarioPermissaoService = usuarioPermissaoService;
 		this.daoFactory = daoFactory;
 		this.auditLogService = auditLogService;

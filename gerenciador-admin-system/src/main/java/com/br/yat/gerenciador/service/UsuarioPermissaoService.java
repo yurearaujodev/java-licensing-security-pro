@@ -16,6 +16,7 @@ import com.br.yat.gerenciador.dao.DaoFactory;
 import com.br.yat.gerenciador.dao.usuario.PerfilPermissoesDao;
 import com.br.yat.gerenciador.dao.usuario.PermissaoDao;
 import com.br.yat.gerenciador.dao.usuario.UsuarioPermissaoDao;
+import com.br.yat.gerenciador.domain.event.DomainEventPublisher;
 import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Permissao;
 import com.br.yat.gerenciador.model.Usuario;
@@ -26,6 +27,7 @@ import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.policy.UsuarioPolicy;
 import com.br.yat.gerenciador.security.PermissaoContexto;
+import com.br.yat.gerenciador.security.SecurityService;
 import com.br.yat.gerenciador.util.Diferenca;
 import com.br.yat.gerenciador.util.DiferencaMapperUtil;
 import com.br.yat.gerenciador.util.TimeUtils;
@@ -35,7 +37,8 @@ public class UsuarioPermissaoService extends BaseService {
 	private final DaoFactory daoFactory;
 	private final AuditLogService auditLogService;
 
-	public UsuarioPermissaoService(DaoFactory daoFactory, AuditLogService auditLogService) {
+	public UsuarioPermissaoService(DaoFactory daoFactory, AuditLogService auditLogService, DomainEventPublisher eventPublisher,SecurityService securityService) {
+		super(eventPublisher, securityService);
 		this.daoFactory = daoFactory;
 		this.auditLogService = auditLogService;
 	}

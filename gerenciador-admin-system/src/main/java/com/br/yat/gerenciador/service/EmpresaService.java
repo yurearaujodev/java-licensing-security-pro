@@ -13,6 +13,7 @@ import com.br.yat.gerenciador.dao.empresa.DocumentoDao;
 import com.br.yat.gerenciador.dao.empresa.EmpresaDao;
 import com.br.yat.gerenciador.dao.empresa.EnderecoDao;
 import com.br.yat.gerenciador.dao.empresa.RepresentanteDao;
+import com.br.yat.gerenciador.domain.event.DomainEventPublisher;
 import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Banco;
@@ -30,11 +31,16 @@ import com.br.yat.gerenciador.model.enums.TipoCadastro;
 import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.policy.EmpresaPolicy;
+import com.br.yat.gerenciador.security.SecurityService;
 import com.br.yat.gerenciador.util.AuditLogHelper;
 import com.br.yat.gerenciador.util.ValidationUtils;
 import com.br.yat.gerenciador.validation.EmpresaValidationUtils;
 
 public class EmpresaService extends BaseService {
+
+	public EmpresaService(DomainEventPublisher eventPublisher, SecurityService securityService) {
+		super(eventPublisher, securityService);
+	}
 
 	private static final MenuChave CHAVE_SALVAR = MenuChave.CADASTROS_EMPRESA_CLIENTE;
 	private static final MenuChave CHAVE_CONSULTA = MenuChave.CONSULTAS_EMPRESAS_CLIENTES;

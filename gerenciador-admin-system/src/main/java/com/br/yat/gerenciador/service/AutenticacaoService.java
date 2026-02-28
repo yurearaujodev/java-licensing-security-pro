@@ -8,6 +8,7 @@ import java.util.Map;
 import com.br.yat.gerenciador.dao.DaoFactory;
 import com.br.yat.gerenciador.dao.LogSistemaDao;
 import com.br.yat.gerenciador.dao.usuario.UsuarioDao;
+import com.br.yat.gerenciador.domain.event.DomainEventPublisher;
 import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.ParametroChave;
@@ -15,6 +16,7 @@ import com.br.yat.gerenciador.model.enums.StatusUsuario;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.policy.UsuarioPolicy;
 import com.br.yat.gerenciador.security.PasswordUtils;
+import com.br.yat.gerenciador.security.SecurityService;
 import com.br.yat.gerenciador.security.SensitiveData;
 import com.br.yat.gerenciador.util.TimeUtils;
 
@@ -23,7 +25,9 @@ public class AutenticacaoService extends BaseService {
 	private final ParametroSistemaService parametroService;
 	private final DaoFactory daoFactory;
 
-	public AutenticacaoService(ParametroSistemaService parametroService, DaoFactory daoFactory) {
+	public AutenticacaoService(ParametroSistemaService parametroService, DaoFactory daoFactory,
+			DomainEventPublisher eventPublisher, SecurityService securityService) {
+		super(eventPublisher, securityService);
 		this.parametroService = parametroService;
 		this.daoFactory = daoFactory;
 	}

@@ -8,14 +8,23 @@ import java.util.Map;
 
 import com.br.yat.gerenciador.configurations.ConnectionFactory;
 import com.br.yat.gerenciador.dao.LogSistemaDao;
+import com.br.yat.gerenciador.domain.event.DomainEventPublisher;
 import com.br.yat.gerenciador.model.LogSistema;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.ParametroChave;
 import com.br.yat.gerenciador.model.enums.TipoPermissao;
+import com.br.yat.gerenciador.security.SecurityService;
 import com.br.yat.gerenciador.util.AuditLogHelper;
 
 public class LogSistemaService extends BaseService {
+	
+	private final ParametroSistemaService params;
+
+	public LogSistemaService(DomainEventPublisher eventPublisher, SecurityService securityService,ParametroSistemaService params) {
+		super(eventPublisher, securityService);
+		this.params=params;
+	}
 
 	private static final MenuChave CHAVE_LIMPEZA = MenuChave.CONFIGURACAO_LIMPEZA_DE_LOGS;
 
@@ -42,7 +51,6 @@ public class LogSistemaService extends BaseService {
 
 			// 2. Busca quantos dias o Master configurou (usando sua
 			// ParametroSistemaService)
-			ParametroSistemaService params = new ParametroSistemaService();
 			int dias = params.getInt(ParametroChave.LOGS_DIAS_RETENCAO, 90); // default 90 dias
 
 			// 3. Executa a limpeza

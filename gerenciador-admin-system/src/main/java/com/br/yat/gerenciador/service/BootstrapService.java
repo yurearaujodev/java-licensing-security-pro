@@ -16,6 +16,7 @@ import com.br.yat.gerenciador.dao.usuario.PerfilPermissoesDao;
 import com.br.yat.gerenciador.dao.usuario.PermissaoDao;
 import com.br.yat.gerenciador.dao.usuario.PermissaoMenuDao;
 import com.br.yat.gerenciador.dao.usuario.UsuarioDao;
+import com.br.yat.gerenciador.domain.event.DomainEventPublisher;
 import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.model.Empresa;
 import com.br.yat.gerenciador.model.Perfil;
@@ -24,13 +25,15 @@ import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.TipoPermissao;
+import com.br.yat.gerenciador.security.SecurityService;
 
 public class BootstrapService extends BaseService {
 
 	private static final String PERFIL_MASTER = "MASTER";
 	private final DaoFactory daoFactory;
 
-	public BootstrapService(DaoFactory daoFactory) {
+	public BootstrapService(DaoFactory daoFactory, DomainEventPublisher eventPublisher,SecurityService securityService) {
+		super(eventPublisher, securityService);
 		this.daoFactory = daoFactory;
 	}
 

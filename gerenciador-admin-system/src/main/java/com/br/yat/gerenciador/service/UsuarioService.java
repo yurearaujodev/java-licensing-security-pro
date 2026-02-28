@@ -10,6 +10,9 @@ import java.util.Objects;
 import com.br.yat.gerenciador.dao.DaoFactory;
 import com.br.yat.gerenciador.dao.usuario.PermissaoDao;
 import com.br.yat.gerenciador.dao.usuario.UsuarioDao;
+import com.br.yat.gerenciador.domain.event.DomainEventPublisher;
+import com.br.yat.gerenciador.domain.event.ErrorEvents;
+import com.br.yat.gerenciador.domain.event.UsuarioEvents;
 import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.UsuarioPermissao;
@@ -19,8 +22,7 @@ import com.br.yat.gerenciador.model.enums.StatusUsuario;
 import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.policy.UsuarioPolicy;
-import com.br.yat.gerenciador.util.Diferenca;
-import com.br.yat.gerenciador.util.DiferencaMapperUtil;
+import com.br.yat.gerenciador.security.SecurityService;
 import com.br.yat.gerenciador.util.TimeUtils;
 import com.br.yat.gerenciador.validation.UsuarioValidationUtils;
 
@@ -31,19 +33,19 @@ public class UsuarioService extends BaseService {
 	private final UsuarioPermissaoService permissaoService;
 	private final DaoFactory daoFactory;
 	private final BootstrapService bootstrapService;
-	private final AuditLogService auditLogService;
 
 	private static final MenuChave CHAVE_USUARIO = MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES;
 
 	public UsuarioService(AutenticacaoService authService, ParametroSistemaService parametroService,
 			UsuarioPermissaoService permissaoService, DaoFactory daoFactory, BootstrapService bootstrapService,
-			AuditLogService auditLogService) {
+			DomainEventPublisher eventPublisher, SecurityService securityService) {
+		super(eventPublisher, securityService);
+
 		this.authService = authService;
 		this.parametroService = parametroService;
 		this.permissaoService = permissaoService;
 		this.daoFactory = daoFactory;
 		this.bootstrapService = bootstrapService;
-		this.auditLogService = auditLogService;
 	}
 
 	public List<Usuario> listarUsuarios(String termo, Usuario executor) {
@@ -64,10 +66,12 @@ public class UsuarioService extends BaseService {
 	}
 
 	private List<Usuario> filtrarMastersSeNecessario(List<Usuario> lista, Usuario executor) {
-		if (executor == null || !UsuarioPolicy.isPrivilegiado(executor)) {
-			lista.removeIf(Usuario::isMaster);
+
+		if (executor != null && UsuarioPolicy.isPrivilegiado(executor)) {
+			return lista;
 		}
-		return lista;
+
+		return lista.stream().filter(u -> !u.isMaster()).toList();
 	}
 
 	public List<Usuario> listarUsuariosUltimoLogin(String termo, Usuario executor) {
@@ -149,8 +153,8 @@ public class UsuarioService extends BaseService {
 			throw ve;
 
 		} catch (RuntimeException e) {
-			registrarLogErro("ERRO", "SALVAR_USUARIO", "usuario", e);
-			throw e;
+			eventPublisher.publish(new ErrorEvents.ErroSistema("ERRO", "SALVAR_USUARIO", "usuario", e.getMessage()),
+					null);
 		}
 	}
 
@@ -189,8 +193,7 @@ public class UsuarioService extends BaseService {
 
 	private void registrarLogSenhaAlterada(Connection conn, Usuario usuario, boolean senhaAlterada, boolean isNovo) {
 		if (senhaAlterada && !isNovo) {
-			auditLogService.registrarSucesso(conn, "SEGURANCA", "SENHA_ALTERADA", "usuario", usuario.getIdUsuario(),
-					"O executor alterou a senha deste usuário.", null);
+			eventPublisher.publish(new UsuarioEvents.SenhaAlterada(usuario), conn);
 		}
 	}
 
@@ -247,30 +250,18 @@ public class UsuarioService extends BaseService {
 		if (isNovo) {
 			int id = dao.save(usuario);
 			usuario.setIdUsuario(id);
-			auditLogService.registrarSucesso(conn, "CADASTRO", "INSERIR_USUARIO", "usuario", id, null, usuario);
+			eventPublisher.publish(new UsuarioEvents.Criado(usuario), conn);
 		} else {
 			if (anterior.getStatus() != StatusUsuario.ATIVO && usuario.getStatus() == StatusUsuario.ATIVO) {
 				dao.resetTentativasFalhas(usuario.getIdUsuario());
-
-				Map<String, String> alteracaoStatus = new HashMap<>();
-				alteracaoStatus.put("de", anterior.getStatus().name());
-				alteracaoStatus.put("para", "ATIVO");
-				alteracaoStatus.put("motivo", "Reativação manual via service layer");
-
-				auditLogService.registrarSucesso(conn, "SEGURANCA", "REATIVACAO_MANUAL", "usuario",
-						usuario.getIdUsuario(), null, alteracaoStatus);
+				eventPublisher.publish(new UsuarioEvents.StatusAlterado(anterior, usuario), conn);
 			}
 
-//			dao.update(usuario);
-//
-//			auditLogService.registrarSucesso(conn, "CADASTRO", "ALTERAR_USUARIO", "usuario", usuario.getIdUsuario(),
-//					anterior, usuario);
 			dao.update(usuario);
 
 			Usuario depois = dao.searchById(usuario.getIdUsuario());
+			eventPublisher.publish(new UsuarioEvents.Alterado(anterior, depois), conn);
 
-			registrarAlteracaoComDiff(conn, "CADASTRO", "ALTERAR_USUARIO", "usuario", usuario.getIdUsuario(), anterior,
-					depois);
 		}
 	}
 
@@ -308,13 +299,13 @@ public class UsuarioService extends BaseService {
 
 				dao.softDeleteById(idUsuario);
 
-				Usuario depois = dao.searchById(idUsuario);
-
-				registrarAlteracaoComDiff(conn, "CADASTRO", "EXCLUIR_USUARIO", "usuario", idUsuario, anterior, depois);
+//				Usuario depois = dao.searchById(idUsuario);
+				eventPublisher.publish(new UsuarioEvents.Excluido(anterior), conn);
 			});
 
 		} catch (RuntimeException e) {
-			registrarLogErro("ERRO", "EXCLUIR_USUARIO", "usuario", e);
+			eventPublisher.publish(new ErrorEvents.ErroSistema("ERRO", "EXCLUIR_USUARIO", "usuario", e.getMessage()),
+					null);
 			throw e;
 		}
 	}
@@ -326,31 +317,19 @@ public class UsuarioService extends BaseService {
 				validarAcesso(conn, executor, CHAVE_USUARIO, TipoPermissao.DELETE);
 
 				UsuarioDao dao = daoFactory.createUsuarioDao(conn);
-				Usuario anterior = dao.searchById(idUsuario);
+	//			Usuario anterior = dao.searchById(idUsuario);
 
 				dao.restaurar(idUsuario);
 
 				Usuario depois = dao.searchById(idUsuario);
+				eventPublisher.publish(new UsuarioEvents.Restaurado(depois), conn);
 
-				registrarAlteracaoComDiff(conn, "CADASTRO", "RESTAURAR_USUARIO", "usuario", idUsuario, anterior,
-						depois);
 			});
 
 		} catch (RuntimeException e) {
-			auditLogService.registrarErro("ERRO", "RESTAURAR_USUARIO", "usuario", e);
+			eventPublisher.publish(new ErrorEvents.ErroSistema("ERRO", "RESTAURAR_USUARIO", "usuario", e.getMessage()),
+					null);
 			throw e;
-		}
-	}
-
-	private void registrarAlteracaoComDiff(Connection conn, String tipo, String acao, String entidade, Integer id,
-			Usuario anterior, Usuario depois) {
-
-		Diferenca<String> diff = DiferencaMapperUtil.calcular(List.of(anterior), List.of(depois),
-				this::mapearUsuarioParaDiff);
-
-		if (diff.temAlteracao()) {
-			auditLogService.registrarSucesso(conn, tipo, acao, entidade, id, Map.of("antes", anterior),
-					Map.of("depois", depois));
 		}
 	}
 
@@ -418,17 +397,6 @@ public class UsuarioService extends BaseService {
 			throw new ValidationException(ValidationErrorType.DUPLICATE_ENTRY,
 					"ESTE E-MAIL JÁ ESTÁ CADASTRADO NO SISTEMA.");
 		}
-	}
-
-	private String mapearUsuarioParaDiff(Usuario u) {
-
-		if (u == null)
-			return "";
-
-		return u.getNome() + "|" + u.getEmail() + "|" + u.getStatus() + "|"
-				+ (u.getPerfil() != null ? u.getPerfil().getIdPerfil() : "SEM_PERFIL") + "|" + u.isMaster() + "|"
-				+ u.isForcarResetSenha() + "|" + (u.getSenhaExpiraEm() != null ? u.getSenhaExpiraEm() : "SEM_EXPIRACAO")
-				+ "|" + (u.getBloqueadoAte() != null ? u.getBloqueadoAte() : "NAO_BLOQUEADO");
 	}
 
 }

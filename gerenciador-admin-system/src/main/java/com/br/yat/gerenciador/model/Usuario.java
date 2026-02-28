@@ -172,12 +172,15 @@ public class Usuario extends BaseEntity {
         if (origem == null) return null;
         Usuario u = new Usuario();
         u.setIdUsuario(origem.getIdUsuario());
-        u.setSenhaHashString(origem.getSenhaHashString());
+        u.setNome(origem.getNome());
         u.setEmail(origem.getEmail());
         u.setStatus(origem.getStatus());
         u.setMaster(origem.isMaster());
+        u.setPerfil(origem.getPerfil());
+        u.setSenhaHashString(origem.getSenhaHashString());
         u.setForcarResetSenha(origem.isForcarResetSenha());
         u.setBloqueadoAte(origem.getBloqueadoAte());
+        u.setSenhaExpiraEm(origem.getSenhaExpiraEm());
         return u;
     }
     

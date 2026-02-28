@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.br.yat.gerenciador.configurations.ConnectionFactory;
 import com.br.yat.gerenciador.dao.ParametroSistemaDao;
+import com.br.yat.gerenciador.domain.event.DomainEventPublisher;
 import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.exception.ServiceOperationException;
 import com.br.yat.gerenciador.model.ParametroSistema;
@@ -15,8 +16,13 @@ import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.ParametroChave;
 import com.br.yat.gerenciador.model.enums.ServiceErrorType;
 import com.br.yat.gerenciador.model.enums.TipoPermissao;
+import com.br.yat.gerenciador.security.SecurityService;
 
 public class ParametroSistemaService extends BaseService {
+
+	public ParametroSistemaService(DomainEventPublisher eventPublisher, SecurityService securityService) {
+		super(eventPublisher, securityService);
+	}
 
 	private static final MenuChave CHAVE_MENU = MenuChave.CONFIGURACAO_PARAMETRO_SISTEMA;
 

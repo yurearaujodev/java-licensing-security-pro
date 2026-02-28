@@ -21,11 +21,15 @@ public class LoginController extends BaseController {
 	private final UsuarioViewLogin view;
 	private final AutenticacaoService authService;
 	private final UsuarioPermissaoService usuarioPermissaoService;
+	private final ParametroSistemaService params;
+	private final LogSistemaService logSistemaService;
 
-	public LoginController(UsuarioViewLogin view, AutenticacaoService authService, UsuarioPermissaoService usuarioPermissaoService) {
+	public LoginController(UsuarioViewLogin view, AutenticacaoService authService, UsuarioPermissaoService usuarioPermissaoService,ParametroSistemaService params,LogSistemaService logSistemaService) {
 		this.view = view;
 		this.authService = authService;
 		this.usuarioPermissaoService=usuarioPermissaoService;
+		this.params=params;
+		this.logSistemaService=logSistemaService;
 		registrarAcoes();
 		SwingUtilities.invokeLater(view::focarEmail);
 	}
@@ -65,8 +69,7 @@ public class LoginController extends BaseController {
 	}
 
 	private void finalizarLogin(LoginDTO data) {
-		ParametroSistemaService ps = new ParametroSistemaService();
-		int tempoSessao = ps.getInt(ParametroChave.TEMPO_SESSAO_MIN, 30);
+		int tempoSessao = params.getInt(ParametroChave.TEMPO_SESSAO_MIN, 30);
 
 		Sessao.login(data.user(), data.permissoes(), tempoSessao);
 		if (ViewFactory.getMainController() != null) {
@@ -74,7 +77,7 @@ public class LoginController extends BaseController {
 		}
 		if (UsuarioPolicy.isPrivilegiado(data.user())) {
 			runAsyncSilent(SwingUtilities.getWindowAncestor(view), () -> {
-				new LogSistemaService().executarLimpezaAutomatica(data.user());
+				logSistemaService.executarLimpezaAutomatica(data.user());
 				return null;
 			}, result -> {
 			});

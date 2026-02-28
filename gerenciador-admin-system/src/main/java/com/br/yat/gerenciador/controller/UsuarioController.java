@@ -21,14 +21,16 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 	private RefreshCallback refreshCallback;
 	private final BootstrapService bootstrapService;
 	private final UsuarioPermissaoService usuarioPermissaoUsuario;
+	private final EmpresaService empresa;
 
 	public UsuarioController(UsuarioView view, UsuarioService service, PerfilService perfilService,
-			BootstrapService bootstrapService, UsuarioPermissaoService usuarioPermissaoUsuario) {
+			BootstrapService bootstrapService, UsuarioPermissaoService usuarioPermissaoUsuario,EmpresaService empresa) {
 		super(view);
 		this.service = service;
 		this.perfilService = perfilService;
 		this.bootstrapService = bootstrapService;
 		this.usuarioPermissaoUsuario = usuarioPermissaoUsuario;
+		this.empresa=empresa;
 		inicializar();
 		configurarFiltro();
 	}
@@ -359,7 +361,7 @@ public class UsuarioController extends BaseCadastroController<UsuarioView> {
 		view.setStatus(StatusUsuario.ATIVO);
 
 		runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-			Empresa emp = new EmpresaService().buscarFornecedoraParaSetup();
+			Empresa emp = empresa.buscarFornecedoraParaSetup();
 			if (emp == null)
 				throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND, "CADASTRE A EMPRESA ANTES!");
 

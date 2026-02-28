@@ -6,8 +6,10 @@ import java.util.Map;
 
 import com.br.yat.gerenciador.dao.DaoFactory;
 import com.br.yat.gerenciador.dao.LogSistemaDao;
+import com.br.yat.gerenciador.domain.event.DomainEventPublisher;
 import com.br.yat.gerenciador.model.LogSistema;
 import com.br.yat.gerenciador.model.Usuario;
+import com.br.yat.gerenciador.security.SecurityService;
 import com.br.yat.gerenciador.util.AuditLogHelper;
 import com.br.yat.gerenciador.util.Diferenca;
 
@@ -15,7 +17,8 @@ public class AuditLogService extends BaseService {
 
 	private final DaoFactory daoFactory;
 
-	public AuditLogService(DaoFactory daoFactory) {
+	public AuditLogService(DaoFactory daoFactory, DomainEventPublisher eventPublisher,SecurityService securityService) {
+		super(eventPublisher, securityService);
 		this.daoFactory = daoFactory;
 	}
 

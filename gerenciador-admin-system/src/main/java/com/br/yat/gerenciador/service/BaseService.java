@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 
 import com.br.yat.gerenciador.configurations.ConnectionFactory;
 import com.br.yat.gerenciador.dao.LogSistemaDao;
+import com.br.yat.gerenciador.domain.event.DomainEventPublisher;
 import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Usuario;
@@ -21,8 +22,14 @@ import com.br.yat.gerenciador.util.AuditLogHelper;
 
 public abstract class BaseService {
 
-	private final SecurityService securityService = new SecurityService();
+	protected final SecurityService securityService;
+	protected final DomainEventPublisher eventPublisher;
 	protected static final Logger logger = LogManager.getLogger(BaseService.class);
+
+	protected BaseService(DomainEventPublisher eventPublisher, SecurityService securityService) {
+		this.eventPublisher = eventPublisher;
+		this.securityService = securityService;
+	}
 
 	protected void validarAcesso(Connection conn, Usuario executor, MenuChave chave, TipoPermissao tipoOperacao) {
 		securityService.validarAcesso(conn, executor, chave, tipoOperacao);
@@ -98,12 +105,12 @@ public abstract class BaseService {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR, e);
 		}
 	}
-	
+
 	protected void executeInTransactionVoid(Consumer<Connection> action) {
-	    executeInTransaction(conn -> {
-	        action.accept(conn);
-	        return null;
-	    });
+		executeInTransaction(conn -> {
+			action.accept(conn);
+			return null;
+		});
 	}
 
 }
