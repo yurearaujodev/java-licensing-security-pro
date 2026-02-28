@@ -186,6 +186,16 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		String likeTermo = "%" + termo + "%";
 		return executeQuery(sql, likeTermo, likeTermo);
 	}
+	
+	public Usuario buscarPorEmailInclusoExcluidos(String email) {
+	    String sql = "SELECT u.*, e.razao_social AS razao_social_empresa, p.nome AS nome_perfil "
+	               + "FROM " + tableName + " u "
+	               + "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa "
+	               + "LEFT JOIN perfil p ON u.id_perfil = p.id_perfil "
+	               + "WHERE u.email = ?";
+	    var lista = executeQuery(sql, email);
+	    return lista.isEmpty() ? null : lista.get(0);
+	}
 
 	@Override
 	protected Usuario mapResultSetToEntity(ResultSet rs) throws SQLException {

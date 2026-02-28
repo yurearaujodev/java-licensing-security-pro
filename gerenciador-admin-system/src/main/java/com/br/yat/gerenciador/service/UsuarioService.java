@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import com.br.yat.gerenciador.dao.DaoFactory;
 import com.br.yat.gerenciador.dao.usuario.PermissaoDao;
@@ -16,6 +15,7 @@ import com.br.yat.gerenciador.domain.event.UsuarioEvents;
 import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.UsuarioPermissao;
+import com.br.yat.gerenciador.model.dto.Niveis;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.ParametroChave;
 import com.br.yat.gerenciador.model.enums.StatusUsuario;
@@ -100,73 +100,78 @@ public class UsuarioService extends BaseService {
 
 	public void salvarUsuario(Usuario usuario, Map<MenuChave, List<String>> permissoesGranulares,
 			Map<MenuChave, String> datasExpiracao, Usuario executor) {
-
 		try {
+			validarInicial(usuario, permissoesGranulares, datasExpiracao);
 
-			// --- 1. Validações iniciais ---
-			validarDados(usuario, permissoesGranulares);
-			validarRestricoesMaster(usuario);
-			validarDatasExpiracao(datasExpiracao);
-
-			// --- 2. Preparar permissões e datas ---
 			Map<MenuChave, List<String>> permissoesFinal = prepararPermissoes(usuario, permissoesGranulares);
-			Map<MenuChave, String> datasFinal = prepararDatas(usuario, datasExpiracao);
+			Map<MenuChave, LocalDateTime> datasFinal = prepararDatas(usuario, datasExpiracao);
 
-			// --- 3. Inicia transação ---
-			executeInTransactionVoid(conn -> {
+			executeInTransactionVoid(conn -> processarUsuario(usuario, executor, permissoesFinal, datasFinal, conn));
 
-				// --- 4. Determinar se é setup inicial ---
-				boolean isSetupInicial = isSetupInicial(usuario, executor, conn);
-
-				// --- 5. Valida acesso se não for setup inicial ---
-				if (!isSetupInicial) {
-					validarAcesso(conn, executor, CHAVE_USUARIO, TipoPermissao.WRITE);
-				}
-
-				// --- 6. Valida regras de persistência do usuário ---
-				UsuarioDao usuarioDao = daoFactory.createUsuarioDao(conn);
-				validarRegrasPersistencia(usuarioDao, usuario);
-
-				// --- 7. Obter estado anterior (para updates) ---
-				Usuario alvoExistente = obterUsuarioExistente(usuario, usuarioDao);
-				Usuario estadoAnterior = alvoExistente != null ? Usuario.snapshotParaValidacaoSenha(alvoExistente)
-						: null;
-
-				// --- 8. Validar hierarquia e privilégios ---
-				validarHierarquiaAlteracao(conn, executor, alvoExistente, isSetupInicial);
-
-				// --- 9. Processar senha se necessário ---
-				boolean senhaAlterada = processarSenhaSeNecessario(usuario, executor, estadoAnterior);
-
-				// --- 10. Salvar ou atualizar usuário ---
-				salvarOuAtualizar(usuarioDao, usuario, estadoAnterior, alvoExistente == null, conn);
-
-				// --- 11. Registrar log de alteração de senha ---
-				registrarLogSenhaAlterada(conn, usuario, senhaAlterada, alvoExistente == null);
-
-				// --- 12. Montar permissões finais e sincronizar ---
-				List<UsuarioPermissao> permissoesSincronizadas = permissaoService.montarPermissoes(conn, usuario,
-						executor, isSetupInicial, permissoesFinal, datasFinal);
-				permissaoService.sincronizarPermissoes(conn, usuario, permissoesSincronizadas);
-			});
 		} catch (ValidationException ve) {
 			throw ve;
-
 		} catch (RuntimeException e) {
 			eventPublisher.publish(new ErrorEvents.ErroSistema("ERRO", "SALVAR_USUARIO", "usuario", e.getMessage()),
 					null);
+			throw e;
 		}
 	}
 
+	private void validarInicial(Usuario usuario, Map<MenuChave, List<String>> permissoes,
+			Map<MenuChave, String> datasExpiracao) {
+		validarDados(usuario, permissoes);
+		validarRestricoesMaster(usuario);
+		validarDatasExpiracao(datasExpiracao);
+	}
+
+	private void processarUsuario(Usuario usuario, Usuario executor, Map<MenuChave, List<String>> permissoesFinal,
+			Map<MenuChave, LocalDateTime> datasFinal, Connection conn) {
+
+		boolean isSetupInicial = isSetupInicial(usuario, executor, conn);
+
+		if (!isSetupInicial) {
+			validarAcesso(conn, executor, CHAVE_USUARIO, TipoPermissao.WRITE);
+		}
+
+		UsuarioDao usuarioDao = daoFactory.createUsuarioDao(conn);
+		validarRegrasPersistencia(usuarioDao, usuario);
+
+		Usuario alvoExistente = obterUsuarioExistente(usuario, usuarioDao);
+		Usuario estadoAnterior = alvoExistente != null ? Usuario.snapshotParaValidacaoSenha(alvoExistente) : null;
+
+		validarHierarquiaAlteracao(conn, executor, alvoExistente, isSetupInicial);
+
+		boolean senhaAlterada = processarSenhaSeNecessario(usuario, executor, estadoAnterior);
+
+		salvarOuAtualizar(usuarioDao, usuario, estadoAnterior, alvoExistente == null, conn);
+		registrarLogSenhaAlterada(conn, usuario, senhaAlterada, alvoExistente == null);
+
+		List<UsuarioPermissao> permissoesSincronizadas = permissaoService.montarPermissoes(conn, usuario, executor,
+				isSetupInicial, permissoesFinal, datasFinal);
+		permissaoService.sincronizarPermissoes(conn, usuario, permissoesSincronizadas);
+	}
+
 	private Map<MenuChave, List<String>> prepararPermissoes(Usuario usuario, Map<MenuChave, List<String>> permissoes) {
-		return UsuarioPolicy.isPrivilegiado(usuario) ? new HashMap<>()
+		return UsuarioPolicy.ignoraValidacaoPermissao(usuario) ? new HashMap<>()
 				: (permissoes != null ? new HashMap<>(permissoes) : new HashMap<>());
 	}
 
-	private Map<MenuChave, String> prepararDatas(Usuario usuario, Map<MenuChave, String> datas) {
-		return UsuarioPolicy.isPrivilegiado(usuario) ? new HashMap<>()
-				: (datas != null ? new HashMap<>(datas) : new HashMap<>());
+	private Map<MenuChave, LocalDateTime> prepararDatas(Usuario usuario, Map<MenuChave, String> datas) {
+	    if (UsuarioPolicy.ignoraValidacaoPermissao(usuario) || datas == null)
+	        return new HashMap<>();
+
+	    Map<MenuChave, LocalDateTime> datasFinal = new HashMap<>();
+	    LocalDateTime agora = LocalDateTime.now();
+
+	    datas.forEach((menu, dataStr) -> {
+	        if (dataStr != null && !dataStr.isBlank()) {
+	            datasFinal.put(menu, parseDataExpiracao(menu, dataStr, agora));
+	        }
+	    });
+
+	    return datasFinal;
 	}
+
 
 	private boolean isSetupInicial(Usuario usuario, Usuario executor, Connection conn) {
 		return bootstrapService.permitirCriacaoInicialMaster(conn, executor, usuario);
@@ -234,13 +239,10 @@ public class UsuarioService extends BaseService {
 		if (isSetupInicial || alvoExistente == null)
 			return;
 
-		if (!UsuarioPolicy.isPrivilegiado(executor) && UsuarioPolicy.isPrivilegiado(alvoExistente)) {
+		Niveis niveis = obterNiveis(conn, executor, alvoExistente);
 
-			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-					"APENAS UM MASTER PODE ALTERAR OUTRO MASTER.");
-		}
+		if (!UsuarioPolicy.podeAlterar(executor, alvoExistente, niveis.executor(), niveis.alvo())) {
 
-		if (!temMaisPoder(conn, executor, alvoExistente)) {
 			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
 					"Privilégios insuficientes para alterar este usuário.");
 		}
@@ -270,10 +272,6 @@ public class UsuarioService extends BaseService {
 			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "ID DE USUÁRIO INVÁLIDO.");
 		}
 
-		if (executor != null && Objects.equals(executor.getIdUsuario(), idUsuario)) {
-			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-					"SEGURANÇA: VOCÊ NÃO PODE EXCLUIR SUA PRÓPRIA CONTA.");
-		}
 		try {
 			executeInTransactionVoid(conn -> {
 
@@ -287,19 +285,16 @@ public class UsuarioService extends BaseService {
 							"O USUÁRIO QUE VOCÊ ESTÁ TENTANDO EXCLUIR NÃO EXISTE OU JÁ FOI REMOVIDO.");
 				}
 
-				if (!UsuarioPolicy.podeExcluir(executor, anterior)) {
+				Niveis niveis = obterNiveis(conn, executor, anterior);
+
+				if (!UsuarioPolicy.podeExcluir(executor, anterior, niveis.executor(), niveis.alvo())) {
+
 					throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
 							"Você não tem permissão para excluir este usuário.");
 				}
 
-				if (!temMaisPoder(conn, executor, anterior)) {
-					throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-							"Você não tem permissão para excluir este usuário, pois ele possui privilégios superiores.");
-				}
-
 				dao.softDeleteById(idUsuario);
 
-//				Usuario depois = dao.searchById(idUsuario);
 				eventPublisher.publish(new UsuarioEvents.Excluido(anterior), conn);
 			});
 
@@ -310,6 +305,18 @@ public class UsuarioService extends BaseService {
 		}
 	}
 
+	private Niveis obterNiveis(Connection conn, Usuario executor, Usuario alvo) {
+		PermissaoDao pDao = daoFactory.createPermissaoDao(conn);
+
+		Integer nivelExecutor = pDao.buscarMaiorNivelDoUsuario(executor.getIdUsuario());
+		Integer nivelAlvo = pDao.buscarMaiorNivelDoUsuario(alvo.getIdUsuario());
+
+		int nExecutor = nivelExecutor != null ? nivelExecutor : 0;
+		int nAlvo = nivelAlvo != null ? nivelAlvo : 0;
+
+		return new Niveis(nExecutor, nAlvo);
+	}
+
 	public void restaurarUsuario(int idUsuario, Usuario executor) {
 		try {
 			executeInTransactionVoid(conn -> {
@@ -317,7 +324,6 @@ public class UsuarioService extends BaseService {
 				validarAcesso(conn, executor, CHAVE_USUARIO, TipoPermissao.DELETE);
 
 				UsuarioDao dao = daoFactory.createUsuarioDao(conn);
-	//			Usuario anterior = dao.searchById(idUsuario);
 
 				dao.restaurar(idUsuario);
 
@@ -334,46 +340,35 @@ public class UsuarioService extends BaseService {
 	}
 
 	private void validarRegrasPersistencia(UsuarioDao dao, Usuario usuario) {
+		Usuario masterExistente = dao.buscarMasterUnico();
+
 		if (usuario.isMaster()) {
-			Usuario masterExistente = dao.buscarMasterUnico();
 			if (masterExistente != null && !masterExistente.getIdUsuario().equals(usuario.getIdUsuario())) {
-				throw new ValidationException(ValidationErrorType.DUPLICATE_ENTRY,
-						"JÁ EXISTE UM USUÁRIO MASTER CADASTRADO.");
+				throw new ValidationException(ValidationErrorType.INVALID_FIELD,
+						"JÁ EXISTE UM USUÁRIO MASTER CADASTRADO. NÃO É PERMITIDO ALTERAR OUTRO USUÁRIO PARA MASTER.");
 			}
 		}
-		validarDuplicidadeEmail(dao, usuario);
+
 		if (usuario.getIdUsuario() != null && usuario.getIdUsuario() > 0) {
 			Usuario base = dao.searchById(usuario.getIdUsuario());
-			if (base != null && base.isMaster())
+			if (base != null && base.isMaster()) {
 				usuario.setMaster(true);
+			}
 		}
+
+		validarDuplicidadeEmail(dao, usuario);
 	}
 
 	private void validarRestricoesMaster(Usuario usuario) {
-		if (usuario.isMaster() && usuario.getStatus() != StatusUsuario.ATIVO) {
+
+		if (!UsuarioPolicy.podeAlterarStatusMaster(usuario)) {
 			throw new ValidationException(ValidationErrorType.INVALID_FIELD,
 					"O STATUS DO MASTER NÃO PODE SER ALTERADO.");
 		}
+
 		if (usuario.getEmpresa() == null || usuario.getEmpresa().getIdEmpresa() == null) {
 			throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "A EMPRESA É OBRIGATÓRIA.");
 		}
-	}
-
-	private boolean temMaisPoder(Connection conn, Usuario executor, Usuario alvo) {
-		if (UsuarioPolicy.isPrivilegiado(executor))
-			return true;
-		if (UsuarioPolicy.isPrivilegiado(alvo))
-			return false;
-
-		PermissaoDao pDao = daoFactory.createPermissaoDao(conn);
-
-		Integer nivelMaxExecutor = pDao.buscarMaiorNivelDoUsuario(executor.getIdUsuario());
-		Integer nivelMaxAlvo = pDao.buscarMaiorNivelDoUsuario(alvo.getIdUsuario());
-
-		int nExecutor = (nivelMaxExecutor != null ? nivelMaxExecutor : 0);
-		int nAlvo = (nivelMaxAlvo != null ? nivelMaxAlvo : 0);
-
-		return UsuarioPolicy.temHierarquiaParaAlterar(executor, nExecutor, nAlvo);
 	}
 
 	public boolean podeEditarPermissoes(Usuario u) {
@@ -392,10 +387,10 @@ public class UsuarioService extends BaseService {
 	}
 
 	private void validarDuplicidadeEmail(UsuarioDao dao, Usuario u) {
-		Usuario existente = dao.buscarPorEmail(u.getEmail());
+		Usuario existente = dao.buscarPorEmailInclusoExcluidos(u.getEmail());
 		if (existente != null && (u.getIdUsuario() == null || !existente.getIdUsuario().equals(u.getIdUsuario()))) {
 			throw new ValidationException(ValidationErrorType.DUPLICATE_ENTRY,
-					"ESTE E-MAIL JÁ ESTÁ CADASTRADO NO SISTEMA.");
+					"ESTE E-MAIL JÁ ESTÁ CADASTRADO NO SISTEMA (ATIVO OU EXCLUÍDO).");
 		}
 	}
 

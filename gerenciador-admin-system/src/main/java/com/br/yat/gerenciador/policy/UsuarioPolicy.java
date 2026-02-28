@@ -22,14 +22,20 @@ public final class UsuarioPolicy {
 		return List.of(MenuChave.values());
 	}
 
-	public static boolean podeExcluir(Usuario executor, Usuario alvo) {
+	public static boolean podeExcluir(Usuario executor, Usuario alvo, int nivelExecutor, int nivelAlvo) {
 		if (executor == null || alvo == null)
 			return false;
+
 		if (executor.getIdUsuario().equals(alvo.getIdUsuario()))
 			return false;
+
+		if (isPrivilegiado(executor))
+			return true;
+
 		if (isPrivilegiado(alvo))
 			return false;
-		return isPrivilegiado(executor);
+
+		return nivelExecutor > nivelAlvo;
 	}
 
 	public static boolean podeEditarPermissoes(Usuario executor) {
@@ -40,10 +46,27 @@ public final class UsuarioPolicy {
 		return isPrivilegiado(executor);
 	}
 
-	public static boolean temHierarquiaParaAlterar(Usuario executor, int nivelExecutor, int nivelAlvo) {
+	public static boolean podeAlterar(Usuario executor, Usuario alvo, int nivelExecutor, int nivelAlvo) {
+		if (executor == null || alvo == null)
+			return false;
+
 		if (isPrivilegiado(executor))
 			return true;
+
+		if (isPrivilegiado(alvo))
+			return false;
+
 		return nivelExecutor > nivelAlvo;
+	}
+
+	public static boolean podeAlterarStatusMaster(Usuario usuario) {
+		if (usuario == null)
+			return false;
+
+		if (!isPrivilegiado(usuario))
+			return true;
+
+		return usuario.getStatus() == com.br.yat.gerenciador.model.enums.StatusUsuario.ATIVO;
 	}
 
 }
