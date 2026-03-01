@@ -34,7 +34,7 @@ public class LogSistemaService extends BaseService {
 			validarAcesso(conn, executor, MenuChave.AUDITORIA_LOG_DO_SISTEMA, TipoPermissao.READ);
 			return new LogSistemaDao(conn).listarComFiltros(tipo, acao, usuario);
 		} catch (SQLException e) {
-			registrarLogErro("ERRO", "CONSULTAR_LOGS", "log_sistema", e);
+		//	registrarLogErro("ERRO", "CONSULTAR_LOGS", "log_sistema", e);
 			return List.of();
 		}
 	}
@@ -63,7 +63,7 @@ public class LogSistemaService extends BaseService {
 			}
 
 		} catch (Exception e) {
-			registrarLogErro("ERRO", "LIMPEZA_AUTOMATICA", "sistema", e);
+	//		registrarLogErro("ERRO", "LIMPEZA_AUTOMATICA", "sistema", e);
 		}
 	}
 

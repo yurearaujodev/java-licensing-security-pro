@@ -157,21 +157,20 @@ public class UsuarioService extends BaseService {
 	}
 
 	private Map<MenuChave, LocalDateTime> prepararDatas(Usuario usuario, Map<MenuChave, String> datas) {
-	    if (UsuarioPolicy.ignoraValidacaoPermissao(usuario) || datas == null)
-	        return new HashMap<>();
+		if (UsuarioPolicy.ignoraValidacaoPermissao(usuario) || datas == null)
+			return new HashMap<>();
 
-	    Map<MenuChave, LocalDateTime> datasFinal = new HashMap<>();
-	    LocalDateTime agora = LocalDateTime.now();
+		Map<MenuChave, LocalDateTime> datasFinal = new HashMap<>();
+		LocalDateTime agora = LocalDateTime.now();
 
-	    datas.forEach((menu, dataStr) -> {
-	        if (dataStr != null && !dataStr.isBlank()) {
-	            datasFinal.put(menu, parseDataExpiracao(menu, dataStr, agora));
-	        }
-	    });
+		datas.forEach((menu, dataStr) -> {
+			if (dataStr != null && !dataStr.isBlank()) {
+				datasFinal.put(menu, parseDataExpiracao(menu, dataStr, agora));
+			}
+		});
 
-	    return datasFinal;
+		return datasFinal;
 	}
-
 
 	private boolean isSetupInicial(Usuario usuario, Usuario executor, Connection conn) {
 		return bootstrapService.permitirCriacaoInicialMaster(conn, executor, usuario);
@@ -342,13 +341,19 @@ public class UsuarioService extends BaseService {
 	private void validarRegrasPersistencia(UsuarioDao dao, Usuario usuario) {
 		Usuario masterExistente = dao.buscarMasterUnico();
 
-		if (usuario.isMaster()) {
-			if (masterExistente != null && !masterExistente.getIdUsuario().equals(usuario.getIdUsuario())) {
-				throw new ValidationException(ValidationErrorType.INVALID_FIELD,
-						"JÁ EXISTE UM USUÁRIO MASTER CADASTRADO. NÃO É PERMITIDO ALTERAR OUTRO USUÁRIO PARA MASTER.");
-			}
+		// Impede criação de novo master se já existir um
+		if (usuario.isMaster()
+				&& (masterExistente != null && !masterExistente.getIdUsuario().equals(usuario.getIdUsuario()))) {
+			throw new ValidationException(ValidationErrorType.INVALID_FIELD,
+					"JÁ EXISTE UM USUÁRIO MASTER CADASTRADO. NÃO É PERMITIDO ALTERAR OUTRO USUÁRIO PARA MASTER.");
 		}
 
+		// Garante que usuários comuns nunca sejam master
+		if (!UsuarioPolicy.isPrivilegiado(usuario)) {
+			usuario.setMaster(false);
+		}
+
+		// Mantém master existente como master
 		if (usuario.getIdUsuario() != null && usuario.getIdUsuario() > 0) {
 			Usuario base = dao.searchById(usuario.getIdUsuario());
 			if (base != null && base.isMaster()) {

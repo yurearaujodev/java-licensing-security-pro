@@ -3,8 +3,8 @@ package com.br.yat.gerenciador.model;
 import java.time.LocalDateTime;
 
 public class UsuarioPermissao extends BaseEntity {
-	private Integer idUsuario;
-	private Integer idPermissoes;
+	private Usuario usuario;
+	private Permissao permissao;
 	private boolean ativa;
 	private LocalDateTime expiraEm;
 	private boolean herdada;
@@ -12,20 +12,20 @@ public class UsuarioPermissao extends BaseEntity {
 	public UsuarioPermissao() {
 	}
 
-	public Integer getIdUsuario() {
-		return idUsuario;
+	public Usuario getUsuario() {
+		return usuario;
 	}
 
-	public void setIdUsuario(Integer idUsuario) {
-		this.idUsuario = idUsuario;
+	public void setUsuario(Usuario usuario) {
+		this.usuario = usuario;
 	}
 
-	public Integer getIdPermissoes() {
-		return idPermissoes;
+	public Permissao getPermissao() {
+		return permissao;
 	}
 
-	public void setIdPermissoes(Integer idPermissoes) {
-		this.idPermissoes = idPermissoes;
+	public void setPermissao(Permissao permissao) {
+		this.permissao = permissao;
 	}
 
 	public boolean isAtiva() {

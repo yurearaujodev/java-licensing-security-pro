@@ -66,7 +66,9 @@ import com.br.yat.gerenciador.view.UsuarioViewTrocaSenha;
 import com.br.yat.gerenciador.view.empresa.EmpresaConsultaView;
 import com.br.yat.gerenciador.domain.event.listener.UsuarioAuditListener;
 import com.br.yat.gerenciador.domain.event.listener.UsuarioPermissaoAuditListener;
+import com.br.yat.gerenciador.domain.event.listener.EmpresaAuditListener;
 import com.br.yat.gerenciador.domain.event.listener.ErrorEventListener;
+import com.br.yat.gerenciador.domain.event.listener.PerfilAuditListener;
 
 public final class ViewFactory {
 
@@ -92,6 +94,8 @@ public final class ViewFactory {
 	                AuditLogService auditLogService = new AuditLogService(daoFactory, eventPublisher, securityService);
 	                eventPublisher.register(new UsuarioAuditListener(auditLogService));
 	                eventPublisher.register(new UsuarioPermissaoAuditListener(auditLogService));
+	                eventPublisher.register(new PerfilAuditListener(auditLogService));
+	                eventPublisher.register(new EmpresaAuditListener(auditLogService));
 	                eventPublisher.register(new ErrorEventListener(daoFactory));
 	            }
 	        }
@@ -233,11 +237,10 @@ public final class ViewFactory {
 		ParametroSistemaService parametro = new ParametroSistemaService(dep,securityService);
 
 		AutenticacaoService authService = new AutenticacaoService(parametro, df,dep,securityService);
-		AuditLogService auditLogService = new AuditLogService(df,dep,securityService);
 		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,dep,securityService);
 		BootstrapService bootstrapService = new BootstrapService(df,dep,securityService);
 		UsuarioService service = new UsuarioService(authService, parametro, usuperservice, df, bootstrapService,dep,securityService);
-		PerfilService perfilService = new PerfilService(usuperservice,df,auditLogService,dep,securityService);
+		PerfilService perfilService = new PerfilService(usuperservice,df,dep,securityService);
 
 		UsuarioController controller = new UsuarioController(view, service, perfilService, bootstrapService,
 				usuperservice,empresa);
@@ -339,9 +342,8 @@ public final class ViewFactory {
 		DaoFactory df = getDaoFactory();
 		DomainEventPublisher dep = getEventPublisher();
 		SecurityService securityService = new SecurityService();
-		AuditLogService auditLogService = new AuditLogService(df,dep,securityService);
 		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,dep,securityService);
-		PerfilService service = new PerfilService(usuperservice,df,auditLogService,dep,securityService);
+		PerfilService service = new PerfilService(usuperservice,df,dep,securityService);
 		PerfilController controller = new PerfilController(view, service,usuperservice);
 
 		view.putClientProperty("controller", controller);
@@ -362,9 +364,8 @@ public final class ViewFactory {
 		DaoFactory df = getDaoFactory();
 		DomainEventPublisher dep = getEventPublisher();
 		SecurityService securityService = new SecurityService();
-		AuditLogService auditLogService = new AuditLogService(df,dep,securityService);
 		UsuarioPermissaoService usuperservice = new UsuarioPermissaoService(df,dep,securityService);
-		PerfilService service = new PerfilService(usuperservice,df,auditLogService,dep,securityService);
+		PerfilService service = new PerfilService(usuperservice,df,dep,securityService);
 		PerfilConsultaController controller = new PerfilConsultaController(view, service,usuperservice);
 
 		view.addInternalFrameListener(new InternalFrameAdapter() {

@@ -11,6 +11,7 @@ import java.util.List;
 import com.br.yat.gerenciador.dao.GenericDao;
 import com.br.yat.gerenciador.exception.DataAccessException;
 import com.br.yat.gerenciador.model.Permissao;
+import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.UsuarioPermissao;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 import com.br.yat.gerenciador.model.enums.MenuChave;
@@ -70,21 +71,26 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 	}
 
 	public List<UsuarioPermissao> listarDiretasPorUsuario(int idUsuario) {
-		String sql = "SELECT * FROM " + tableName + " WHERE id_usuario = ? AND herdada = 0 AND deletado_em IS NULL "
-				+ " AND (expira_em IS NULL OR expira_em > NOW())";
+		String sql = "SELECT up.*, p.chave, p.tipo, p.categoria " + "FROM " + tableName + " up "
+				+ "INNER JOIN permissoes p ON up.id_permissoes = p.id_permissoes "
+				+ "WHERE up.id_usuario = ? AND up.herdada = 0 AND up.deletado_em IS NULL "
+				+ "AND (up.expira_em IS NULL OR up.expira_em > NOW())";
+
 		return executeQuery(sql, idUsuario);
 	}
 
 	public void syncByUsuario(int idUsuario, List<UsuarioPermissao> novos) {
 		List<UsuarioPermissao> atuais = listarPorUsuario(idUsuario);
 
-		syncByParentId(novos, atuais, up -> up.getIdPermissoes(), this::saveOrUpdate, this::saveOrUpdate,
+		syncByParentId(novos, atuais, up -> up.getPermissao().getIdPermissoes(), this::saveOrUpdate, this::saveOrUpdate,
 				this::softDelete);
 	}
 
 	public List<UsuarioPermissao> listarPorUsuario(int idUsuario) {
-		String sql = "SELECT * FROM " + tableName + " WHERE id_usuario = ? AND deletado_em IS NULL "
-				+ " AND (expira_em IS NULL OR expira_em > NOW())";
+		String sql = "SELECT up.*, p.chave, p.tipo, p.categoria " + "FROM " + tableName + " up "
+				+ "JOIN permissoes p ON up.id_permissoes = p.id_permissoes "
+				+ "WHERE up.id_usuario = ? AND up.deletado_em IS NULL "
+				+ "AND (up.expira_em IS NULL OR up.expira_em > NOW())";
 		return executeQuery(sql, idUsuario);
 	}
 
@@ -93,14 +99,14 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 				+ "VALUES (?, ?, ?, ?, ?, NOW(), NOW()) "
 				+ "ON DUPLICATE KEY UPDATE ativa = ?, expira_em = ?, herdada = ?, deletado_em = NULL, atualizado_em = NOW()";
 
-		executeUpdate(sql, up.getIdUsuario(), up.getIdPermissoes(), up.isAtiva(), up.getExpiraEm(), up.isHerdada(),
-				up.isAtiva(), up.getExpiraEm(), up.isHerdada());
+		executeUpdate(sql, up.getUsuario().getIdUsuario(), up.getPermissao().getIdPermissoes(), up.isAtiva(),
+				up.getExpiraEm(), up.isHerdada(), up.isAtiva(), up.getExpiraEm(), up.isHerdada());
 	}
 
 	public void softDelete(UsuarioPermissao up) {
 		String sql = "UPDATE " + tableName
 				+ " SET ativa = 0, deletado_em = NOW() WHERE id_usuario = ? AND id_permissoes = ?";
-		executeUpdate(sql, up.getIdUsuario(), up.getIdPermissoes());
+		executeUpdate(sql, up.getUsuario().getIdUsuario(), up.getPermissao().getIdPermissoes());
 	}
 
 	public boolean usuarioPossuiAcessoCompleto(int idUsuario, int idPerfil, String chave, String tipo) {
@@ -132,8 +138,18 @@ public class UsuarioPermissaoDao extends GenericDao<UsuarioPermissao> {
 	@Override
 	protected UsuarioPermissao mapResultSetToEntity(ResultSet rs) throws SQLException {
 		UsuarioPermissao up = new UsuarioPermissao();
-		up.setIdUsuario(rs.getInt("id_usuario"));
-		up.setIdPermissoes(rs.getInt("id_permissoes"));
+
+		Usuario usuario = new Usuario();
+		usuario.setIdUsuario(rs.getInt("id_usuario"));
+		up.setUsuario(usuario);
+
+		Permissao permissao = new Permissao();
+		permissao.setIdPermissoes(rs.getInt("id_permissoes"));
+		permissao.setChave(rs.getString("chave"));
+		permissao.setTipo(rs.getString("tipo"));
+		permissao.setCategoria(rs.getString("categoria"));
+		up.setPermissao(permissao);
+
 		up.setAtiva(rs.getBoolean("ativa"));
 		up.setHerdada(rs.getBoolean("herdada"));
 

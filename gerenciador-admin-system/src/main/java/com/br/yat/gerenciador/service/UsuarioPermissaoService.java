@@ -33,8 +33,8 @@ public class UsuarioPermissaoService extends BaseService {
 
 	private final DaoFactory daoFactory;
 
-	public UsuarioPermissaoService(DaoFactory daoFactory,
-			DomainEventPublisher eventPublisher, SecurityService securityService) {
+	public UsuarioPermissaoService(DaoFactory daoFactory, DomainEventPublisher eventPublisher,
+			SecurityService securityService) {
 		super(eventPublisher, securityService);
 		this.daoFactory = daoFactory;
 	}
@@ -70,11 +70,11 @@ public class UsuarioPermissaoService extends BaseService {
 				datasExpiracao);
 
 		Map<Integer, UsuarioPermissao> mapa = new LinkedHashMap<>();
-		perfil.forEach(up -> mapa.put(up.getIdPermissoes(), up));
-		diretas.forEach(up -> mapa.put(up.getIdPermissoes(), up));
+		perfil.forEach(up -> mapa.put(up.getPermissao().getIdPermissoes(), up));
+		diretas.forEach(up -> mapa.put(up.getPermissao().getIdPermissoes(), up));
 
 		List<UsuarioPermissao> finais = new ArrayList<>(mapa.values());
-		finais.forEach(up -> up.setIdUsuario(usuario.getIdUsuario()));
+		finais.forEach(up -> up.setUsuario(usuario));
 		return finais;
 	}
 
@@ -85,7 +85,8 @@ public class UsuarioPermissaoService extends BaseService {
 		PerfilPermissoesDao ppDao = daoFactory.createPerfilPermissoesDao(conn);
 		return ppDao.listarPermissoesPorPerfil(usuario.getPerfil().getIdPerfil()).stream().map(p -> {
 			UsuarioPermissao up = new UsuarioPermissao();
-			up.setIdPermissoes(p.getIdPermissoes());
+			up.setPermissao(p);
+			up.setUsuario(usuario);
 			up.setAtiva(true);
 			up.setHerdada(true);
 			return up;
@@ -101,7 +102,7 @@ public class UsuarioPermissaoService extends BaseService {
 		// MASTER recebe tudo
 		if (usuario.isMaster()) {
 			for (Permissao p : pDao.listAll()) {
-				novas.add(criar(usuario.getIdUsuario(), p.getIdPermissoes()));
+				novas.add(criar(usuario, p));
 			}
 			return novas;
 		}
@@ -134,7 +135,7 @@ public class UsuarioPermissaoService extends BaseService {
 				}
 
 				if (!jaExisteNoPerfil || exp != null) {
-					UsuarioPermissao up = criar(usuario.getIdUsuario(), p.getIdPermissoes());
+					UsuarioPermissao up = criar(usuario, p);
 					up.setHerdada(false);
 					up.setExpiraEm(exp);
 					novas.add(up);
@@ -145,10 +146,10 @@ public class UsuarioPermissaoService extends BaseService {
 		return novas;
 	}
 
-	private UsuarioPermissao criar(Integer idUsuario, Integer idPermissao) {
+	private UsuarioPermissao criar(Usuario usuario, Permissao permissao) {
 		UsuarioPermissao up = new UsuarioPermissao();
-		up.setIdUsuario(idUsuario);
-		up.setIdPermissoes(idPermissao);
+		up.setUsuario(usuario);
+		up.setPermissao(permissao);
 		up.setAtiva(true);
 		return up;
 	}
@@ -164,10 +165,10 @@ public class UsuarioPermissaoService extends BaseService {
 		int nivelTeto = teto != null ? teto : 0;
 
 		Map<Integer, LocalDateTime> mapaExecutor = upDao.listarPorUsuario(executor.getIdUsuario()).stream()
-				.collect(Collectors.toMap(UsuarioPermissao::getIdPermissoes,
+				.collect(Collectors.toMap(up -> up.getPermissao().getIdPermissoes(),
 						up -> up.getExpiraEm() == null ? LocalDateTime.MAX : up.getExpiraEm(), (a, b) -> a));
 
-		List<Integer> ids = permissoes.stream().map(UsuarioPermissao::getIdPermissoes).distinct().toList();
+		List<Integer> ids = permissoes.stream().map(up -> up.getPermissao().getIdPermissoes()).distinct().toList();
 		if (ids.isEmpty())
 			return;
 
@@ -175,11 +176,11 @@ public class UsuarioPermissaoService extends BaseService {
 				.collect(Collectors.toMap(Permissao::getIdPermissoes, p -> p));
 
 		for (UsuarioPermissao up : permissoes) {
-			Permissao p = mapaPermissoes.get(up.getIdPermissoes());
+			Permissao p = mapaPermissoes.get(up.getPermissao().getIdPermissoes());
 			if (p == null)
 				continue;
 
-			if (!mapaExecutor.containsKey(up.getIdPermissoes())) {
+			if (!mapaExecutor.containsKey(up.getPermissao().getIdPermissoes())) {
 				throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
 						"VOCÊ NÃO POSSUI ACESSO A [" + p.getChave() + "].");
 			}
@@ -189,7 +190,7 @@ public class UsuarioPermissaoService extends BaseService {
 						"NÍVEL INSUFICIENTE PARA [" + p.getChave() + "].");
 			}
 
-			LocalDateTime expExecutor = mapaExecutor.get(up.getIdPermissoes());
+			LocalDateTime expExecutor = mapaExecutor.get(up.getPermissao().getIdPermissoes());
 			LocalDateTime expAlvo = up.getExpiraEm() == null ? LocalDateTime.MAX : up.getExpiraEm();
 
 			if (expAlvo.isAfter(expExecutor)) {
@@ -230,16 +231,20 @@ public class UsuarioPermissaoService extends BaseService {
 			if (listaDiretas.isEmpty())
 				return new ArrayList<>();
 
-			List<Integer> ids = listaDiretas.stream().map(UsuarioPermissao::getIdPermissoes).distinct().toList();
+			List<Integer> ids = listaDiretas.stream().map(up -> up.getPermissao().getIdPermissoes()).distinct()
+					.toList();
 
 			// Cache local de permissões
 			Map<Integer, Permissao> mapaPermissoes = pDao.listarPorIds(ids).stream()
 					.collect(Collectors.toMap(Permissao::getIdPermissoes, p -> p));
 
-			return listaDiretas.stream()
-					.map(vinculo -> Optional.ofNullable(mapaPermissoes.get(vinculo.getIdPermissoes()))
-							.map(permissao -> new UsuarioPermissaoDetalheDTO(permissao, vinculo)))
-					.filter(Optional::isPresent).map(Optional::get).toList();
+			return listaDiretas.stream().map(vinculo -> {
+				Permissao permissao = mapaPermissoes.get(vinculo.getPermissao().getIdPermissoes());
+				if (permissao != null) {
+					return new UsuarioPermissaoDetalheDTO(permissao, vinculo);
+				}
+				return null;
+			}).filter(Objects::nonNull).toList();
 		});
 	}
 

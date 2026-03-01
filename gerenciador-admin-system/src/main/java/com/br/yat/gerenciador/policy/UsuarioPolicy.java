@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.br.yat.gerenciador.model.Usuario;
 import com.br.yat.gerenciador.model.enums.MenuChave;
+import com.br.yat.gerenciador.model.enums.StatusUsuario;
 
 public final class UsuarioPolicy {
 
@@ -63,10 +64,8 @@ public final class UsuarioPolicy {
 		if (usuario == null)
 			return false;
 
-		if (!isPrivilegiado(usuario))
-			return true;
-
-		return usuario.getStatus() == com.br.yat.gerenciador.model.enums.StatusUsuario.ATIVO;
+		// Apenas master existente mantém status ativo; outros não podem ser master
+		return usuario.getStatus() == StatusUsuario.ATIVO && isPrivilegiado(usuario);
 	}
 
 }

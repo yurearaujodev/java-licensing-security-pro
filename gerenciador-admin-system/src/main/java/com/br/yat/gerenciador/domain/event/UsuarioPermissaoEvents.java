@@ -17,7 +17,7 @@ public class UsuarioPermissaoEvents {
 		private final Integer idUsuario;
 		private final List<UsuarioPermissaoAuditRecord> antes;
 		private final List<UsuarioPermissaoAuditRecord> depois;
-		private final CollectionDiffResult<UsuarioPermissaoAuditRecord, Integer> diff;
+		private final CollectionDiffResult<UsuarioPermissaoAuditRecord, String> diff;
 
 		public UsuarioAlterado(Usuario usuario, List<UsuarioPermissao> antes, List<UsuarioPermissao> depois) {
 
@@ -30,7 +30,7 @@ public class UsuarioPermissaoEvents {
 					.toList();
 
 			this.diff = AuditCollectionDiffUtil.calcularDiffCollection(this.antes, this.depois,
-					UsuarioPermissaoAuditRecord::idPermissao);
+					 UsuarioPermissaoAuditRecord::getIdComChaveTipo);
 		}
 
 		public Integer getIdUsuario() {
@@ -45,9 +45,9 @@ public class UsuarioPermissaoEvents {
 			return depois;
 		}
 
-		public CollectionDiffResult<UsuarioPermissaoAuditRecord, Integer> getDiff() {
-			return diff;
-		}
+		public CollectionDiffResult<UsuarioPermissaoAuditRecord, String> getDiff() {
+	        return diff;
+	    }
 	}
 
 	public static class PerfilAlterado extends DomainEvent {

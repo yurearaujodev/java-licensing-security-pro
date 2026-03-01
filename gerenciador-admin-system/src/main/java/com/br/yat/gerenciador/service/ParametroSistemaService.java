@@ -68,7 +68,7 @@ public class ParametroSistemaService extends BaseService {
 				ConnectionFactory.commitTransaction(conn);
 			} catch (Exception e) {
 				ConnectionFactory.rollbackTransaction(conn);
-				registrarLogErro("ERRO", "SALVAR_PARAMETROS", "parametro_sistema", e);
+		//		registrarLogErro("ERRO", "SALVAR_PARAMETROS", "parametro_sistema", e);
 				throw e;
 			}
 		} catch (SQLException e) {

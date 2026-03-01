@@ -10,6 +10,8 @@ import com.br.yat.gerenciador.dao.DaoFactory;
 import com.br.yat.gerenciador.dao.usuario.PerfilDao;
 import com.br.yat.gerenciador.dao.usuario.PerfilPermissoesDao;
 import com.br.yat.gerenciador.domain.event.DomainEventPublisher;
+import com.br.yat.gerenciador.domain.event.ErrorEvents;
+import com.br.yat.gerenciador.domain.event.PerfilEvents;
 import com.br.yat.gerenciador.exception.ValidationException;
 import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.Permissao;
@@ -18,23 +20,19 @@ import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.TipoPermissao;
 import com.br.yat.gerenciador.model.enums.ValidationErrorType;
 import com.br.yat.gerenciador.security.SecurityService;
-import com.br.yat.gerenciador.util.Diferenca;
-import com.br.yat.gerenciador.util.DiferencaMapperUtil;
 
 public class PerfilService extends BaseService {
 
 	private static final MenuChave CHAVE_ACESSO = MenuChave.CONFIGURACAO_PERMISSAO;
 	private static final String PERFIL_MASTER = "MASTER";
 	private final UsuarioPermissaoService usuarioPermissaoService;
-	private final AuditLogService auditLogService;
-	private DaoFactory daoFactory;
+	private final DaoFactory daoFactory;
 
 	public PerfilService(UsuarioPermissaoService usuarioPermissaoService, DaoFactory daoFactory,
-			AuditLogService auditLogService, DomainEventPublisher eventPublisher,SecurityService securityService) {
+			DomainEventPublisher eventPublisher, SecurityService securityService) {
 		super(eventPublisher, securityService);
 		this.usuarioPermissaoService = usuarioPermissaoService;
 		this.daoFactory = daoFactory;
-		this.auditLogService = auditLogService;
 	}
 
 	public void salvarPerfil(Perfil perfil, Map<MenuChave, List<String>> permissoes, Usuario executor) {
@@ -73,7 +71,8 @@ public class PerfilService extends BaseService {
 			throw ve;
 
 		} catch (RuntimeException e) {
-			auditLogService.registrarErro("ERRO", "SALVAR_PERFIL", "perfil", e);
+			eventPublisher.publish(new ErrorEvents.ErroSistema("ERRO", "SALVAR_PERFIL", "perfil", e.getMessage()),
+					null);
 			throw e;
 		}
 	}
@@ -102,7 +101,7 @@ public class PerfilService extends BaseService {
 		int id = dao.save(perfil);
 		perfil.setIdPerfil(id);
 
-		auditLogService.registrarSucesso(conn, "SEGURANCA", "CRIAR_PERFIL", "perfil", id, null, perfil);
+		eventPublisher.publish(new PerfilEvents.Criado(perfil), conn);
 	}
 
 	private void atualizarPerfil(PerfilDao dao, Perfil perfil, Perfil estadoAnterior, Connection conn) {
@@ -115,8 +114,7 @@ public class PerfilService extends BaseService {
 		dao.update(perfil);
 
 		Perfil depois = dao.searchById(perfil.getIdPerfil());
-
-		registrarAlteracaoComDiff(conn, "SEGURANCA", "ALTERAR_PERFIL", perfil.getIdPerfil(), estadoAnterior, depois);
+		eventPublisher.publish(new PerfilEvents.Alterado(estadoAnterior, depois), conn);
 	}
 
 	private void validarImutabilidadeMaster(Perfil anterior, Perfil atual) {
@@ -125,7 +123,6 @@ public class PerfilService extends BaseService {
 			return;
 
 		if (isMaster(anterior) && !anterior.getNome().equalsIgnoreCase(atual.getNome())) {
-
 			throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "O NOME DO PERFIL MASTER É IMUTÁVEL.");
 		}
 	}
@@ -133,7 +130,6 @@ public class PerfilService extends BaseService {
 	private void validarRestricoesSistema(Perfil perfil) {
 
 		if (perfil.getNome() != null && PERFIL_MASTER.equalsIgnoreCase(perfil.getNome()) && isNovoPerfil(perfil)) {
-
 			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
 					"O PERFIL MASTER SÓ PODE SER CRIADO PELO SISTEMA.");
 		}
@@ -171,27 +167,24 @@ public class PerfilService extends BaseService {
 				validarAcesso(conn, executor, CHAVE_ACESSO, TipoPermissao.DELETE);
 
 				PerfilDao dao = daoFactory.createPerfilDao(conn);
-
-				Perfil perfil = dao.searchById(idPerfil);
-
-				if (perfil == null) {
+				Perfil antes = dao.searchById(idPerfil);
+				if (antes == null) {
 					throw new ValidationException(ValidationErrorType.RESOURCE_NOT_FOUND, "PERFIL NÃO ENCONTRADO.");
 				}
 
-				if (PERFIL_MASTER.equalsIgnoreCase(perfil.getNome())) {
+				if (PERFIL_MASTER.equalsIgnoreCase(antes.getNome())) {
 					throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
 							"O PERFIL MASTER NÃO PODE SER EXCLUÍDO OU DESATIVADO.");
 				}
 
-				Perfil antes = dao.searchById(idPerfil); // estado antes
 				dao.softDeleteById(idPerfil);
-				Perfil depois = dao.searchByIdIncluindoExcluidos(idPerfil); // estado depois (soft deleted)
 
-				registrarAlteracaoComDiff(conn, "SEGURANCA", "EXCLUIR_PERFIL", idPerfil, antes, depois);
+				eventPublisher.publish(new PerfilEvents.Excluido(antes), conn);
 			});
 
 		} catch (RuntimeException e) {
-			auditLogService.registrarErro("ERRO", "EXCLUIR_PERFIL", "perfil", e);
+			eventPublisher.publish(new ErrorEvents.ErroSistema("ERRO", "EXCLUIR_PERFIL", "perfil", e.getMessage()),
+					null);
 			throw e;
 		}
 	}
@@ -241,24 +234,40 @@ public class PerfilService extends BaseService {
 							"O PERFIL MASTER NÃO PODE SER RESTAURADO MANUALMENTE.");
 				}
 
-				Perfil antes = dao.searchByIdIncluindoExcluidos(idPerfil);
 				dao.restaurar(idPerfil);
 				Perfil depois = dao.searchById(idPerfil);
-
-				registrarAlteracaoComDiff(conn, "SEGURANCA", "RESTAURAR_PERFIL", idPerfil, antes, depois);
+				eventPublisher.publish(new PerfilEvents.Restaurado(depois), conn);
 
 			});
 
 		} catch (RuntimeException e) {
-			auditLogService.registrarErro("ERRO", "RESTAURAR_PERFIL", "perfil", e);
+			eventPublisher.publish(new ErrorEvents.ErroSistema("ERRO", "RESTAURAR_PERFIL", "perfil", e.getMessage()),
+					null);
+			// auditLogService.registrarErro("ERRO", "RESTAURAR_PERFIL", "perfil", e);
 			throw e;
 		}
 	}
 
+//	public List<Perfil> listarTodos() {
+//		return execute(conn -> {
+//			PerfilDao dao = daoFactory.createPerfilDao(conn);
+//			return dao.listAll();
+//		});
+//	}
+
 	public List<Perfil> listarTodos() {
 		return execute(conn -> {
 			PerfilDao dao = daoFactory.createPerfilDao(conn);
-			return dao.listAll();
+			List<Perfil> todos = dao.listAll();
+
+			Usuario masterExistente = daoFactory.createUsuarioDao(conn).buscarMasterUnico();
+
+			// Se já existe master, remove perfil MASTER da lista
+			if (masterExistente != null) {
+				todos = todos.stream().filter(p -> !"MASTER".equalsIgnoreCase(p.getNome())).toList();
+			}
+
+			return todos;
 		});
 	}
 
@@ -267,24 +276,5 @@ public class PerfilService extends BaseService {
 			PerfilPermissoesDao dao = daoFactory.createPerfilPermissoesDao(conn);
 			return dao.listarPermissoesPorPerfil(idPerfil);
 		});
-	}
-
-	private String mapearPerfilParaDiff(Perfil p) {
-		if (p == null)
-			return "";
-
-		return p.getNome() + "|" + (p.getDescricao() != null ? p.getDescricao() : "");
-	}
-
-	private void registrarAlteracaoComDiff(Connection conn, String tipo, String acao, Integer id, Perfil anterior,
-			Perfil depois) {
-
-		Diferenca<String> diff = DiferencaMapperUtil.calcular(List.of(anterior), List.of(depois),
-				this::mapearPerfilParaDiff);
-
-		if (diff.temAlteracao()) {
-			auditLogService.registrarSucesso(conn, tipo, acao, "perfil", id, Map.of("antes", anterior),
-					Map.of("depois", depois));
-		}
 	}
 }
