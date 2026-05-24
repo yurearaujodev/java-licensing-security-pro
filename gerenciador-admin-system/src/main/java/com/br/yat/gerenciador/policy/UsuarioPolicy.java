@@ -27,7 +27,8 @@ public final class UsuarioPolicy {
 		if (executor == null || alvo == null)
 			return false;
 
-		if (executor.getIdUsuario().equals(alvo.getIdUsuario()))
+		if (executor.getIdUsuario() != null && alvo.getIdUsuario() != null
+				&& executor.getIdUsuario().equals(alvo.getIdUsuario()))
 			return false;
 
 		if (isPrivilegiado(executor))

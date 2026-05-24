@@ -1,5 +1,7 @@
 package com.br.yat.gerenciador.service;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -9,6 +11,7 @@ import java.util.Optional;
 
 import com.br.yat.gerenciador.configurations.ConnectionFactory;
 import com.br.yat.gerenciador.dao.DaoFactory;
+import com.br.yat.gerenciador.dao.empresa.ComplementarDao;
 import com.br.yat.gerenciador.dao.empresa.EmpresaDao;
 import com.br.yat.gerenciador.dao.usuario.MenuSistemaDao;
 import com.br.yat.gerenciador.dao.usuario.PerfilDao;
@@ -22,6 +25,7 @@ import com.br.yat.gerenciador.model.Empresa;
 import com.br.yat.gerenciador.model.Perfil;
 import com.br.yat.gerenciador.model.Permissao;
 import com.br.yat.gerenciador.model.Usuario;
+import com.br.yat.gerenciador.model.enums.BootstrapEtapa;
 import com.br.yat.gerenciador.model.enums.DataAccessErrorType;
 import com.br.yat.gerenciador.model.enums.MenuChave;
 import com.br.yat.gerenciador.model.enums.TipoPermissao;
@@ -168,5 +172,80 @@ public class BootstrapService extends BaseService {
 			throw new DataAccessException(DataAccessErrorType.CONNECTION_ERROR,
 					"ERRO AO BUSCAR EMPRESA: " + e.getMessage(), e);
 		}
+	}
+	
+	
+	
+	public boolean existeConfiguracaoBanco() {
+
+	    return Files.exists(
+	            Paths.get(
+	                    "config",
+	                    "database",
+	                    "db.properties"));
+	}
+	
+	public BootstrapEtapa verificarEtapaInicial() {
+
+	    try (Connection conn = ConnectionFactory.getConnection()) {
+
+	        EmpresaDao empDao =
+	                daoFactory.createEmpresaDao(conn);
+
+	        UsuarioDao userDao =
+	                daoFactory.createUsuarioDao(conn);
+
+	        if (empDao.buscarPorFornecedora() == null) {
+	            return BootstrapEtapa.CADASTRAR_FORNECEDORA;
+	        }
+
+	        if (userDao.listAll().isEmpty()) {
+	            return BootstrapEtapa.CADASTRAR_MASTER;
+	        }
+
+	        return BootstrapEtapa.LOGIN;
+
+	    } catch (SQLException e) {
+
+	        throw new DataAccessException(
+	                DataAccessErrorType.CONNECTION_ERROR,
+	                "ERRO AO VERIFICAR ETAPA INICIAL",
+	                e);
+	    }
+	}
+	
+	
+	public String buscarLogoSistema() {
+
+	    try (Connection conn = ConnectionFactory.getConnection()) {
+
+	        EmpresaDao empDao =
+	                daoFactory.createEmpresaDao(conn);
+
+	        Empresa fornecedora =
+	                empDao.buscarPorFornecedora();
+
+	        if (fornecedora == null) {
+	            return null;
+	        }
+
+	        ComplementarDao compDao =
+	                new ComplementarDao(conn);
+
+	        var complementar =
+	                compDao.buscarPorEmpresa(
+	                        fornecedora.getIdEmpresa());
+
+	        return complementar != null
+	                ? complementar.getLogoTipoComplementar()
+	                : null;
+
+	    } catch (Exception e) {
+
+	        throw new DataAccessException(
+	                DataAccessErrorType.CONNECTION_ERROR,
+	                "ERRO AO BUSCAR LOGO DO SISTEMA",
+	                e);
+	    }
 	}
 }

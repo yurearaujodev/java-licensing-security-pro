@@ -1,9 +1,11 @@
 package com.br.yat.gerenciador.controller;
 
-import java.util.Set;
+import java.awt.Window;
+import java.awt.event.ActionListener;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import javax.swing.AbstractButton;
 import javax.swing.JDesktopPane;
 import javax.swing.SwingUtilities;
 
@@ -27,17 +29,20 @@ public class PerfilConsultaController extends BaseController {
 	private final PerfilConsultaView view;
 	private final PerfilService service;
 	private final UsuarioPermissaoService usuarioPermissaoService;
+
 	private ScheduledFuture<?> debounceTask;
 
 	private Usuario usuarioLogado;
 	private PermissaoContexto permissaoContexto;
 
-	public PerfilConsultaController(PerfilConsultaView view, PerfilService service,UsuarioPermissaoService usuarioPermissaoService) {
+	public PerfilConsultaController(PerfilConsultaView view, PerfilService service,
+			UsuarioPermissaoService usuarioPermissaoService) {
+
 		this.view = view;
 		this.service = service;
-		this.usuarioPermissaoService=usuarioPermissaoService;
+		this.usuarioPermissaoService = usuarioPermissaoService;
+
 		inicializarEscopo();
-		configurar();
 	}
 
 	private void inicializarEscopo() {
@@ -45,38 +50,92 @@ public class PerfilConsultaController extends BaseController {
 		this.usuarioLogado = Sessao.getUsuario();
 
 		if (usuarioLogado == null) {
-			permissaoContexto = PermissaoContexto.comum(Set.of());
+			view.dispose();
 			return;
 		}
 
 		if (usuarioLogado.isMaster()) {
-			permissaoContexto = PermissaoContexto.master();
+
+			this.permissaoContexto = PermissaoContexto.master();
+
+			configurar();
+
 			return;
 		}
 
-		permissaoContexto = usuarioPermissaoService.obterContextoPermissao(usuarioLogado.getIdUsuario(),
-				MenuChave.CONFIGURACAO_PERMISSAO);
+		runAsync(getWindow(), () -> usuarioPermissaoService.obterContextoPermissao(usuarioLogado.getIdUsuario(),
+				MenuChave.CONFIGURACAO_PERMISSAO), ctx -> {
+
+					if (ctx == null || !ctx.temRead()) {
+
+						DialogFactory.aviso(view, "ACESSO NEGADO À GESTÃO DE PERFIS.");
+
+						view.dispose();
+
+						return;
+					}
+
+					this.permissaoContexto = ctx;
+
+					configurar();
+				});
 	}
 
 	private void configurar() {
+
+		if (!aplicarRestricoesVisuais(permissaoContexto, view.getBtnNovo(), view.getBtnEditar(),
+				view.getBtnExcluir())) {
+
+			DialogFactory.aviso(view, "ACESSO NEGADO À GESTÃO DE PERFIS.");
+
+			view.dispose();
+
+			return;
+		}
+
 		registrarAcoes();
+
 		configurarFiltros();
+
 		configurarControleLixeira();
-		aplicarPermissoesEscopo();
+
 		carregarDados();
 	}
 
+	private Window getWindow() {
+		return SwingUtilities.getWindowAncestor(view);
+	}
+
 	private void configurarFiltros() {
+
 		view.getTxtBusca().getDocument()
 				.addDocumentListener(ValidationUtils.createDocumentListener(view.getTxtBusca(), this::filtrar));
 	}
 
+	private void resetListeners(AbstractButton btn) {
+
+		for (ActionListener al : btn.getActionListeners()) {
+			btn.removeActionListener(al);
+		}
+	}
+
 	private void registrarAcoes() {
 
+		resetListeners(view.getBtnNovo());
+		resetListeners(view.getBtnEditar());
+		resetListeners(view.getBtnExcluir());
+		resetListeners(view.getBtnPesquisar());
+
+		if (view.getChkVerExcluidos() != null) {
+			resetListeners(view.getChkVerExcluidos());
+		}
+
 		view.getBtnNovo().addActionListener(e -> abrirFormulario(null));
+
 		view.getBtnEditar().addActionListener(e -> editarSelecionado());
 
 		view.getBtnExcluir().addActionListener(e -> {
+
 			boolean modoLixeira = view.getChkVerExcluidos() != null && view.getChkVerExcluidos().isSelected();
 
 			if (modoLixeira) {
@@ -88,7 +147,14 @@ public class PerfilConsultaController extends BaseController {
 
 		view.getBtnPesquisar().addActionListener(e -> carregarDados());
 
-		TableFactory.addDoubleClickAction(view.getTabela(), this::editarSelecionado);
+		TableFactory.addDoubleClickAction(view.getTabela(), () -> {
+
+			boolean modoLixeira = view.getChkVerExcluidos() != null && view.getChkVerExcluidos().isSelected();
+
+			if (!modoLixeira) {
+				editarSelecionado();
+			}
+		});
 
 		view.getTabela().getSelectionModel().addListSelectionListener(e -> atualizarBotoes());
 	}
@@ -100,96 +166,123 @@ public class PerfilConsultaController extends BaseController {
 
 		view.getChkVerExcluidos().setVisible(permissaoContexto.temDelete());
 
-		view.getChkVerExcluidos().addActionListener(e -> {
+		view.getChkVerExcluidos().addActionListener(e -> alternarModoLixeira());
+	}
 
-			boolean modoLixeira = view.getChkVerExcluidos().isSelected();
+	private void alternarModoLixeira() {
 
-			view.getBtnExcluir().setText(modoLixeira ? "RESTAURAR" : "EXCLUIR");
-			view.getBtnNovo().setEnabled(!modoLixeira && permissaoContexto.temWrite());
+		boolean modoLixeira = view.getChkVerExcluidos().isSelected();
 
-			carregarDados();
-		});
+		view.getBtnExcluir().setText(modoLixeira ? "RESTAURAR" : "EXCLUIR");
+
+		view.getBtnNovo().setEnabled(!modoLixeira && permissaoContexto.temWrite());
+
+		view.getTabela().clearSelection();
+
+		carregarDados();
 	}
 
 	private void atualizarBotoes() {
 
 		Perfil sel = view.getSelecionado();
-		boolean temSelecao = (sel != null);
+
 		boolean modoLixeira = view.getChkVerExcluidos() != null && view.getChkVerExcluidos().isSelected();
 
-		view.getBtnEditar().setEnabled(temSelecao && !modoLixeira && permissaoContexto.temWrite());
+		view.getBtnEditar().setEnabled(permissaoContexto.podeEditar(sel != null, modoLixeira));
 
-		if (!temSelecao) {
-			view.getBtnExcluir().setEnabled(false);
-			return;
-		}
-
-		boolean podeExcluir;
-
-		if (!permissaoContexto.temDelete()) {
-			podeExcluir = false;
-		} else if (modoLixeira) {
-			podeExcluir = true;
-		} else {
-			podeExcluir = !"MASTER".equalsIgnoreCase(sel.getNome());
-		}
-
-		view.getBtnExcluir().setEnabled(podeExcluir);
+		view.getBtnExcluir().setEnabled(permissaoContexto.podeExcluirPerfil(sel, modoLixeira));
 	}
 
 	private void carregarDados() {
 
 		boolean verExcluidos = view.getChkVerExcluidos() != null && view.getChkVerExcluidos().isSelected();
 
-		runAsyncSilent(SwingUtilities.getWindowAncestor(view),
-				() -> service.listarPerfisVisiveis("", verExcluidos, usuarioLogado),
-				lista -> view.getTableModel().setDados(lista));
+		runAsyncSilent(getWindow(), () -> service.listarPerfisVisiveis("", verExcluidos, usuarioLogado), lista -> {
+
+			view.getTableModel().setDados(lista);
+
+			atualizarBotoes();
+		});
+	}
+
+	private void cancelarDebounce() {
+
+		if (debounceTask != null) {
+			debounceTask.cancel(false);
+		}
 	}
 
 	private void filtrar() {
 
-		String termo = view.getTxtBusca().getText();
-		boolean verExcluidos = view.getChkVerExcluidos() != null && view.getChkVerExcluidos().isSelected();
+		cancelarDebounce();
 
-		if (debounceTask != null)
-			debounceTask.cancel(false);
+		debounceTask = scheduler.schedule(() -> {
 
-		debounceTask = scheduler.schedule(() -> runAsyncSilent(SwingUtilities.getWindowAncestor(view),
-				() -> service.listarPerfisVisiveis(termo, verExcluidos, usuarioLogado),
-				lista -> view.getTableModel().setDados(lista)), 500, TimeUnit.MILLISECONDS);
+			if (view.isClosed()) {
+				return;
+			}
+
+			SwingUtilities.invokeLater(() -> {
+
+				String termo = view.getTxtBusca().getText();
+
+				boolean verExcluidos = view.getChkVerExcluidos() != null && view.getChkVerExcluidos().isSelected();
+
+				runAsyncSilent(getWindow(), () -> service.listarPerfisVisiveis(termo, verExcluidos, usuarioLogado),
+						lista -> {
+
+							view.getTableModel().setDados(lista);
+
+							atualizarBotoes();
+						});
+			});
+
+		}, 500, TimeUnit.MILLISECONDS);
 	}
 
 	private void editarSelecionado() {
 
 		Perfil sel = view.getSelecionado();
 
-		if (sel != null) {
-			abrirFormulario(sel);
-		} else {
+		if (sel == null) {
+
 			DialogFactory.aviso(view, "SELECIONE UM PERFIL PARA EDITAR.");
+
+			return;
 		}
+
+		abrirFormulario(sel);
 	}
 
 	private void excluirSelecionado() {
 
-		Perfil sel = view.getSelecionado();
-		if (sel == null)
-			return;
-
 		if (!permissaoContexto.temDelete()) {
+
 			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA EXCLUIR.");
+
 			return;
 		}
+
+		Perfil sel = view.getSelecionado();
+
+		if (sel == null)
+			return;
 
 		boolean confirmou = DialogFactory.confirmacao(view,
 				"DESEJA REALMENTE EXCLUIR O PERFIL: " + sel.getNome().toUpperCase() + "?");
 
 		if (confirmou) {
-			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+
+			runAsync(getWindow(), () -> {
+
 				service.excluirPerfil(sel.getIdPerfil(), usuarioLogado);
+
 				return null;
+
 			}, unused -> {
+
 				DialogFactory.informacao(view, "PERFIL EXCLUÍDO COM SUCESSO!");
+
 				carregarDados();
 			});
 		}
@@ -197,45 +290,41 @@ public class PerfilConsultaController extends BaseController {
 
 	private void restaurarSelecionado() {
 
-		Perfil sel = view.getSelecionado();
-		if (sel == null)
-			return;
-
 		if (!permissaoContexto.temDelete()) {
+
 			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA RESTAURAR.");
+
 			return;
 		}
 
+		Perfil sel = view.getSelecionado();
+
+		if (sel == null)
+			return;
+
 		if (DialogFactory.confirmacao(view, "DESEJA RESTAURAR O PERFIL: " + sel.getNome().toUpperCase() + "?")) {
 
-			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
-				service.restaurarPerfil(sel.getIdPerfil(), Sessao.getUsuario());
+			runAsync(getWindow(), () -> {
+
+				service.restaurarPerfil(sel.getIdPerfil(), usuarioLogado);
+
 				return null;
+
 			}, unused -> {
+
 				DialogFactory.informacao(view, "PERFIL RESTAURADO COM SUCESSO!");
+
 				carregarDados();
 			});
 		}
 	}
 
-	private void aplicarPermissoesEscopo() {
-
-		if (!aplicarRestricoesVisuais(permissaoContexto, view.getBtnNovo(), view.getBtnEditar(),
-				view.getBtnExcluir())) {
-
-			DialogFactory.aviso(view, "ACESSO NEGADO À GESTÃO DE PERFIS.");
-			view.dispose();
-			return;
-		}
-
-		if (view.getChkVerExcluidos() != null) {
-			view.getChkVerExcluidos().setVisible(permissaoContexto.temDelete());
-		}
-	}
-
 	private void abrirFormulario(Perfil perfil) {
+
 		if (!permissaoContexto.temWrite()) {
+
 			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO DE PERFIS.");
+
 			return;
 		}
 
@@ -248,19 +337,34 @@ public class PerfilConsultaController extends BaseController {
 		}
 
 		PerfilView formView = ViewFactory.createPerfilView();
+
 		formView.setName(idJanela);
 
 		PerfilController controller = (PerfilController) formView.getClientProperty("controller");
+
 		controller.setRefreshCallback(this::carregarDados);
 
 		if (perfil != null) {
+
 			formView.setTitle("EDITANDO PERFIL: " + perfil.getNome().toUpperCase());
+
 			controller.carregarParaEdicao(perfil);
+
 		} else {
+
 			formView.setTitle("NOVO PERFIL");
+
 			controller.novoPerfil();
 		}
 
 		DesktopUtils.showFrame(desk, formView);
+	}
+
+	@Override
+	public void dispose() {
+
+		cancelarDebounce();
+
+		super.dispose();
 	}
 }

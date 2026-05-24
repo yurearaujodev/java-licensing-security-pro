@@ -105,7 +105,7 @@ public abstract class BaseController {
 				T result = task.execute();
 				SwingUtilities.invokeLater(() -> onSuccess.accept(result));
 			} catch (Exception e) {
-				SwingUtilities.invokeLater(() -> handleException(e, view));
+				handleException(e, view);
 			}
 		});
 	}

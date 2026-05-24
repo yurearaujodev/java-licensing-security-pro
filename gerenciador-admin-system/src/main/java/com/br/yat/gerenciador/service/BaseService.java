@@ -112,5 +112,13 @@ public abstract class BaseService {
 			return null;
 		});
 	}
+	
+	public DomainEventPublisher getEventPublisher() {
+	    return eventPublisher;
+	}
+
+	public SecurityService getSecurityService() {
+	    return securityService;
+	}
 
 }

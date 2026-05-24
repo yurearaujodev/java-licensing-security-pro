@@ -21,11 +21,11 @@ public class PerfilController extends BaseCadastroController<PerfilView> {
 	private Perfil perfilAtual;
 	private RefreshCallback refreshCallback;
 	private final UsuarioPermissaoService usuarioPermissaoService;
-	
-	public PerfilController(PerfilView view, PerfilService service,UsuarioPermissaoService usuarioPermissaoService) {
+
+	public PerfilController(PerfilView view, PerfilService service, UsuarioPermissaoService usuarioPermissaoService) {
 		super(view);
 		this.service = service;
-		this.usuarioPermissaoService=usuarioPermissaoService;
+		this.usuarioPermissaoService = usuarioPermissaoService;
 		inicializar();
 		configurarFiltro();
 	}
@@ -153,8 +153,8 @@ public class PerfilController extends BaseCadastroController<PerfilView> {
 			return;
 		}
 
-		runAsync(SwingUtilities.getWindowAncestor(view),
-				() -> usuarioPermissaoService.obterContextoPermissao(logado.getIdUsuario(), MenuChave.CONFIGURACAO_PERMISSAO), ctx -> {
+		runAsync(SwingUtilities.getWindowAncestor(view), () -> usuarioPermissaoService
+				.obterContextoPermissao(logado.getIdUsuario(), MenuChave.CONFIGURACAO_PERMISSAO), ctx -> {
 
 					if (!ctx.temRead()) {
 						view.doDefaultCloseAction();

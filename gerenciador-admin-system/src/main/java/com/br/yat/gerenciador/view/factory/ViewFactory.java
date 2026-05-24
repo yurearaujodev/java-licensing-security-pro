@@ -150,9 +150,29 @@ public final class ViewFactory {
 		return view;
 	}
 
+//	public static MenuPrincipal createMenuPrincipal() {
+//		MenuPrincipal view = new MenuPrincipal();
+//		mainController = new MenuPrincipalController(view);
+//		return view;
+//	}
+	
 	public static MenuPrincipal createMenuPrincipal() {
+
+		initializeDependencies();
 		MenuPrincipal view = new MenuPrincipal();
-		mainController = new MenuPrincipalController(view);
+		DaoFactory df = getDaoFactory();
+		DomainEventPublisher dep = getEventPublisher();
+		SecurityService securityService =
+		        new SecurityService();
+		BootstrapService bootstrapService =
+		        new BootstrapService(
+		                df,
+		                dep,
+		                securityService);
+		mainController =
+		        new MenuPrincipalController(
+		                view,
+		                bootstrapService);
 		return view;
 	}
 

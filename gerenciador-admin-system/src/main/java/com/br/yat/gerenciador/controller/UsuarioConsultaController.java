@@ -1,8 +1,11 @@
 package com.br.yat.gerenciador.controller;
 
+import java.awt.Window;
+import java.awt.event.ActionListener;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import javax.swing.AbstractButton;
 import javax.swing.JDesktopPane;
 import javax.swing.SwingUtilities;
 
@@ -33,13 +36,13 @@ public class UsuarioConsultaController extends BaseController {
 	private Usuario usuarioLogado;
 	private PermissaoContexto permissaoContexto;
 
-	public UsuarioConsultaController(UsuarioConsultaView view, UsuarioService service,
-			AutenticacaoService authService,UsuarioPermissaoService usuarioPermissaoService) {
+	public UsuarioConsultaController(UsuarioConsultaView view, UsuarioService service, AutenticacaoService authService,
+			UsuarioPermissaoService usuarioPermissaoService) {
 
 		this.view = view;
 		this.service = service;
 		this.authService = authService;
-		this.usuarioPermissaoService=usuarioPermissaoService;
+		this.usuarioPermissaoService = usuarioPermissaoService;
 
 		inicializarEscopo();
 	}
@@ -59,11 +62,10 @@ public class UsuarioConsultaController extends BaseController {
 			return;
 		}
 
-		runAsync(SwingUtilities.getWindowAncestor(view), () -> usuarioPermissaoService
-				.obterContextoPermissao(usuarioLogado.getIdUsuario(), MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES),
-				ctx -> {
+		runAsync(getWindow(), () -> usuarioPermissaoService.obterContextoPermissao(usuarioLogado.getIdUsuario(),
+				MenuChave.CONFIGURACAO_USUARIOS_PERMISSOES), ctx -> {
 
-					if (!ctx.temRead()) {
+					if (ctx == null || !ctx.temRead()) {
 						DialogFactory.aviso(null, "ACESSO NEGADO À GESTÃO DE USUÁRIOS.");
 						view.dispose();
 						return;
@@ -88,17 +90,38 @@ public class UsuarioConsultaController extends BaseController {
 	}
 
 	private void configurarFiltros() {
+
 		view.getTxtBusca().getDocument()
 				.addDocumentListener(ValidationUtils.createDocumentListener(view.getTxtBusca(), this::filtrar));
 	}
 
+	private void resetListeners(AbstractButton btn) {
+
+		for (ActionListener al : btn.getActionListeners()) {
+			btn.removeActionListener(al);
+		}
+	}
+
+	private Window getWindow() {
+		return SwingUtilities.getWindowAncestor(view);
+	}
+
 	private void registrarAcoes() {
 
+		resetListeners(view.getBtnNovo());
+		resetListeners(view.getBtnEditar());
+		resetListeners(view.getBtnResetarSenha());
+		resetListeners(view.getBtnExcluir());
+		resetListeners(view.getChkVerExcluidos());
+
 		view.getBtnNovo().addActionListener(e -> abrirFormulario(null));
+
 		view.getBtnEditar().addActionListener(e -> editarSelecionado());
+
 		view.getBtnResetarSenha().addActionListener(e -> resetarSenhaSelecionado());
 
 		view.getBtnExcluir().addActionListener(e -> {
+
 			if (view.getChkVerExcluidos().isSelected()) {
 				restaurarSelecionado();
 			} else {
@@ -108,50 +131,42 @@ public class UsuarioConsultaController extends BaseController {
 
 		TableFactory.addDoubleClickAction(view.getTabela(), this::editarSelecionado);
 
-		view.getTabela().getSelectionModel().addListSelectionListener(e -> {
+		view.getTabela().getSelectionModel().addListSelectionListener(e -> atualizarEstadoBotoes());
 
-			Usuario sel = view.getSelecionado();
-			boolean temSelecao = sel != null;
-			boolean modoLixeira = view.getChkVerExcluidos().isSelected();
-
-			view.getBtnEditar().setEnabled(temSelecao && !modoLixeira && permissaoContexto.temWrite());
-
-			view.getBtnResetarSenha().setEnabled(temSelecao && !modoLixeira && permissaoContexto.temDelete());
-
-			view.getBtnExcluir().setEnabled(temSelecao && podeExcluirSelecionado(sel, modoLixeira));
-		});
-
-		view.getChkVerExcluidos().addActionListener(e -> {
-
-			boolean modoLixeira = view.getChkVerExcluidos().isSelected();
-
-			view.getBtnExcluir().setText(modoLixeira ? "RESTAURAR" : "EXCLUIR");
-
-			view.getBtnNovo().setEnabled(!modoLixeira && permissaoContexto.temWrite());
-
-			carregarDados();
-		});
+		view.getChkVerExcluidos().addActionListener(e -> alternarModoLixeira());
 	}
 
-	private boolean podeExcluirSelecionado(Usuario sel, boolean modoLixeira) {
+	private void atualizarEstadoBotoes() {
 
-		if (sel == null)
-			return false;
+		Usuario sel = view.getSelecionado();
 
-		if (!permissaoContexto.temDelete())
-			return false;
+		boolean temSelecao = sel != null;
 
-		if (!modoLixeira && sel.isMaster())
-			return false;
+		boolean modoLixeira = view.getChkVerExcluidos().isSelected();
 
-		return true;
+		view.getBtnEditar().setEnabled(permissaoContexto.podeEditar(temSelecao, modoLixeira));
+
+		view.getBtnResetarSenha().setEnabled(permissaoContexto.podeResetarSenha(temSelecao, modoLixeira));
+
+		view.getBtnExcluir().setEnabled(permissaoContexto.podeExcluirUsuario(sel, modoLixeira));
+	}
+
+	private void alternarModoLixeira() {
+
+		boolean modoLixeira = view.getChkVerExcluidos().isSelected();
+
+		view.getBtnExcluir().setText(modoLixeira ? "RESTAURAR" : "EXCLUIR");
+
+		view.getBtnNovo().setEnabled(!modoLixeira && permissaoContexto.temWrite());
+
+		carregarDados();
 	}
 
 	private void carregarDados() {
 
 		boolean verExcluidos = view.getChkVerExcluidos().isSelected();
 
-		runAsyncSilent(SwingUtilities.getWindowAncestor(view),
+		runAsyncSilent(getWindow(),
 				() -> verExcluidos ? service.listarExcluidosVisiveis(usuarioLogado)
 						: service.listarUsuariosVisiveis("", usuarioLogado),
 				lista -> view.getTableModel().setDados(lista));
@@ -163,17 +178,23 @@ public class UsuarioConsultaController extends BaseController {
 			return;
 
 		Usuario sel = view.getSelecionado();
+
 		if (sel == null)
 			return;
 
 		if (DialogFactory.confirmacao(view,
 				"DESEJA REALMENTE EXCLUIR O USUÁRIO: " + sel.getNome().toUpperCase() + "?")) {
 
-			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+			runAsync(getWindow(), () -> {
+
 				service.excluirUsuario(sel.getIdUsuario(), usuarioLogado);
+
 				return null;
+
 			}, unused -> {
+
 				DialogFactory.informacao(view, "USUÁRIO EXCLUÍDO COM SUCESSO!");
+
 				carregarDados();
 			});
 		}
@@ -185,16 +206,22 @@ public class UsuarioConsultaController extends BaseController {
 			return;
 
 		Usuario sel = view.getSelecionado();
+
 		if (sel == null)
 			return;
 
 		if (DialogFactory.confirmacao(view, "DESEJA RESTAURAR O USUÁRIO: " + sel.getNome().toUpperCase() + "?")) {
 
-			runAsync(SwingUtilities.getWindowAncestor(view), () -> {
+			runAsync(getWindow(), () -> {
+
 				service.restaurarUsuario(sel.getIdUsuario(), usuarioLogado);
+
 				return null;
+
 			}, unused -> {
+
 				DialogFactory.informacao(view, "USUÁRIO RESTAURADO COM SUCESSO!");
+
 				carregarDados();
 			});
 		}
@@ -203,7 +230,9 @@ public class UsuarioConsultaController extends BaseController {
 	private void abrirFormulario(Usuario usuario) {
 
 		if (!permissaoContexto.temWrite()) {
+
 			DialogFactory.erro(view, "VOCÊ NÃO TEM PERMISSÃO PARA ACESSAR O CADASTRO.");
+
 			return;
 		}
 
@@ -223,10 +252,15 @@ public class UsuarioConsultaController extends BaseController {
 		controller.setRefreshCallback(this::carregarDados);
 
 		if (usuario != null) {
+
 			cadastroView.setTitle("EDITANDO USUÁRIO: " + usuario.getNome().toUpperCase());
+
 			controller.carregarUsuarioParaEdicao(usuario);
+
 		} else {
+
 			cadastroView.setTitle("NOVO USUÁRIO");
+
 			controller.novoUsuario();
 		}
 
@@ -238,7 +272,9 @@ public class UsuarioConsultaController extends BaseController {
 		Usuario sel = view.getSelecionado();
 
 		if (sel == null) {
+
 			DialogFactory.aviso(view, "SELECIONE UM USUÁRIO PARA EDITAR.");
+
 			return;
 		}
 
@@ -251,31 +287,58 @@ public class UsuarioConsultaController extends BaseController {
 			return;
 
 		Usuario sel = view.getSelecionado();
+
 		if (sel == null)
 			return;
 
 		if (DialogFactory.confirmacao(view,
 				"DESEJA REALMENTE RESETAR A SENHA DE: " + sel.getNome().toUpperCase() + "?")) {
 
-			runAsync(SwingUtilities.getWindowAncestor(view),
-					() -> authService.resetarSenha(sel.getIdUsuario(), usuarioLogado), senhaPadrao -> {
-						DialogFactory.informacao(view, "SENHA RESETADA COM SUCESSO!\n" + "NOVA SENHA: " + senhaPadrao);
-						carregarDados();
-					});
+			runAsync(getWindow(), () -> authService.resetarSenha(sel.getIdUsuario(), usuarioLogado), senhaPadrao -> {
+
+				DialogFactory.informacao(view, "SENHA RESETADA COM SUCESSO!\n" + "NOVA SENHA: " + senhaPadrao);
+
+				carregarDados();
+			});
+		}
+	}
+
+	private void cancelarDebounce() {
+
+		if (debounceTask != null) {
+			debounceTask.cancel(false);
 		}
 	}
 
 	private void filtrar() {
 
-		String termo = view.getTxtBusca().getText();
-		boolean verExcluidos = view.getChkVerExcluidos().isSelected();
+		cancelarDebounce();
 
-		if (debounceTask != null)
-			debounceTask.cancel(false);
+		debounceTask = scheduler.schedule(() -> {
 
-		debounceTask = scheduler.schedule(() -> runAsyncSilent(SwingUtilities.getWindowAncestor(view),
-				() -> verExcluidos ? service.listarExcluidosVisiveis(usuarioLogado)
-						: service.listarUsuariosVisiveis(termo, usuarioLogado),
-				lista -> view.getTableModel().setDados(lista)), 500, TimeUnit.MILLISECONDS);
+			if (view.isClosed()) {
+				return;
+			}
+
+			SwingUtilities.invokeLater(() -> {
+
+				String termo = view.getTxtBusca().getText();
+
+				boolean verExcluidos = view.getChkVerExcluidos().isSelected();
+
+				runAsyncSilent(getWindow(),
+						() -> verExcluidos ? service.listarExcluidosVisiveis(usuarioLogado)
+								: service.listarUsuariosVisiveis(termo, usuarioLogado),
+						lista -> view.getTableModel().setDados(lista));
+			});
+
+		}, 500, TimeUnit.MILLISECONDS);
 	}
+
+	@Override
+	public void dispose() {
+		cancelarDebounce();
+		super.dispose();
+	}
+
 }

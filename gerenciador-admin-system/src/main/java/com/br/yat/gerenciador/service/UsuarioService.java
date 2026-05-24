@@ -103,8 +103,8 @@ public class UsuarioService extends BaseService {
 		try {
 			validarInicial(usuario, permissoesGranulares, datasExpiracao);
 
-			Map<MenuChave, List<String>> permissoesFinal = prepararPermissoes(usuario, permissoesGranulares);
-			Map<MenuChave, LocalDateTime> datasFinal = prepararDatas(usuario, datasExpiracao);
+			Map<MenuChave, List<String>> permissoesFinal = prepararPermissoes(executor, permissoesGranulares);
+			Map<MenuChave, LocalDateTime> datasFinal = prepararDatas(usuario, executor, datasExpiracao);
 
 			executeInTransactionVoid(conn -> processarUsuario(usuario, executor, permissoesFinal, datasFinal, conn));
 
@@ -134,7 +134,7 @@ public class UsuarioService extends BaseService {
 		}
 
 		UsuarioDao usuarioDao = daoFactory.createUsuarioDao(conn);
-		validarRegrasPersistencia(usuarioDao, usuario);
+		validarRegrasPersistencia(usuarioDao, usuario, executor);
 
 		Usuario alvoExistente = obterUsuarioExistente(usuario, usuarioDao);
 		Usuario estadoAnterior = alvoExistente != null ? Usuario.snapshotParaValidacaoSenha(alvoExistente) : null;
@@ -151,13 +151,18 @@ public class UsuarioService extends BaseService {
 		permissaoService.sincronizarPermissoes(conn, usuario, permissoesSincronizadas);
 	}
 
-	private Map<MenuChave, List<String>> prepararPermissoes(Usuario usuario, Map<MenuChave, List<String>> permissoes) {
-		return UsuarioPolicy.ignoraValidacaoPermissao(usuario) ? new HashMap<>()
-				: (permissoes != null ? new HashMap<>(permissoes) : new HashMap<>());
+	private Map<MenuChave, List<String>> prepararPermissoes(Usuario executor,
+			Map<MenuChave, List<String>> permissoes) {
+
+		return UsuarioPolicy.isPrivilegiado(executor) ? new HashMap<>()
+				: permissoes != null ? new HashMap<>(permissoes) : new HashMap<>();
+
 	}
 
-	private Map<MenuChave, LocalDateTime> prepararDatas(Usuario usuario, Map<MenuChave, String> datas) {
-		if (UsuarioPolicy.ignoraValidacaoPermissao(usuario) || datas == null)
+	private Map<MenuChave, LocalDateTime> prepararDatas(Usuario usuario, Usuario executor,
+			Map<MenuChave, String> datas) {
+
+		if (UsuarioPolicy.isPrivilegiado(executor) || datas == null)
 			return new HashMap<>();
 
 		Map<MenuChave, LocalDateTime> datasFinal = new HashMap<>();
@@ -338,7 +343,7 @@ public class UsuarioService extends BaseService {
 		}
 	}
 
-	private void validarRegrasPersistencia(UsuarioDao dao, Usuario usuario) {
+	private void validarRegrasPersistencia(UsuarioDao dao, Usuario usuario, Usuario executor) {
 		Usuario masterExistente = dao.buscarMasterUnico();
 
 		// Impede criação de novo master se já existir um
@@ -349,7 +354,7 @@ public class UsuarioService extends BaseService {
 		}
 
 		// Garante que usuários comuns nunca sejam master
-		if (!UsuarioPolicy.isPrivilegiado(usuario)) {
+		if (!UsuarioPolicy.isPrivilegiado(executor)) {
 			usuario.setMaster(false);
 		}
 
@@ -366,9 +371,12 @@ public class UsuarioService extends BaseService {
 
 	private void validarRestricoesMaster(Usuario usuario) {
 
-		if (!UsuarioPolicy.podeAlterarStatusMaster(usuario)) {
-			throw new ValidationException(ValidationErrorType.INVALID_FIELD,
-					"O STATUS DO MASTER NÃO PODE SER ALTERADO.");
+		if (usuario.isMaster()) {
+
+			if (!UsuarioPolicy.podeAlterarStatusMaster(usuario)) {
+				throw new ValidationException(ValidationErrorType.INVALID_FIELD,
+						"O STATUS DO MASTER NÃO PODE SER ALTERADO.");
+			}
 		}
 
 		if (usuario.getEmpresa() == null || usuario.getEmpresa().getIdEmpresa() == null) {
