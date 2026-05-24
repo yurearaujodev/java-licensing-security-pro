@@ -47,7 +47,7 @@ A proteção de dados é estruturada em três pilares:
 
 - **Linguagem:** ☕ Java 21 (LTS)
 - **UI Framework:** 🎨 Swing + FlatLaf + MigLayout
-- **Banco de Dados:** 🗄️ MySQL 8.4.0 (17 tabelas)
+- **Banco de Dados:** 🗄️ MySQL 8.4.0 (28 tabelas)
 - **Connection Pool:** 🔌 HikariCP
 - **Validações:** ✅ Caelum Stella (CPF/CNPJ) & Libphonenumber
 
@@ -55,7 +55,7 @@ A proteção de dados é estruturada em três pilares:
 
 ## 📂 Estrutura de Pastas (Arquitetura por Módulos)
 
-O projeto adota uma estrutura de **MVC com Sub-pacotamento**, organizada para suportar a complexidade das 17 tabelas e interfaces multi-abas:
+O projeto adota uma estrutura de **MVC com Sub-pacotamento**, organizada para suportar a complexidade das 28 tabelas e interfaces multi-abas:
 
 ```text
 src/main/java/com/br/yat/gerenciador/
@@ -88,7 +88,7 @@ src/main/java/com/br/yat/gerenciador/
 ### 🗄️ Preparação do Banco de Dados
 
 1. **Criação do Schema:** Crie o schema no seu MySQL (**db_gerenciador**).
-2. **Importação das Tabelas:** O script SQL para criação das **17 tabelas** está disponível na pasta **src/main/resources** do Maven. Importe-o no seu banco antes de iniciar a aplicação.
+2. **Importação das Tabelas:** O script SQL para criação das **28 tabelas** está disponível na pasta **src/main/resources** do Maven. Importe-o no seu banco antes de iniciar a aplicação.
 
 ---
 
@@ -113,7 +113,7 @@ O projeto utiliza padrões de projeto para garantir que a interface Swing seja e
 
 ## 🗄️ Estrutura de Dados e Persistência
 
-O sistema utiliza um banco de dados **MySQL 8.4** altamente normalizado, composto por **17 tabelas** que gerenciam desde o núcleo empresarial até o controle granular de licenciamento.
+O sistema utiliza um banco de dados **MySQL 8.4** altamente normalizado, composto por **28 tabelas** que gerenciam desde o núcleo empresarial até o controle granular de licenciamento.
 
 ---
 ### 📊 Modelagem Estratégica
