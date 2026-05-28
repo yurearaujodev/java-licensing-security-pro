@@ -33,29 +33,85 @@ public class AutenticacaoService extends BaseService {
 	}
 
 	public Usuario autenticar(String email, char[] senhaPura) {
+
 		try {
-			return executeInTransaction(conn -> {
+
+			// SOMENTE LEITURA
+			Usuario user = execute(conn -> {
 
 				UsuarioDao dao = daoFactory.createUsuarioDao(conn);
 
-				Usuario user = buscarUsuarioOuFalhar(conn, dao, email);
+				Usuario u = buscarUsuarioOuFalhar(conn, dao, email);
 
-				validarStatus(user);
-				validarBloqueioTemporario(dao, user);
+				validarStatus(u);
+				validarBloqueioTemporario(dao, u);
 
-				if (!PasswordUtils.verifyPassword(senhaPura, user.getSenhaHashString())) {
-					tratarFalhaLogin(conn, dao, user, email);
+				return u;
+			});
+
+			// SENHA INCORRETA
+			if (!PasswordUtils.verifyPassword(senhaPura, user.getSenhaHashString())) {
+
+				tratarFalhaLogin(user);
+				if (user.getTentativasFalhas() >= parametroService.getInt(ParametroChave.LOGIN_MAX_TENTATIVAS, 5)) {
+
+					if (user.getBloqueadoAte() != null) {
+
+						throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+								"USUÁRIO BLOQUEADO ATÉ " + TimeUtils.formatarDataHora(user.getBloqueadoAte()));
+					}
+
+					throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "USUÁRIO BLOQUEADO.");
 				}
+
+				int tentativas = user.getTentativasFalhas();
+
+				int maxTentativas = parametroService.getInt(ParametroChave.LOGIN_MAX_TENTATIVAS, 5);
+
+				throw new ValidationException(ValidationErrorType.INVALID_FIELD,
+						"SENHA INCORRETA. TENTATIVA " + tentativas + " DE " + maxTentativas);
+			}
+
+			// LOGIN OK
+			executeInTransactionVoid(conn -> {
+
+				UsuarioDao dao = daoFactory.createUsuarioDao(conn);
 
 				verificarExpiracaoSenha(user);
 				registrarSucessoLogin(conn, dao, user);
-
-				return user;
 			});
+
+			return user;
+
 		} finally {
 			SensitiveData.safeClear(senhaPura);
 		}
 	}
+
+//	public Usuario autenticar(String email, char[] senhaPura) {
+//		try {
+//			return executeInTransaction(conn -> {
+//
+//				UsuarioDao dao = daoFactory.createUsuarioDao(conn);
+//
+//				Usuario user = buscarUsuarioOuFalhar(conn, dao, email);
+//
+//				validarStatus(user);
+//				validarBloqueioTemporario(dao, user);
+//
+//				if (!PasswordUtils.verifyPassword(senhaPura, user.getSenhaHashString())) {
+//					tratarFalhaLogin(conn, dao, user, email);
+//				}
+//
+//				verificarExpiracaoSenha(user);
+//				registrarSucessoLogin(conn, dao, user);
+//
+//				return user;
+//			});
+//		} finally {
+//			SensitiveData.safeClear(senhaPura);
+//		}
+//	}
 
 	private Usuario buscarUsuarioOuFalhar(Connection conn, UsuarioDao dao, String email) {
 		Usuario user = dao.buscarPorEmail(email);
@@ -79,24 +135,61 @@ public class AutenticacaoService extends BaseService {
 		}
 	}
 
-	private void tratarFalhaLogin(Connection conn, UsuarioDao dao, Usuario user, String email) {
+	private void tratarFalhaLogin(Usuario user) {
 
 		if (user.isMaster()) {
 			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "SENHA INCORRETA.");
 		}
 
-		int maxTentativas = parametroService.getInt(ParametroChave.LOGIN_MAX_TENTATIVAS, 5);
+		executeInTransactionVoid(conn -> {
 
-		int tentativas = dao.incrementarERetornarTentativas(email);
-		user.setTentativasFalhas(tentativas);
+			UsuarioDao dao = daoFactory.createUsuarioDao(conn);
 
-		if (tentativas < maxTentativas) {
-			throw new ValidationException(ValidationErrorType.INVALID_FIELD,
-					"SENHA INCORRETA. TENTATIVA " + tentativas + " DE " + maxTentativas);
-		}
+			int maxTentativas = getMaxTentativas();
 
-		processarBloqueio(conn, dao, user, tentativas);
+			int tentativas = dao.incrementarERetornarTentativas(user.getIdUsuario());
+
+			user.setTentativasFalhas(tentativas);
+
+			// AINDA NÃO BLOQUEIA
+			if (tentativas < maxTentativas) {
+				return;
+			}
+
+			// BLOQUEIA E COMMITA
+			processarBloqueio(conn, dao, user, tentativas);
+		});
 	}
+	
+	private int getMaxTentativas() {
+	    return parametroService.getInt(
+	            ParametroChave.LOGIN_MAX_TENTATIVAS,
+	            5);
+	}
+
+//	private void tratarFalhaLogin(Connection conn, UsuarioDao dao, Usuario user, String email) {
+//
+//		if (user.isMaster()) {
+//			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "SENHA INCORRETA.");
+//		}
+//
+//		int maxTentativas = parametroService.getInt(ParametroChave.LOGIN_MAX_TENTATIVAS, 5);
+//
+//	//	int tentativas = dao.incrementarERetornarTentativas(email);
+//		System.out.println("Tentativas antes: " + user.getTentativasFalhas());
+//
+//		int tentativas = dao.incrementarERetornarTentativas(user.getIdUsuario());
+//
+//		System.out.println("Tentativas depois: " + tentativas);
+//		user.setTentativasFalhas(tentativas);
+//
+//		if (tentativas < maxTentativas) {
+//			throw new ValidationException(ValidationErrorType.INVALID_FIELD,
+//					"SENHA INCORRETA. TENTATIVA " + tentativas + " DE " + maxTentativas);
+//		}
+//
+//		processarBloqueio(conn, dao, user, tentativas);
+//	}
 
 	private void processarBloqueio(Connection conn, UsuarioDao dao, Usuario user, int tentativas) {
 
@@ -118,14 +211,27 @@ public class AutenticacaoService extends BaseService {
 		dao.bloquearUsuario(user.getIdUsuario());
 
 		Map<String, Object> detalhes = new HashMap<>();
+
 		detalhes.put("tentativas", tentativas);
 		detalhes.put("bloqueios_24h", historico24h);
 
 		registrarLogSucesso(conn, "SEGURANCA", "BLOQUEIO_PERMANENTE", "usuario", user.getIdUsuario(), null, detalhes);
-
-		throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-				"ESTA CONTA FOI BLOQUEADA PERMANENTEMENTE POR REINCIDÊNCIA.");
 	}
+
+//	private void executarBloqueioPermanente(Connection conn, UsuarioDao dao, Usuario user, int tentativas,
+//			int historico24h) {
+//
+//		dao.bloquearUsuario(user.getIdUsuario());
+//
+//		Map<String, Object> detalhes = new HashMap<>();
+//		detalhes.put("tentativas", tentativas);
+//		detalhes.put("bloqueios_24h", historico24h);
+//
+//		registrarLogSucesso(conn, "SEGURANCA", "BLOQUEIO_PERMANENTE", "usuario", user.getIdUsuario(), null, detalhes);
+//
+//		throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+//				"ESTA CONTA FOI BLOQUEADA PERMANENTEMENTE POR REINCIDÊNCIA.");
+//	}
 
 	private void executarBloqueioTemporario(Connection conn, UsuarioDao dao, Usuario user, int tentativas,
 			int historico24h) {
@@ -135,17 +241,53 @@ public class AutenticacaoService extends BaseService {
 		LocalDateTime ate = LocalDateTime.now().plusMinutes(minutos);
 
 		dao.bloquearTemporariamente(user.getIdUsuario(), ate);
+
 		user.setBloqueadoAte(ate);
 
 		Map<String, Object> detalhes = new HashMap<>();
+
 		detalhes.put("tentativa", tentativas);
 		detalhes.put("sequencia_hoje", historico24h + 1);
 
 		registrarLogSucesso(conn, "SEGURANCA", "BLOQUEIO_TEMPORARIO", "usuario", user.getIdUsuario(), null, detalhes);
-
-		throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-				"LIMITE ATINGIDO. SUSPENSO ATÉ " + TimeUtils.formatarDataHora(ate));
 	}
+
+//	private void executarBloqueioTemporario(Connection conn, UsuarioDao dao, Usuario user, int tentativas,
+//			int historico24h) {
+//
+//		int minutos = parametroService.getInt(ParametroChave.LOGIN_TEMPO_BLOQUEIO_MIN, 5);
+//
+//		LocalDateTime ate = LocalDateTime.now().plusMinutes(minutos);
+//
+//		dao.bloquearTemporariamente(user.getIdUsuario(), ate);
+//		user.setBloqueadoAte(ate);
+//
+//		Map<String, Object> detalhes = new HashMap<>();
+//		detalhes.put("tentativa", tentativas);
+//		detalhes.put("sequencia_hoje", historico24h + 1);
+//
+//		registrarLogSucesso(conn, "SEGURANCA", "BLOQUEIO_TEMPORARIO", "usuario", user.getIdUsuario(), null, detalhes);
+//
+//		throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+//				"LIMITE ATINGIDO. SUSPENSO ATÉ " + TimeUtils.formatarDataHora(ate));
+//	}
+
+//	private void validarBloqueioTemporario(UsuarioDao dao, Usuario user) {
+//
+//		LocalDateTime bloqueado = user.getBloqueadoAte();
+//
+//		if (bloqueado == null)
+//			return;
+//
+//		if (bloqueado.isAfter(LocalDateTime.now())) {
+//			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+//					"USUÁRIO BLOQUEADO TEMPORARIAMENTE ATÉ " + TimeUtils.formatarDataHora(bloqueado));
+//		}
+//
+//		dao.resetTentativasFalhas(user.getIdUsuario());
+//		user.setBloqueadoAte(null);
+//		user.setTentativasFalhas(0);
+//	}
 
 	private void validarBloqueioTemporario(UsuarioDao dao, Usuario user) {
 
@@ -155,11 +297,19 @@ public class AutenticacaoService extends BaseService {
 			return;
 
 		if (bloqueado.isAfter(LocalDateTime.now())) {
+
 			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
 					"USUÁRIO BLOQUEADO TEMPORARIAMENTE ATÉ " + TimeUtils.formatarDataHora(bloqueado));
 		}
 
-		dao.resetTentativasFalhas(user.getIdUsuario());
+		// BLOQUEIO EXPIROU -> LIMPA EM NOVA TRANSAÇÃO
+		executeInTransactionVoid(conn -> {
+
+			UsuarioDao txDao = daoFactory.createUsuarioDao(conn);
+
+			txDao.resetTentativasFalhas(user.getIdUsuario());
+		});
+
 		user.setBloqueadoAte(null);
 		user.setTentativasFalhas(0);
 	}

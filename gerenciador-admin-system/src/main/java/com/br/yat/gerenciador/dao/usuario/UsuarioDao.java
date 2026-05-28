@@ -107,16 +107,35 @@ public class UsuarioDao extends GenericDao<Usuario> {
 
 		return executeQuery(sql);
 	}
+	
+	public int incrementarERetornarTentativas(int idUsuario) {
 
-	public int incrementarERetornarTentativas(String email) {
-		String sqlUpdate = "UPDATE " + tableName
-				+ " SET tentativas_falhas = COALESCE(tentativas_falhas, 0) + 1 WHERE email = ?";
-		executeUpdate(sqlUpdate, email);
+	    String sqlUpdate = """
+	        UPDATE usuario
+	        SET tentativas_falhas = COALESCE(tentativas_falhas, 0) + 1,
+	            atualizado_em = NOW()
+	        WHERE id_usuario = ?
+	        """;
 
-		String sqlSelect = "SELECT tentativas_falhas FROM " + tableName + " WHERE email = ?";
+	    executeUpdate(sqlUpdate, idUsuario);
 
-		return executeScalarInt(sqlSelect, email);
+	    String sqlSelect = """
+	        SELECT tentativas_falhas
+	        FROM usuario
+	        WHERE id_usuario = ?
+	        """;
+
+	    return executeScalarInt(sqlSelect, idUsuario);
 	}
+
+//	public int incrementarERetornarTentativas(String email) {
+//		String sqlUpdate = "UPDATE " + tableName
+//				+ " SET tentativas_falhas = COALESCE(tentativas_falhas, 0) + 1 WHERE email = ?";
+//		executeUpdate(sqlUpdate, email);
+//		String sqlSelect = "SELECT tentativas_falhas FROM " + tableName + " WHERE email = ?";
+//
+//		return executeScalarInt(sqlSelect, email);
+//	}
 
 	public void resetTentativasFalhas(int idUsuario) {
 		String sql = "UPDATE " + tableName + " SET tentativas_falhas = 0, bloqueado_ate = NULL WHERE id_usuario = ?";
