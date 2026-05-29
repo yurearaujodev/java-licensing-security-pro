@@ -69,6 +69,18 @@ public class UsuarioDao extends GenericDao<Usuario> {
 		return lista.isEmpty() ? null : lista.get(0);
 	}
 
+	/**
+	 * Busca o usuário para login com bloqueio pessimista da linha (deve ser chamado dentro de transação).
+	 */
+	public Usuario buscarPorEmailParaLogin(String email) {
+		String sql = "SELECT u.*, e.razao_social AS razao_social_empresa, p.nome AS nome_perfil " + "FROM " + tableName
+				+ " u " + "LEFT JOIN empresa e ON u.id_empresa = e.id_empresa "
+				+ "LEFT JOIN perfil p ON u.id_perfil = p.id_perfil "
+				+ "WHERE u.email = ? AND u.deletado_em IS NULL FOR UPDATE";
+		var lista = executeQuery(sql, email);
+		return lista.isEmpty() ? null : lista.get(0);
+	}
+
 	public Usuario buscarMasterUnico() {
 		String sql = "SELECT * FROM " + tableName + " WHERE is_master = 1 AND deletado_em IS NULL LIMIT 1";
 		var lista = executeQuery(sql);

@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.br.yat.gerenciador.dao.DaoFactory;
-import com.br.yat.gerenciador.dao.LogSistemaDao;
 import com.br.yat.gerenciador.dao.usuario.UsuarioDao;
 import com.br.yat.gerenciador.domain.event.DomainEventPublisher;
 import com.br.yat.gerenciador.exception.ValidationException;
@@ -20,401 +19,94 @@ import com.br.yat.gerenciador.security.SecurityService;
 import com.br.yat.gerenciador.security.SensitiveData;
 import com.br.yat.gerenciador.util.TimeUtils;
 
+/**
+ * Orquestra autenticação, bloqueio por tentativas e operações de senha.
+ */
 public class AutenticacaoService extends BaseService {
 
 	private final ParametroSistemaService parametroService;
 	private final DaoFactory daoFactory;
+	private final SenhaPolicyService senhaPolicyService;
+	private final LoginBloqueioService loginBloqueioService;
 
 	public AutenticacaoService(ParametroSistemaService parametroService, DaoFactory daoFactory,
 			DomainEventPublisher eventPublisher, SecurityService securityService) {
 		super(eventPublisher, securityService);
 		this.parametroService = parametroService;
 		this.daoFactory = daoFactory;
+		this.senhaPolicyService = new SenhaPolicyService(parametroService);
+		this.loginBloqueioService = new LoginBloqueioService(parametroService, daoFactory, this::registrarLogSucesso);
 	}
 
 	public Usuario autenticar(String email, char[] senhaPura) {
-
 		try {
+			boolean[] senhaInvalida = { false };
 
-			// SOMENTE LEITURA
-			Usuario user = execute(conn -> {
-
+			Usuario usuario = executeInTransaction(conn -> {
 				UsuarioDao dao = daoFactory.createUsuarioDao(conn);
+				Usuario encontrado = buscarUsuarioOuFalhar(dao, email, senhaPura);
 
-				Usuario u = buscarUsuarioOuFalhar(conn, dao, email);
+				validarStatus(encontrado);
+				loginBloqueioService.validarBloqueioTemporario(conn, dao, encontrado);
 
-				validarStatus(u);
-				validarBloqueioTemporario(dao, u);
-
-				return u;
-			});
-
-			// SENHA INCORRETA
-			if (!PasswordUtils.verifyPassword(senhaPura, user.getSenhaHashString())) {
-
-				tratarFalhaLogin(user);
-				if (user.getTentativasFalhas() >= parametroService.getInt(ParametroChave.LOGIN_MAX_TENTATIVAS, 5)) {
-
-					if (user.getBloqueadoAte() != null) {
-
-						throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-								"USUÁRIO BLOQUEADO ATÉ " + TimeUtils.formatarDataHora(user.getBloqueadoAte()));
-					}
-
-					throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "USUÁRIO BLOQUEADO.");
+				if (!verificarSenha(senhaPura, encontrado.getSenhaHashString())) {
+					loginBloqueioService.tratarFalhaLogin(conn, dao, encontrado);
+					senhaInvalida[0] = true;
+					return encontrado;
 				}
 
-				int tentativas = user.getTentativasFalhas();
+				verificarExpiracaoSenha(encontrado);
+				registrarSucessoLogin(conn, dao, encontrado);
 
-				int maxTentativas = parametroService.getInt(ParametroChave.LOGIN_MAX_TENTATIVAS, 5);
-
-				throw new ValidationException(ValidationErrorType.INVALID_FIELD,
-						"SENHA INCORRETA. TENTATIVA " + tentativas + " DE " + maxTentativas);
-			}
-
-			// LOGIN OK
-			executeInTransactionVoid(conn -> {
-
-				UsuarioDao dao = daoFactory.createUsuarioDao(conn);
-
-				verificarExpiracaoSenha(user);
-				registrarSucessoLogin(conn, dao, user);
+				return encontrado;
 			});
 
-			return user;
+			if (senhaInvalida[0]) {
+				loginBloqueioService.lancarExcecaoFalhaLogin(usuario);
+			}
 
+			return usuario;
 		} finally {
 			SensitiveData.safeClear(senhaPura);
 		}
 	}
 
-//	public Usuario autenticar(String email, char[] senhaPura) {
-//		try {
-//			return executeInTransaction(conn -> {
-//
-//				UsuarioDao dao = daoFactory.createUsuarioDao(conn);
-//
-//				Usuario user = buscarUsuarioOuFalhar(conn, dao, email);
-//
-//				validarStatus(user);
-//				validarBloqueioTemporario(dao, user);
-//
-//				if (!PasswordUtils.verifyPassword(senhaPura, user.getSenhaHashString())) {
-//					tratarFalhaLogin(conn, dao, user, email);
-//				}
-//
-//				verificarExpiracaoSenha(user);
-//				registrarSucessoLogin(conn, dao, user);
-//
-//				return user;
-//			});
-//		} finally {
-//			SensitiveData.safeClear(senhaPura);
-//		}
-//	}
-
-	private Usuario buscarUsuarioOuFalhar(Connection conn, UsuarioDao dao, String email) {
-		Usuario user = dao.buscarPorEmail(email);
-		if (user == null) {
-			registrarLogErro("SEGURANCA", "LOGIN_FALHA", "usuario",
-					new ValidationException(ValidationErrorType.INVALID_FIELD, "USUÁRIO NÃO ENCONTRADO: " + email));
-
-			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "USUÁRIO OU SENHA INVÁLIDOS.");
-		}
-
-		return user;
-	}
-
-	private void validarStatus(Usuario user) {
-		if (user.getStatus() == StatusUsuario.BLOQUEADO) {
-			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-					"ESTA CONTA FOI BLOQUEADA PELO ADMINISTRADOR.");
-		}
-		if (user.getStatus() == StatusUsuario.INATIVO) {
-			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "USUÁRIO INATIVO. CONTATE O SUPORTE.");
-		}
-	}
-
-	private void tratarFalhaLogin(Usuario user) {
-
-		if (user.isMaster()) {
-			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "SENHA INCORRETA.");
-		}
-
-		executeInTransactionVoid(conn -> {
-
-			UsuarioDao dao = daoFactory.createUsuarioDao(conn);
-
-			int maxTentativas = getMaxTentativas();
-
-			int tentativas = dao.incrementarERetornarTentativas(user.getIdUsuario());
-
-			user.setTentativasFalhas(tentativas);
-
-			// AINDA NÃO BLOQUEIA
-			if (tentativas < maxTentativas) {
-				return;
-			}
-
-			// BLOQUEIA E COMMITA
-			processarBloqueio(conn, dao, user, tentativas);
-		});
-	}
-	
-	private int getMaxTentativas() {
-	    return parametroService.getInt(
-	            ParametroChave.LOGIN_MAX_TENTATIVAS,
-	            5);
-	}
-
-//	private void tratarFalhaLogin(Connection conn, UsuarioDao dao, Usuario user, String email) {
-//
-//		if (user.isMaster()) {
-//			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "SENHA INCORRETA.");
-//		}
-//
-//		int maxTentativas = parametroService.getInt(ParametroChave.LOGIN_MAX_TENTATIVAS, 5);
-//
-//	//	int tentativas = dao.incrementarERetornarTentativas(email);
-//		System.out.println("Tentativas antes: " + user.getTentativasFalhas());
-//
-//		int tentativas = dao.incrementarERetornarTentativas(user.getIdUsuario());
-//
-//		System.out.println("Tentativas depois: " + tentativas);
-//		user.setTentativasFalhas(tentativas);
-//
-//		if (tentativas < maxTentativas) {
-//			throw new ValidationException(ValidationErrorType.INVALID_FIELD,
-//					"SENHA INCORRETA. TENTATIVA " + tentativas + " DE " + maxTentativas);
-//		}
-//
-//		processarBloqueio(conn, dao, user, tentativas);
-//	}
-
-	private void processarBloqueio(Connection conn, UsuarioDao dao, Usuario user, int tentativas) {
-
-		LogSistemaDao logDao = daoFactory.createLogSistemaDao(conn);
-
-		int limiteReincidencia = 3;
-		int totalBloqueios24h = logDao.contarLogsBloqueioRecentes(user.getIdUsuario(), 24);
-
-		if (totalBloqueios24h >= limiteReincidencia) {
-			executarBloqueioPermanente(conn, dao, user, tentativas, totalBloqueios24h);
-		} else {
-			executarBloqueioTemporario(conn, dao, user, tentativas, totalBloqueios24h);
-		}
-	}
-
-	private void executarBloqueioPermanente(Connection conn, UsuarioDao dao, Usuario user, int tentativas,
-			int historico24h) {
-
-		dao.bloquearUsuario(user.getIdUsuario());
-
-		Map<String, Object> detalhes = new HashMap<>();
-
-		detalhes.put("tentativas", tentativas);
-		detalhes.put("bloqueios_24h", historico24h);
-
-		registrarLogSucesso(conn, "SEGURANCA", "BLOQUEIO_PERMANENTE", "usuario", user.getIdUsuario(), null, detalhes);
-	}
-
-//	private void executarBloqueioPermanente(Connection conn, UsuarioDao dao, Usuario user, int tentativas,
-//			int historico24h) {
-//
-//		dao.bloquearUsuario(user.getIdUsuario());
-//
-//		Map<String, Object> detalhes = new HashMap<>();
-//		detalhes.put("tentativas", tentativas);
-//		detalhes.put("bloqueios_24h", historico24h);
-//
-//		registrarLogSucesso(conn, "SEGURANCA", "BLOQUEIO_PERMANENTE", "usuario", user.getIdUsuario(), null, detalhes);
-//
-//		throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-//				"ESTA CONTA FOI BLOQUEADA PERMANENTEMENTE POR REINCIDÊNCIA.");
-//	}
-
-	private void executarBloqueioTemporario(Connection conn, UsuarioDao dao, Usuario user, int tentativas,
-			int historico24h) {
-
-		int minutos = parametroService.getInt(ParametroChave.LOGIN_TEMPO_BLOQUEIO_MIN, 5);
-
-		LocalDateTime ate = LocalDateTime.now().plusMinutes(minutos);
-
-		dao.bloquearTemporariamente(user.getIdUsuario(), ate);
-
-		user.setBloqueadoAte(ate);
-
-		Map<String, Object> detalhes = new HashMap<>();
-
-		detalhes.put("tentativa", tentativas);
-		detalhes.put("sequencia_hoje", historico24h + 1);
-
-		registrarLogSucesso(conn, "SEGURANCA", "BLOQUEIO_TEMPORARIO", "usuario", user.getIdUsuario(), null, detalhes);
-	}
-
-//	private void executarBloqueioTemporario(Connection conn, UsuarioDao dao, Usuario user, int tentativas,
-//			int historico24h) {
-//
-//		int minutos = parametroService.getInt(ParametroChave.LOGIN_TEMPO_BLOQUEIO_MIN, 5);
-//
-//		LocalDateTime ate = LocalDateTime.now().plusMinutes(minutos);
-//
-//		dao.bloquearTemporariamente(user.getIdUsuario(), ate);
-//		user.setBloqueadoAte(ate);
-//
-//		Map<String, Object> detalhes = new HashMap<>();
-//		detalhes.put("tentativa", tentativas);
-//		detalhes.put("sequencia_hoje", historico24h + 1);
-//
-//		registrarLogSucesso(conn, "SEGURANCA", "BLOQUEIO_TEMPORARIO", "usuario", user.getIdUsuario(), null, detalhes);
-//
-//		throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-//				"LIMITE ATINGIDO. SUSPENSO ATÉ " + TimeUtils.formatarDataHora(ate));
-//	}
-
-//	private void validarBloqueioTemporario(UsuarioDao dao, Usuario user) {
-//
-//		LocalDateTime bloqueado = user.getBloqueadoAte();
-//
-//		if (bloqueado == null)
-//			return;
-//
-//		if (bloqueado.isAfter(LocalDateTime.now())) {
-//			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-//					"USUÁRIO BLOQUEADO TEMPORARIAMENTE ATÉ " + TimeUtils.formatarDataHora(bloqueado));
-//		}
-//
-//		dao.resetTentativasFalhas(user.getIdUsuario());
-//		user.setBloqueadoAte(null);
-//		user.setTentativasFalhas(0);
-//	}
-
-	private void validarBloqueioTemporario(UsuarioDao dao, Usuario user) {
-
-		LocalDateTime bloqueado = user.getBloqueadoAte();
-
-		if (bloqueado == null)
-			return;
-
-		if (bloqueado.isAfter(LocalDateTime.now())) {
-
-			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
-					"USUÁRIO BLOQUEADO TEMPORARIAMENTE ATÉ " + TimeUtils.formatarDataHora(bloqueado));
-		}
-
-		// BLOQUEIO EXPIROU -> LIMPA EM NOVA TRANSAÇÃO
-		executeInTransactionVoid(conn -> {
-
-			UsuarioDao txDao = daoFactory.createUsuarioDao(conn);
-
-			txDao.resetTentativasFalhas(user.getIdUsuario());
-		});
-
-		user.setBloqueadoAte(null);
-		user.setTentativasFalhas(0);
-	}
-
-	private void verificarExpiracaoSenha(Usuario user) {
-		if (user.getSenhaExpiraEm() != null && LocalDateTime.now().isAfter(user.getSenhaExpiraEm())) {
-			user.setForcarResetSenha(true);
-		}
-	}
-
-	private void registrarSucessoLogin(Connection conn, UsuarioDao dao, Usuario user) {
-
-		dao.atualizarUltimoLogin(user.getIdUsuario());
-		dao.resetTentativasFalhas(user.getIdUsuario());
-
-		Map<String, Object> detalhes = new HashMap<>();
-		detalhes.put("info", "Sessao iniciada com sucesso");
-		detalhes.put("horario", TimeUtils.formatarDataHora(LocalDateTime.now()));
-
-		registrarLogSucesso(conn, "SEGURANCA", "LOGIN_SUCESSO", "usuario", user.getIdUsuario(), null, detalhes);
-	}
-
 	public boolean processarSenha(Usuario usuario, boolean isNovo, Usuario executor, Usuario estadoAnterior) {
-		char[] senhaNova = usuario.getSenhaHash();
-		char[] senhaAntiga = usuario.getSenhaAntiga();
-		char[] senhaConfirmar = usuario.getConfirmarSenha();
+		char[] senhaNova = senhaPolicyService.copiarSenha(usuario.getSenhaHash());
+		char[] senhaAntiga = senhaPolicyService.copiarSenha(usuario.getSenhaAntiga());
+		char[] senhaConfirmar = senhaPolicyService.copiarSenha(usuario.getConfirmarSenha());
 
 		try {
-			if (isNovo && (senhaNova == null || senhaNova.length == 0))
+			if (isNovo && isSenhaVazia(senhaNova)) {
 				throw new ValidationException(ValidationErrorType.REQUIRED_FIELD_MISSING, "A SENHA É OBRIGATÓRIA.");
+			}
 
-			if (senhaNova == null || senhaNova.length == 0)
+			if (isSenhaVazia(senhaNova)) {
 				return false;
-
-			if (senhaConfirmar == null || senhaNova.length != senhaConfirmar.length) {
-				throw new ValidationException(ValidationErrorType.INVALID_FIELD, "A CONFIRMAÇÃO DE SENHA NÃO CONFERE.");
 			}
 
-			int diff = 0;
-			for (int i = 0; i < senhaNova.length; i++) {
-				diff |= senhaNova[i] ^ senhaConfirmar[i];
-			}
+			senhaPolicyService.validarConfirmacaoSenha(senhaNova, senhaConfirmar);
+			validarPermissaoAlteracaoSenha(usuario, isNovo, executor, estadoAnterior, senhaAntiga);
 
-			if (diff != 0) {
-				throw new ValidationException(ValidationErrorType.INVALID_FIELD, "A CONFIRMAÇÃO DE SENHA NÃO CONFERE.");
-			}
-
-			boolean alterandoPropriaSenha = !isNovo && executor != null && executor.getIdUsuario() != null
-					&& executor.getIdUsuario().equals(usuario.getIdUsuario());
-
-			if (alterandoPropriaSenha) {
-				if (estadoAnterior == null
-						|| !PasswordUtils.verifyPassword(senhaAntiga, estadoAnterior.getSenhaHashString())) {
-					throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "A SENHA ANTIGA ESTÁ INCORRETA.");
-				}
-			} else if (!isNovo && !UsuarioPolicy.isPrivilegiado(executor)) {
-				throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "Sem permissão para alterar senha.");
-			}
-
-			usuario.setSenhaHashString(gerarHashSeguro(senhaNova));
+			usuario.setSenhaHashString(senhaPolicyService.gerarHashSeguro(senhaNova));
 			return true;
 		} finally {
-			SensitiveData.safeClear(senhaNova);
-			SensitiveData.safeClear(senhaAntiga);
-			SensitiveData.safeClear(senhaConfirmar);
+			senhaPolicyService.limparSenhas(senhaNova, senhaAntiga, senhaConfirmar);
 		}
 	}
 
 	public String gerarHashSeguro(char[] senha) {
-		validarComplexidade(senha);
-		return PasswordUtils.hashPassword(senha);
+		return senhaPolicyService.gerarHashSeguro(senha);
 	}
 
 	public void validarComplexidade(char[] senha) {
-		int min = parametroService.getInt(ParametroChave.SENHA_MIN_TAMANHO, 6);
-
-		if (senha == null || senha.length < min) {
-			throw new ValidationException(ValidationErrorType.INVALID_FIELD,
-					"A SENHA DEVE TER NO MÍNIMO " + min + " CARACTERES.");
-		}
-
-		boolean maiuscula = false, numero = false, especial = false;
-		String caracteresEspeciais = "!@#$%^&*(),.?\":{}|<>";
-
-		for (char c : senha) {
-			if (Character.isUpperCase(c))
-				maiuscula = true;
-			else if (Character.isDigit(c))
-				numero = true;
-			else if (caracteresEspeciais.indexOf(c) >= 0)
-				especial = true;
-		}
-
-		if (!(maiuscula && numero && especial)) {
-			throw new ValidationException(ValidationErrorType.INVALID_FIELD,
-					"SENHA FRACA: REQUER LETRA MAIÚSCULA, NÚMERO E CARACTERE ESPECIAL.");
-		}
+		senhaPolicyService.validarComplexidade(senha);
 	}
 
 	public String resetarSenha(int idUsuarioAlvo, Usuario executor) {
-
 		validarPermissaoReset(executor);
 
 		return executeInTransaction(conn -> {
-
 			UsuarioDao dao = daoFactory.createUsuarioDao(conn);
 			Usuario alvo = dao.searchById(idUsuarioAlvo);
 
@@ -428,12 +120,12 @@ public class AutenticacaoService extends BaseService {
 			}
 
 			String senhaPadrao = parametroService.getString(ParametroChave.SENHA_RESET_PADRAO, "Mudar@123");
-
-			char[] senhaChars = senhaPadrao.toCharArray();
+			char[] senhaPadraoChars = senhaPadrao.toCharArray();
+			char[] senhaParaHash = null;
 
 			try {
-
-				String hash = gerarHashSeguro(senhaChars);
+				senhaParaHash = senhaPolicyService.copiarSenha(senhaPadraoChars);
+				String hash = senhaPolicyService.gerarHashSeguro(senhaParaHash);
 
 				dao.atualizarSenha(idUsuarioAlvo, hash);
 				dao.resetTentativasFalhas(idUsuarioAlvo);
@@ -442,41 +134,113 @@ public class AutenticacaoService extends BaseService {
 						"Senha resetada para padrão");
 
 				return senhaPadrao;
-
 			} finally {
-				SensitiveData.safeClear(senhaChars);
+				senhaPolicyService.limparSenhas(senhaParaHash, senhaPadraoChars);
 			}
 		});
 	}
 
 	public void alterarSenhaObrigatoria(int idUsuario, char[] novaSenha, char[] confirmacao) {
-
-		validarIgualdadeSenhas(novaSenha, confirmacao);
-		validarComplexidade(novaSenha);
+		char[] senhaNova = senhaPolicyService.copiarSenha(novaSenha);
+		char[] senhaConfirmacao = senhaPolicyService.copiarSenha(confirmacao);
 
 		try {
-			executeInTransaction(conn -> {
+			senhaPolicyService.validarIgualdadeSenhas(senhaNova, senhaConfirmacao);
+			senhaPolicyService.validarComplexidade(senhaNova);
 
+			executeInTransaction(conn -> {
 				UsuarioDao dao = daoFactory.createUsuarioDao(conn);
 
-				int dias = parametroService.getInt(ParametroChave.FORCAR_TROCA_SENHA_DIAS, 90);
+				int diasValidade = parametroService.getInt(ParametroChave.FORCAR_TROCA_SENHA_DIAS, 90);
+				LocalDateTime senhaExpiraEm = LocalDateTime.now().plusDays(diasValidade);
+				String hash = PasswordUtils.hashPassword(senhaNova);
 
-				LocalDateTime expira = LocalDateTime.now().plusDays(dias);
-				String hash = PasswordUtils.hashPassword(novaSenha);
-
-				dao.atualizarSenhaAposReset(idUsuario, hash, expira);
+				dao.atualizarSenhaAposReset(idUsuario, hash, senhaExpiraEm);
 
 				Map<String, String> detalhes = new HashMap<>();
 				detalhes.put("resultado", "Sucesso");
-				detalhes.put("validade_nova_senha", TimeUtils.formatarDataHora(expira));
+				detalhes.put("validade_nova_senha", TimeUtils.formatarDataHora(senhaExpiraEm));
 
-				registrarLogSucesso(conn, "SEGURANCA", "TROCA_SENHA_OBRIGATORIA", "usuario", idUsuario, null, detalhes);
+				registrarLogSucesso(conn, "SEGURANCA", "TROCA_SENHA_OBRIGATORIA", "usuario", idUsuario, null,
+						detalhes);
 
 				return null;
 			});
 		} finally {
-			SensitiveData.safeClear(novaSenha);
-			SensitiveData.safeClear(confirmacao);
+			senhaPolicyService.limparSenhas(senhaNova, senhaConfirmacao);
+		}
+	}
+
+	// --- Autenticação ---
+
+	private Usuario buscarUsuarioOuFalhar(UsuarioDao dao, String email, char[] senhaPura) {
+		Usuario usuario = dao.buscarPorEmailParaLogin(email);
+
+		if (usuario == null) {
+			registrarLogErro("SEGURANCA", "LOGIN_FALHA", "usuario",
+					new ValidationException(ValidationErrorType.INVALID_FIELD, "USUÁRIO NÃO ENCONTRADO: " + email));
+
+			verificarSenha(senhaPura, PasswordUtils.dummyHashForTimingMitigation());
+
+			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "USUÁRIO OU SENHA INVÁLIDOS.");
+		}
+
+		return usuario;
+	}
+
+	private boolean verificarSenha(char[] senha, String hashArmazenado) {
+		char[] senhaCopia = senhaPolicyService.copiarSenha(senha);
+		try {
+			return PasswordUtils.verifyPassword(senhaCopia, hashArmazenado);
+		} finally {
+			SensitiveData.safeClear(senhaCopia);
+		}
+	}
+
+	private void validarStatus(Usuario usuario) {
+		if (usuario.getStatus() == StatusUsuario.BLOQUEADO) {
+			throw new ValidationException(ValidationErrorType.ACCESS_DENIED,
+					"ESTA CONTA FOI BLOQUEADA PELO ADMINISTRADOR.");
+		}
+
+		if (usuario.getStatus() == StatusUsuario.INATIVO) {
+			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "USUÁRIO INATIVO. CONTATE O SUPORTE.");
+		}
+	}
+
+	private void verificarExpiracaoSenha(Usuario usuario) {
+		if (usuario.getSenhaExpiraEm() != null && LocalDateTime.now().isAfter(usuario.getSenhaExpiraEm())) {
+			usuario.setForcarResetSenha(true);
+		}
+	}
+
+	private void registrarSucessoLogin(Connection conn, UsuarioDao dao, Usuario usuario) {
+		dao.atualizarUltimoLogin(usuario.getIdUsuario());
+		dao.resetTentativasFalhas(usuario.getIdUsuario());
+
+		Map<String, Object> detalhes = new HashMap<>();
+		detalhes.put("info", "Sessao iniciada com sucesso");
+		detalhes.put("horario", TimeUtils.formatarDataHora(LocalDateTime.now()));
+
+		registrarLogSucesso(conn, "SEGURANCA", "LOGIN_SUCESSO", "usuario", usuario.getIdUsuario(), null, detalhes);
+	}
+
+	// --- Permissões e senha ---
+
+	private void validarPermissaoAlteracaoSenha(Usuario usuario, boolean isNovo, Usuario executor,
+			Usuario estadoAnterior, char[] senhaAntiga) {
+		boolean alterandoPropriaSenha = !isNovo && executor != null && executor.getIdUsuario() != null
+				&& executor.getIdUsuario().equals(usuario.getIdUsuario());
+
+		if (alterandoPropriaSenha) {
+			if (estadoAnterior == null || !verificarSenha(senhaAntiga, estadoAnterior.getSenhaHashString())) {
+				throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "A SENHA ANTIGA ESTÁ INCORRETA.");
+			}
+			return;
+		}
+
+		if (!isNovo && !UsuarioPolicy.isPrivilegiado(executor)) {
+			throw new ValidationException(ValidationErrorType.ACCESS_DENIED, "Sem permissão para alterar senha.");
 		}
 	}
 
@@ -487,20 +251,7 @@ public class AutenticacaoService extends BaseService {
 		}
 	}
 
-	private void validarIgualdadeSenhas(char[] s1, char[] s2) {
-		if (s1 == null || s2 == null || s1.length != s2.length) {
-			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "AS SENHAS DIGITADAS NÃO CONFEREM.");
-		}
-
-		int result = 0;
-
-		for (int i = 0; i < s1.length; i++) {
-			result |= s1[i] ^ s2[i];
-		}
-
-		if (result != 0) {
-			throw new ValidationException(ValidationErrorType.INVALID_FIELD, "AS SENHAS DIGITADAS NÃO CONFEREM.");
-		}
+	private static boolean isSenhaVazia(char[] senha) {
+		return senha == null || senha.length == 0;
 	}
-
 }

@@ -26,6 +26,7 @@ public final class PasswordUtils {
 
 	private static final Logger logger = LoggerFactory.getLogger(PasswordUtils.class);
 	private static final int LOG_ROUNDS = 12;
+	private static final String DUMMY_BCRYPT_HASH = BCrypt.hashpw("dummy-login-placeholder", BCrypt.gensalt(LOG_ROUNDS));
 
 	/**
 	 * Construtor privado para evitar instanciação.
@@ -68,6 +69,13 @@ public final class PasswordUtils {
 	 * @param hashedPassword hash da senha armazenada
 	 * @return {@code true} se a senha corresponder, {@code false} caso contrário
 	 */
+	/**
+	 * Hash BCrypt válido usado para equalizar tempo de resposta quando o usuário não existe.
+	 */
+	public static String dummyHashForTimingMitigation() {
+		return DUMMY_BCRYPT_HASH;
+	}
+
 	public static boolean verifyPassword(char[] plainPassword, String hashedPassword) {
 		if (plainPassword == null || plainPassword.length == 0 || hashedPassword == null || hashedPassword.isBlank()) {
 			return false;
